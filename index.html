@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>StudyHub</title>
+
+<style>
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:Arial, Helvetica, sans-serif;
+}
+
+body{
+background:#f5f7fb;
+}
+
+/* NAVBAR */
+
+.navbar{
+display:flex;
+justify-content:space-between;
+align-items:center;
+padding:18px 70px;
+background:white;
+box-shadow:0 3px 12px rgba(0,0,0,0.1);
+}
+
+.logo{
+font-size:26px;
+font-weight:bold;
+color:#6a1b9a;
+}
+
+.nav-links a{
+margin-left:25px;
+text-decoration:none;
+color:#333;
+font-weight:500;
+transition:0.2s;
+}
+
+.nav-links a:hover{
+color:#6a1b9a;
+}
+
+/* HERO */
+
+.hero{
+display:flex;
+align-items:center;
+justify-content:space-between;
+padding:80px;
+}
+
+.hero-text{
+max-width:500px;
+}
+
+.hero-text h1{
+font-size:46px;
+color:#222;
+}
+
+.hero-text p{
+margin-top:15px;
+font-size:18px;
+color:#555;
+}
+
+.hero-text button{
+margin-top:25px;
+padding:12px 30px;
+border:none;
+background:#6a1b9a;
+color:white;
+border-radius:6px;
+font-size:16px;
+cursor:pointer;
+transition:0.3s;
+}
+
+.hero-text button:hover{
+transform:scale(1.05);
+}
+
+.hero img{
+width:380px;
+}
+
+/* COURSE SECTION */
+
+.section{
+padding:60px;
+text-align:center;
+}
+
+.section h2{
+font-size:32px;
+margin-bottom:40px;
+}
+
+/* COURSE GRID */
+
+.courses{
+display:flex;
+justify-content:center;
+gap:30px;
+flex-wrap:wrap;
+}
+
+/* COURSE CARD */
+
+.course-card{
+position:relative;
+background:white;
+padding:35px;
+width:260px;
+border-radius:15px;
+box-shadow:0 10px 25px rgba(0,0,0,0.12);
+transition:all 0.35s ease;
+overflow:hidden;
+}
+
+/* gradient line */
+
+.course-card::before{
+content:"";
+position:absolute;
+top:0;
+left:0;
+height:4px;
+width:100%;
+background:linear-gradient(90deg,#6a1b9a,#ff4ecd);
+}
+
+/* hover effect */
+
+.course-card:hover{
+transform:translateY(-12px) scale(1.03);
+box-shadow:0 20px 40px rgba(0,0,0,0.18);
+}
+
+/* title */
+
+.course-card h3{
+color:#6a1b9a;
+font-size:22px;
+margin-bottom:10px;
+}
+
+/* description */
+
+.course-card p{
+color:#555;
+font-size:15px;
+}
+
+/* button */
+
+.course-card button{
+margin-top:18px;
+padding:11px 22px;
+border:none;
+border-radius:6px;
+background:linear-gradient(135deg,#6a1b9a,#9c27b0);
+color:white;
+font-weight:bold;
+cursor:pointer;
+transition:0.3s;
+}
+
+.course-card button:hover{
+transform:scale(1.08);
+box-shadow:0 6px 18px rgba(106,27,154,0.4);
+}
+
+/* FOOTER */
+
+footer{
+margin-top:60px;
+padding:20px;
+text-align:center;
+background:#6a1b9a;
+color:white;
+}
+
+</style>
+</head>
+
+<body>
+
+<!-- NAVBAR -->
+
+<div class="navbar">
+<div class="logo">StudyHub</div>
+
+<div class="nav-links">
+<a href="#">Home</a>
+<a href="#">Class 11</a>
+<a href="#">Class 12</a>
+<a href="#">NEET</a>
+<a href="#">JEE</a>
+<a href="#">Mock Tests</a>
+</div>
+</div>
+
+<!-- HERO SECTION -->
+
+<div class="hero">
+
+<div class="hero-text">
+<h1>Crack NEET, JEE & Boards</h1>
+<p>Free notes, MCQs, mock tests and revision for Class 11 and 12 students.</p>
+<button>Start Learning</button>
+</div>
+
+<img src="https://cdn-icons-png.flaticon.com/512/3135/3135755.png">
+
+</div>
+
+<!-- COURSE SECTION -->
+
+<div class="section">
+
+<h2>Popular Courses</h2>
+
+<div class="courses">
+
+<div class="course-card">
+<h3>Class 11</h3>
+<p>Physics, Chemistry, Biology & Maths</p>
+<button>Explore</button>
+</div>
+
+<div class="course-card">
+<h3>Class 12</h3>
+<p>Boards + Competitive Preparation</p>
+<button>Explore</button>
+</div>
+
+<div class="course-card">
+<h3>NEET</h3>
+<p>MCQs, PYQs and Mock Tests</p>
+<button>Practice</button>
+</div>
+
+<div class="course-card">
+<h3>JEE</h3>
+<p>Advanced Concepts & Problems</p>
+<button>Practice</button>
+</div>
+
+</div>
+
+</div>
+
+<footer>
+© 2026 StudyHub | Free Education Platform
+</footer>
+
+</body>
+</html>
