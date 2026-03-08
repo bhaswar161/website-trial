@@ -1,15 +1,16 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>StudyHub</title>
-
+<title>StudyHub - NEET | JEE | Boards</title>
 <style>
+
+/* GENERAL */
 
 *{
 margin:0;
 padding:0;
 box-sizing:border-box;
-font-family:Arial, Helvetica, sans-serif;
+font-family: 'Arial', sans-serif;
 }
 
 body{
@@ -22,13 +23,16 @@ background:#f5f7fb;
 display:flex;
 justify-content:space-between;
 align-items:center;
-padding:18px 70px;
+padding:18px 60px;
 background:white;
-box-shadow:0 3px 12px rgba(0,0,0,0.1);
+box-shadow:0 3px 12px rgba(0,0,0,0.08);
+position:sticky;
+top:0;
+z-index:10;
 }
 
 .logo{
-font-size:26px;
+font-size:28px;
 font-weight:bold;
 color:#6a1b9a;
 }
@@ -38,7 +42,7 @@ margin-left:25px;
 text-decoration:none;
 color:#333;
 font-weight:500;
-transition:0.2s;
+transition:0.3s;
 }
 
 .nav-links a:hover{
@@ -51,119 +55,127 @@ color:#6a1b9a;
 display:flex;
 align-items:center;
 justify-content:space-between;
-padding:80px;
-}
-
-.hero-text{
-max-width:500px;
-}
-
-.hero-text h1{
-font-size:46px;
-color:#222;
-}
-
-.hero-text p{
-margin-top:15px;
-font-size:18px;
-color:#555;
-}
-
-.hero-text button{
-margin-top:25px;
-padding:12px 30px;
-border:none;
-background:#6a1b9a;
+padding:80px 60px;
+background:linear-gradient(135deg,#6a1b9a,#ff4ecd);
+border-radius:0 0 40px 40px;
 color:white;
-border-radius:6px;
+position:relative;
+overflow:hidden;
+}
+
+.hero h1{
+font-size:48px;
+line-height:1.2;
+}
+
+.hero p{
+margin-top:20px;
+font-size:18px;
+opacity:0.9;
+}
+
+.hero button{
+margin-top:30px;
+padding:15px 35px;
+border:none;
+border-radius:8px;
+background:white;
+color:#6a1b9a;
+font-weight:bold;
 font-size:16px;
 cursor:pointer;
 transition:0.3s;
 }
 
-.hero-text button:hover{
+.hero button:hover{
 transform:scale(1.05);
+box-shadow:0 8px 20px rgba(0,0,0,0.2);
 }
 
+/* HERO IMAGE */
+
 .hero img{
-width:380px;
+width:400px;
+transform:rotate(-5deg);
 }
 
 /* COURSE SECTION */
 
 .section{
-padding:60px;
+padding:80px 40px;
 text-align:center;
 }
 
 .section h2{
-font-size:32px;
-margin-bottom:40px;
+font-size:36px;
+margin-bottom:50px;
 }
 
-/* COURSE GRID */
+/* COURSE CARDS */
 
 .courses{
 display:flex;
 justify-content:center;
-gap:30px;
 flex-wrap:wrap;
+gap:30px;
 }
-
-/* COURSE CARD */
 
 .course-card{
 position:relative;
 background:white;
 padding:35px;
 width:260px;
-border-radius:15px;
-box-shadow:0 10px 25px rgba(0,0,0,0.12);
+border-radius:20px;
+box-shadow:0 12px 28px rgba(0,0,0,0.12);
 transition:all 0.35s ease;
 overflow:hidden;
+animation:float 3s ease-in-out infinite alternate;
 }
-
-/* gradient line */
 
 .course-card::before{
 content:"";
 position:absolute;
 top:0;
 left:0;
-height:4px;
+height:5px;
 width:100%;
 background:linear-gradient(90deg,#6a1b9a,#ff4ecd);
 }
 
-/* hover effect */
-
 .course-card:hover{
-transform:translateY(-12px) scale(1.03);
-box-shadow:0 20px 40px rgba(0,0,0,0.18);
+transform:translateY(-15px) scale(1.05);
+box-shadow:0 25px 50px rgba(0,0,0,0.18);
 }
 
-/* title */
+/* FLOATING ANIMATION */
+
+@keyframes float{
+0%{ transform: translateY(0px);}
+100%{ transform: translateY(-8px);}
+}
+
+/* COURSE TITLE */
 
 .course-card h3{
 color:#6a1b9a;
 font-size:22px;
-margin-bottom:10px;
+margin-bottom:12px;
 }
 
-/* description */
+/* DESCRIPTION */
 
 .course-card p{
 color:#555;
 font-size:15px;
 }
 
-/* button */
+/* BUTTON */
 
 .course-card button{
 margin-top:18px;
-padding:11px 22px;
+padding:12px 25px;
 border:none;
-border-radius:6px;
+border-radius:8px;
 background:linear-gradient(135deg,#6a1b9a,#9c27b0);
 color:white;
 font-weight:bold;
@@ -173,29 +185,28 @@ transition:0.3s;
 
 .course-card button:hover{
 transform:scale(1.08);
-box-shadow:0 6px 18px rgba(106,27,154,0.4);
+box-shadow:0 8px 20px rgba(106,27,154,0.4);
 }
 
 /* FOOTER */
 
 footer{
 margin-top:60px;
-padding:20px;
+padding:25px;
 text-align:center;
 background:#6a1b9a;
 color:white;
+font-size:16px;
 }
 
 </style>
 </head>
-
 <body>
 
 <!-- NAVBAR -->
 
 <div class="navbar">
 <div class="logo">StudyHub</div>
-
 <div class="nav-links">
 <a href="#">Home</a>
 <a href="#">Class 11</a>
@@ -206,26 +217,21 @@ color:white;
 </div>
 </div>
 
-<!-- HERO SECTION -->
+<!-- HERO -->
 
 <div class="hero">
-
-<div class="hero-text">
+<div>
 <h1>Crack NEET, JEE & Boards</h1>
-<p>Free notes, MCQs, mock tests and revision for Class 11 and 12 students.</p>
+<p>Free notes, MCQs, mock tests and revision for Class 11 & 12 students.</p>
 <button>Start Learning</button>
 </div>
-
 <img src="https://cdn-icons-png.flaticon.com/512/3135/3135755.png">
-
 </div>
 
-<!-- COURSE SECTION -->
+<!-- COURSES -->
 
 <div class="section">
-
 <h2>Popular Courses</h2>
-
 <div class="courses">
 
 <div class="course-card">
@@ -253,7 +259,6 @@ color:white;
 </div>
 
 </div>
-
 </div>
 
 <footer>
