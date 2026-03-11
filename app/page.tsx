@@ -6,11 +6,15 @@ import { useState, useEffect } from 'react'
 export default function HomePage() {
   const { data: session } = useSession();
   const [customName, setCustomName] = useState("");
+  const [profilePic, setProfilePic] = useState("");
 
-  // This effect checks if the user has saved a custom name in their browser
   useEffect(() => {
+    // Fetch custom data from localStorage
     const savedName = localStorage.getItem("userFirstName");
+    const savedPic = localStorage.getItem("userProfilePic");
+    
     if (savedName) setCustomName(savedName);
+    if (savedPic) setProfilePic(savedPic);
   }, []);
 
   // Priority: 1. Custom Name, 2. Google First Name, 3. "Student"
@@ -171,9 +175,31 @@ export default function HomePage() {
         <div className="auth-btns">
           {session ? (
             <>
-              <Link href="/profile" style={{fontWeight:'bold', color:'#6c63ff', textDecoration:'none'}}>
-                Hi, {displayName}
-              </Link>
+              {/* Profile Image & Name Group */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ 
+                  width: '38px', 
+                  height: '38px', 
+                  borderRadius: '50%', 
+                  overflow: 'hidden', 
+                  backgroundColor: '#6c63ff',
+                  border: '2px solid #6c63ff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  {profilePic ? (
+                    <img src={profilePic} alt="User" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <span style={{ color: 'white', fontWeight: 'bold', fontSize: '14px' }}>
+                      {displayName[0].toUpperCase()}
+                    </span>
+                  )}
+                </div>
+                <Link href="/profile" style={{fontWeight:'bold', color:'#6c63ff', textDecoration:'none'}}>
+                  Hi, {displayName}
+                </Link>
+              </div>
               <button className="login-btn" style={{background:'#ff4757'}} onClick={() => signOut()}>Logout</button>
             </>
           ) : (
