@@ -275,7 +275,30 @@ transition:0.3s;
 <button>Practice</button>
 </div>
 
-<style>.exam-section{
+<style>
+.exam-card{
+position:relative;
+overflow:hidden;
+background:white;
+border-radius:15px;
+padding:30px;
+}
+
+.exam-card::before{
+content:"";
+position:absolute;
+
+width:220px;
+height:220px;
+
+background:#f6dede;   /* color of semicircle */
+
+border-radius:50%;
+
+right:-80px;
+top:-40px;
+}
+.exam-section{
 padding:80px 10%;
 background:#f5f6fa;
 text-align:center;
@@ -419,6 +442,7 @@ transform: scale(1.2);
 </body>
 
 </html>
+
 
 
 
