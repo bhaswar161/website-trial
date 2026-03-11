@@ -296,7 +296,7 @@ export default function HomePage() {
       {/* HERO */}
       <div className="hero">
         <div>
-          <h1>{session ? `Welcome back, ${session.user?.name?.split(' ')[0]}!` : "Crack NEET, JEE & Boards"}</h1>
+          <h1>{session ? \`Welcome back, \${session.user?.name?.split(' ')[0]}!\` : "Crack NEET, JEE & Boards"}</h1>
           <p>Free notes, MCQs, mock tests and revision for Class 11 & 12 students.</p>
           
           {session ? (
@@ -306,9 +306,83 @@ export default function HomePage() {
           )}
         </div>
         <img src="https://cdn-icons-png.flaticon.com/512/3135/3135755.png" alt="Hero" />
-    </div>
+      </div>
 
-      {/* REST OF YOUR COURSES / CONTENT GOES HERE... */}
+      {/* COURSES */}
+      <div className="section">
+        <h2>Popular Courses</h2>
+        <div className="courses">
+          <div className="course-card">
+            <h3>Class 11</h3>
+            <p>Physics, Chemistry, Biology & Maths</p>
+            <button>Explore</button>
+          </div>
+
+          <div className="course-card">
+            <h3>Class 12</h3>
+            <p>Boards + Competitive Preparation</p>
+            <button>Explore</button>
+          </div>
+
+          <div className="course-card">
+            <h3>NEET</h3>
+            <p>MCQs, PYQs and Mock Tests</p>
+            <Link href="/neet" className="btn">Explore</Link>
+          </div>
+
+          <div className="course-card">
+            <h3>JEE</h3>
+            <p>Advanced Concepts & Problems</p>
+            <button>Practice</button>
+          </div>
+        </div>
+
+        <section className="exam-section">
+          <h1>Exam Categories</h1>
+          <p className="subtitle" style={{color: 'gray', marginBottom: '50px'}}>Preparing students for multiple exam categories</p>
+
+          <div className="exam-grid">
+            <div className="exam-card">
+              <div className="exam-content">
+                <h2>NEET</h2>
+                <div className="tags" style={{margin: '15px 0'}}>
+                  <span>Class 11</span>
+                  <span>Class 12</span>
+                  <span>Dropper</span>
+                </div>
+                <Link href="/neet" className="explore">Explore Category →</Link>
+              </div>
+              <img src="https://cdn-icons-png.flaticon.com/512/3209/3209265.png" alt="NEET" />
+            </div>
+
+            <div className="exam-card">
+              <div className="exam-content">
+                <h2>IIT JEE</h2>
+                <div className="tags" style={{margin: '15px 0'}}>
+                  <span>Class 11</span>
+                  <span>Class 12</span>
+                  <span>Dropper</span>
+                </div>
+                <Link href="#" className="explore">Explore Category →</Link>
+              </div>
+              <img src="https://cdn-icons-png.flaticon.com/512/2942/2942929.png" alt="JEE" />
+            </div>
+
+            <div className="exam-card">
+              <div className="exam-content">
+                <h2>School Boards</h2>
+                <div className="tags" style={{margin: '15px 0'}}>
+                  <span>CBSE</span>
+                  <span>ICSE</span>
+                  <span>State Boards</span>
+                </div>
+                <Link href="#" className="explore">Explore Category →</Link>
+              </div>
+              <img src="https://cdn-icons-png.flaticon.com/512/3135/3135755.png" alt="Boards" />
+            </div>
+          </div>
+        </section>
+      </div>
 
       <footer>
         © 2026 StudyHub | Free Education Platform | Made by Bhaswar Ray
