@@ -1,9 +1,20 @@
 'use client'
 import Link from 'next/link'
 import { useSession, signIn, signOut } from 'next-auth/react'
+import { useState, useEffect } from 'react'
 
 export default function HomePage() {
   const { data: session } = useSession();
+  const [customName, setCustomName] = useState("");
+
+  // This effect checks if the user has saved a custom name in their browser
+  useEffect(() => {
+    const savedName = localStorage.getItem("userFirstName");
+    if (savedName) setCustomName(savedName);
+  }, []);
+
+  // Priority: 1. Custom Name, 2. Google First Name, 3. "Student"
+  const displayName = customName || session?.user?.name?.split(' ')[0] || "Student";
 
   return (
     <>
@@ -160,7 +171,9 @@ export default function HomePage() {
         <div className="auth-btns">
           {session ? (
             <>
-              <Link href="/profile" style={{fontWeight:'bold', color:'#6c63ff', textDecoration:'none'}}>Profile</Link>
+              <Link href="/profile" style={{fontWeight:'bold', color:'#6c63ff', textDecoration:'none'}}>
+                Hi, {displayName}
+              </Link>
               <button className="login-btn" style={{background:'#ff4757'}} onClick={() => signOut()}>Logout</button>
             </>
           ) : (
@@ -171,7 +184,7 @@ export default function HomePage() {
 
       <div className="hero">
         <div className="hero-text">
-          <h1>{session ? `Welcome back, ${session.user?.name?.split(' ')[0]}!` : "Crack NEET, JEE & Boards"}</h1>
+          <h1>{session ? `Welcome back, ${displayName}!` : "Crack NEET, JEE & Boards"}</h1>
           <p>Free notes, MCQs, mock tests and revision for Class 11 & 12 students.</p>
           <button onClick={() => session ? window.location.href='/neet' : signIn('google')}>
             {session ? "Go to My Courses" : "Start Learning"}
