@@ -4,12 +4,13 @@ import GoogleProvider from "next-auth/providers/google"
 const handler = NextAuth({
   providers: [
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      clientId: process.env.GOOGLE_CLIENT_ID as string,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
     }),
   ],
-  // This secret is what you just added to Vercel
-  secret: process.env.NEXTAUTH_SECRET, 
+  secret: process.env.NEXTAUTH_SECRET,
+  // This line is the "Magic Fix" for the OAuthSignin error on Vercel
+  trustHost: true, 
 })
 
 export { handler as GET, handler as POST }
