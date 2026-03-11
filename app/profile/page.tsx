@@ -11,36 +11,26 @@ export default function ProfilePage() {
     lastName: "",
     phone: "",
     currentClass: "Class 11",
-    profilePic: "" // New field for the image
+    profilePic: "" 
   })
 
-  // Load existing data + image if they've saved it before
   useEffect(() => {
-    const savedFirst = localStorage.getItem("userFirstName");
-    const savedLast = localStorage.getItem("userLastName");
-    const savedPhone = localStorage.getItem("userPhone");
-    const savedClass = localStorage.getItem("userClass");
-    const savedPic = localStorage.getItem("userProfilePic"); // Load the image
-    
-    if (savedFirst || savedPic) {
-      setFormData(prev => ({ 
-        ...prev, 
-        firstName: savedFirst || "", 
-        lastName: savedLast || "", 
-        phone: savedPhone || "", 
-        currentClass: savedClass || "Class 11",
-        profilePic: savedPic || "" 
-      }));
-    }
+    // Load existing data from localStorage
+    setFormData({
+      firstName: localStorage.getItem("userFirstName") || "",
+      lastName: localStorage.getItem("userLastName") || "",
+      phone: localStorage.getItem("userPhone") || "",
+      currentClass: localStorage.getItem("userClass") || "Class 11",
+      profilePic: localStorage.getItem("userProfilePic") || "" 
+    });
   }, []);
 
-  // Handle Image Selection and Conversion
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Check file size (optional but recommended for localStorage)
-      if (file.size > 1048576) { // 1MB limit for localStorage reliability
-        alert("File is too large! Please choose an image under 1MB.");
+      // 1.5MB limit to prevent localStorage overflow
+      if (file.size > 1572864) { 
+        alert("File is too large! Please choose an image under 1.5MB.");
         return;
       }
 
@@ -58,7 +48,10 @@ export default function ProfilePage() {
     localStorage.setItem("userLastName", formData.lastName);
     localStorage.setItem("userPhone", formData.phone);
     localStorage.setItem("userClass", formData.currentClass);
-    localStorage.setItem("userProfilePic", formData.profilePic); // Save the image
+    localStorage.setItem("userProfilePic", formData.profilePic); 
+    
+    // 🔥 FIX 1: Trigger storage event so HomePage updates immediately
+    window.dispatchEvent(new Event("storage"));
     
     alert("Profile Updated Successfully!");
     window.location.href = "/"; 
@@ -68,38 +61,41 @@ export default function ProfilePage() {
 
   return (
     <div style={{ padding: '40px', maxWidth: '500px', margin: '0 auto', fontFamily: 'Arial' }}>
-      <Link href="/" style={{ color: '#6c63ff', textDecoration: 'none' }}>← Back to Home</Link>
+      <Link href="/" style={{ color: '#6c63ff', textDecoration: 'none', fontWeight: 'bold' }}>← Back to Home</Link>
       
       <h1 style={{ margin: '20px 0' }}>Student Profile</h1>
       
-      {/* IMAGE UPLOAD SECTION */}
+      {/* 🔥 FIX 2: Better Circular "Crop" Preview */}
       <div style={{ textAlign: 'center', marginBottom: '30px' }}>
         <div style={{ 
-          width: '120px', 
-          height: '120px', 
+          width: '140px', 
+          height: '140px', 
           borderRadius: '50%', 
           backgroundColor: '#eee', 
           margin: '0 auto 15px', 
           overflow: 'hidden', 
-          border: '3px solid #6c63ff',
+          border: '4px solid #6c63ff',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center'
+          justifyContent: 'center',
+          boxShadow: '0 4px 12px rgba(108, 99, 255, 0.3)'
         }}>
           {formData.profilePic ? (
+            /* object-fit: cover acts as an automatic center-crop */
             <img src={formData.profilePic} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           ) : (
-            <span style={{ color: '#888', fontSize: '12px' }}>No Photo</span>
+            <span style={{ color: '#888', fontSize: '14px' }}>No Photo</span>
           )}
         </div>
         <label style={{ 
           background: '#f0eeff', 
-          padding: '8px 15px', 
-          borderRadius: '20px', 
-          fontSize: '13px', 
+          padding: '10px 20px', 
+          borderRadius: '25px', 
+          fontSize: '14px', 
           cursor: 'pointer',
           color: '#6c63ff',
-          fontWeight: 'bold'
+          fontWeight: 'bold',
+          transition: '0.2s'
         }}>
           Change Photo
           <input type="file" accept="image/*" onChange={handleImageChange} style={{ display: 'none' }} />
@@ -155,7 +151,7 @@ export default function ProfilePage() {
 
         <button 
           onClick={handleSave}
-          style={{ padding: '15px', background: '#6c63ff', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', marginTop: '10px' }}
+          style={{ padding: '15px', background: '#6c63ff', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', marginTop: '10px', fontSize: '16px' }}
         >
           Update Profile
         </button>
@@ -164,12 +160,13 @@ export default function ProfilePage() {
   )
 }
 
-const labelStyle = { fontWeight: 'bold', fontSize: '14px' }
+const labelStyle = { fontWeight: 'bold', fontSize: '14px', color: '#444' }
 const inputStyle = {
   width: '100%',
   padding: '12px',
   marginTop: '5px',
   borderRadius: '8px',
   border: '1px solid #ddd',
-  display: 'block'
+  display: 'block',
+  fontSize: '15px'
 }
