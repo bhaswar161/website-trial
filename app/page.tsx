@@ -8,13 +8,17 @@ export default function HomePage() {
   const [customName, setCustomName] = useState("");
   const [profilePic, setProfilePic] = useState("");
 
-  useEffect(() => {
-    // Fetch custom data from localStorage
-    const savedName = localStorage.getItem("userFirstName");
-    const savedPic = localStorage.getItem("userProfilePic");
+ useEffect(() => {
+    const updateProfile = () => {
+      setCustomName(localStorage.getItem("userFirstName") || "");
+      setProfilePic(localStorage.getItem("userProfilePic") || "");
+    };
+
+    updateProfile(); // Initial check
     
-    if (savedName) setCustomName(savedName);
-    if (savedPic) setProfilePic(savedPic);
+    // Listen for changes if user updates profile in another tab
+    window.addEventListener('storage', updateProfile);
+    return () => window.removeEventListener('storage', updateProfile);
   }, []);
 
   // Priority: 1. Custom Name, 2. Google First Name, 3. "Student"
