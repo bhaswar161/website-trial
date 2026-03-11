@@ -275,6 +275,129 @@ transition:0.3s;
 <button>Practice</button>
 </div>
 
+<style>.exam-section{
+padding:80px 10%;
+background:#f5f6fa;
+text-align:center;
+}
+
+.exam-section h1{
+font-size:40px;
+margin-bottom:10px;
+}
+
+.subtitle{
+color:gray;
+margin-bottom:50px;
+}
+
+.exam-grid{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+gap:30px;
+}
+
+.exam-card{
+background:white;
+border-radius:15px;
+padding:30px;
+display:flex;
+justify-content:space-between;
+align-items:center;
+box-shadow:0 5px 15px rgba(0,0,0,0.1);
+transition:0.3s;
+}
+
+.exam-card:hover{
+transform:translateY(-8px);
+box-shadow:0 15px 30px rgba(0,0,0,0.15);
+}
+
+.exam-card img{
+width:70px;
+}
+
+.tags{
+margin:15px 0;
+}
+
+.tags span{
+border:1px solid #ddd;
+padding:6px 12px;
+border-radius:20px;
+margin-right:8px;
+font-size:14px;
+}
+
+.explore{
+display:inline-block;
+margin-top:10px;
+text-decoration:none;
+color:#7b2ff7;
+font-weight:bold;
+}
+</style>
+<section class="exam-section">
+  
+<h1>Exam Categories</h1>
+<p class="subtitle">Preparing students for multiple exam categories</p>
+
+<div class="exam-grid">
+
+<div class="exam-card">
+<div class="exam-content">
+<h2>NEET</h2>
+
+<div class="tags">
+<span>Class 11</span>
+<span>Class 12</span>
+<span>Dropper</span>
+</div>
+
+<a href="neet.html" class="explore">Explore Category →</a>
+</div>
+
+<img src="https://cdn-icons-png.flaticon.com/512/3209/3209265.png">
+</div>
+
+
+<div class="exam-card">
+<div class="exam-content">
+<h2>IIT JEE</h2>
+
+<div class="tags">
+<span>Class 11</span>
+<span>Class 12</span>
+<span>Dropper</span>
+</div>
+
+<a href="#" class="explore">Explore Category →</a>
+</div>
+
+<img src="https://cdn-icons-png.flaticon.com/512/2942/2942929.png">
+</div>
+
+
+<div class="exam-card">
+<div class="exam-content">
+<h2>School Boards</h2>
+
+<div class="tags">
+<span>CBSE</span>
+<span>ICSE</span>
+<span>State Boards</span>
+</div>
+
+<a href="#" class="explore">Explore Category →</a>
+</div>
+
+<img src="https://cdn-icons-png.flaticon.com/512/3135/3135755.png">
+</div>
+
+</div>
+
+</section>
+  
 </div>
 </div>
 
@@ -285,6 +408,7 @@ transition:0.3s;
 </body>
 
 </html>
+
 
 
 
