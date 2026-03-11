@@ -11,25 +11,57 @@ export default function ProfilePage() {
     lastName: "",
     phone: "",
     currentClass: "Class 11",
+    profilePic: "" // New field for the image
   })
 
-  // Load existing data if they've saved it before
+  // Load existing data + image if they've saved it before
   useEffect(() => {
     const savedFirst = localStorage.getItem("userFirstName");
     const savedLast = localStorage.getItem("userLastName");
     const savedPhone = localStorage.getItem("userPhone");
     const savedClass = localStorage.getItem("userClass");
+    const savedPic = localStorage.getItem("userProfilePic"); // Load the image
     
-    if (savedFirst) setFormData(prev => ({ ...prev, firstName: savedFirst, lastName: savedLast || "", phone: savedPhone || "", currentClass: savedClass || "Class 11" }));
+    if (savedFirst || savedPic) {
+      setFormData(prev => ({ 
+        ...prev, 
+        firstName: savedFirst || "", 
+        lastName: savedLast || "", 
+        phone: savedPhone || "", 
+        currentClass: savedClass || "Class 11",
+        profilePic: savedPic || "" 
+      }));
+    }
   }, []);
+
+  // Handle Image Selection and Conversion
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Check file size (optional but recommended for localStorage)
+      if (file.size > 1048576) { // 1MB limit for localStorage reliability
+        alert("File is too large! Please choose an image under 1MB.");
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        setFormData(prev => ({ ...prev, profilePic: base64String }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleSave = () => {
     localStorage.setItem("userFirstName", formData.firstName);
     localStorage.setItem("userLastName", formData.lastName);
     localStorage.setItem("userPhone", formData.phone);
     localStorage.setItem("userClass", formData.currentClass);
+    localStorage.setItem("userProfilePic", formData.profilePic); // Save the image
+    
     alert("Profile Updated Successfully!");
-    window.location.href = "/"; // Go back to home to see the change
+    window.location.href = "/"; 
   }
 
   if (!session) return <div style={{padding: '50px', textAlign: 'center'}}><h1>Please log in.</h1></div>
@@ -39,8 +71,41 @@ export default function ProfilePage() {
       <Link href="/" style={{ color: '#6c63ff', textDecoration: 'none' }}>← Back to Home</Link>
       
       <h1 style={{ margin: '20px 0' }}>Student Profile</h1>
-      <p style={{marginBottom: '20px', color: '#666'}}>Logged in as: {session.user?.email}</p>
       
+      {/* IMAGE UPLOAD SECTION */}
+      <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+        <div style={{ 
+          width: '120px', 
+          height: '120px', 
+          borderRadius: '50%', 
+          backgroundColor: '#eee', 
+          margin: '0 auto 15px', 
+          overflow: 'hidden', 
+          border: '3px solid #6c63ff',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          {formData.profilePic ? (
+            <img src={formData.profilePic} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ) : (
+            <span style={{ color: '#888', fontSize: '12px' }}>No Photo</span>
+          )}
+        </div>
+        <label style={{ 
+          background: '#f0eeff', 
+          padding: '8px 15px', 
+          borderRadius: '20px', 
+          fontSize: '13px', 
+          cursor: 'pointer',
+          color: '#6c63ff',
+          fontWeight: 'bold'
+        }}>
+          Change Photo
+          <input type="file" accept="image/*" onChange={handleImageChange} style={{ display: 'none' }} />
+        </label>
+      </div>
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         <div>
           <label style={labelStyle}>First Name</label>
@@ -90,7 +155,7 @@ export default function ProfilePage() {
 
         <button 
           onClick={handleSave}
-          style={{ padding: '15px', background: '#6c63ff', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
+          style={{ padding: '15px', background: '#6c63ff', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', marginTop: '10px' }}
         >
           Update Profile
         </button>
