@@ -276,27 +276,33 @@ transition:0.3s;
 </div>
 
 <style>
+.exam-card h2,
+.exam-card .tags,
+.exam-card .explore{
+position:relative;
+z-index:2;
+}
 .exam-card{
 position:relative;
 overflow:hidden;
 background:white;
-border-radius:15px;
+border-radius:16px;
 padding:30px;
+text-align:left;
+box-shadow:0 5px 15px rgba(0,0,0,0.1);
+transition:0.3s;
+z-index:1;
 }
-
 .exam-card::before{
 content:"";
 position:absolute;
-
 width:220px;
 height:220px;
-
-background:#f6dede;   /* color of semicircle */
-
 border-radius:50%;
-
 right:-80px;
 top:-40px;
+background:#fde2e2;
+z-index:-1;
 }
 .exam-section{
 padding:80px 10%;
@@ -442,6 +448,7 @@ transform: scale(1.2);
 </body>
 
 </html>
+
 
 
 
