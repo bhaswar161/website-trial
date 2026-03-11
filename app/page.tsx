@@ -305,4 +305,14 @@ export default function HomePage() {
              <button onClick={() => signIn('google')}>Start Learning</button>
           )}
         </div>
-        <img src="https://
+        <img src="https://cdn-icons-png.flaticon.com/512/3135/3135755.png" alt="Hero" />
+      </div>
+
+      {/* REST OF YOUR COURSES / CONTENT GOES HERE... */}
+
+      <footer>
+        © 2026 StudyHub | Free Education Platform | Made by Bhaswar Ray
+      </footer>
+    </>
+  )
+}
