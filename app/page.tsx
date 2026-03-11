@@ -32,10 +32,13 @@ export default function HomePage() {
         <div className="nav-links">
           <Link href="/">Home</Link>
           {session ? (
-            <button onClick={() => signOut()}>Logout ({session.user?.name?.split(' ')[0]})</button>
-          ) : (
-            <button onClick={() => signIn('google')}>Login</button>
-          )}
+  <>
+    <Link href="/profile" style={{ fontWeight: 'bold', color: '#6a1b9a' }}>Profile</Link>
+    <button onClick={() => signOut()}>Logout ({session.user?.name?.split(' ')[0]})</button>
+  </>
+) : (
+  <button onClick={() => signIn('google')}>Login</button>
+)}
           <Link href="/neet">NEET</Link>
         </div>
       </div>
