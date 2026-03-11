@@ -1,7 +1,10 @@
 'use client'
 import Link from 'next/link'
+import { useSession, signIn, signOut } from 'next-auth/react'
 
 export default function HomePage() {
+  const { data: session } = useSession();
+
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: `
@@ -36,16 +39,45 @@ export default function HomePage() {
           color: #6a1b9a;
         }
 
-        .nav-links a {
+        .nav-links {
+          display: flex;
+          align-items: center;
+        }
+
+        .nav-links a, .nav-links button {
           margin-left: 25px;
           text-decoration: none;
           color: #333;
           font-weight: 500;
           transition: 0.3s;
+          background: none;
+          border: none;
+          font-size: 16px;
+          cursor: pointer;
         }
 
-        .nav-links a:hover {
+        .nav-links a:hover, .nav-links button:hover {
           color: #6a1b9a;
+        }
+
+        .user-badge {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin-left: 25px;
+          padding: 5px 12px;
+          background: #f0e6f7;
+          border-radius: 20px;
+          color: #6a1b9a;
+          font-weight: bold;
+          font-size: 14px;
+        }
+
+        .user-pic {
+          width: 30px;
+          height: 30px;
+          border-radius: 50%;
+          border: 2px solid #6a1b9a;
         }
 
         /* HERO */
@@ -244,103 +276,33 @@ export default function HomePage() {
       <div className="navbar">
         <div className="logo">StudyHub</div>
         <div className="nav-links">
-          <nav>
             <Link href="/">Home</Link>
-            <Link href="/login">Login</Link>
             <Link href="/neet">NEET</Link>
-          </nav>
+            
+            {session ? (
+              <>
+                <div className="user-badge">
+                  {session.user?.image && <img src={session.user.image} className="user-pic" alt="User" />}
+                  <span>{session.user?.name?.split(' ')[0]}</span>
+                </div>
+                <button onClick={() => signOut()}>Logout</button>
+              </>
+            ) : (
+              <button onClick={() => signIn('google')}>Login</button>
+            )}
         </div>
       </div>
 
       {/* HERO */}
       <div className="hero">
         <div>
-          <h1>Crack NEET, JEE & Boards</h1>
+          <h1>{session ? `Welcome back, ${session.user?.name?.split(' ')[0]}!` : "Crack NEET, JEE & Boards"}</h1>
           <p>Free notes, MCQs, mock tests and revision for Class 11 & 12 students.</p>
-          <button onClick={() => window.location.href='/login'}>Start Learning</button>
+          
+          {session ? (
+             <button onClick={() => window.location.href='/neet'}>Go to My Courses</button>
+          ) : (
+             <button onClick={() => signIn('google')}>Start Learning</button>
+          )}
         </div>
-        <img src="https://cdn-icons-png.flaticon.com/512/3135/3135755.png" alt="Hero" />
-      </div>
-
-      {/* COURSES */}
-      <div className="section">
-        <h2>Popular Courses</h2>
-        <div className="courses">
-          <div className="course-card">
-            <h3>Class 11</h3>
-            <p>Physics, Chemistry, Biology & Maths</p>
-            <button>Explore</button>
-          </div>
-
-          <div className="course-card">
-            <h3>Class 12</h3>
-            <p>Boards + Competitive Preparation</p>
-            <button>Explore</button>
-          </div>
-
-          <div className="course-card">
-            <h3>NEET</h3>
-            <p>MCQs, PYQs and Mock Tests</p>
-            <Link href="/neet" className="btn">Explore</Link>
-          </div>
-
-          <div className="course-card">
-            <h3>JEE</h3>
-            <p>Advanced Concepts & Problems</p>
-            <button>Practice</button>
-          </div>
-        </div>
-
-        <section className="exam-section">
-          <h1>Exam Categories</h1>
-          <p className="subtitle" style={{color: 'gray', marginBottom: '50px'}}>Preparing students for multiple exam categories</p>
-
-          <div className="exam-grid">
-            <div className="exam-card">
-              <div className="exam-content">
-                <h2>NEET</h2>
-                <div className="tags" style={{margin: '15px 0'}}>
-                  <span>Class 11</span>
-                  <span>Class 12</span>
-                  <span>Dropper</span>
-                </div>
-                <Link href="/neet" className="explore">Explore Category →</Link>
-              </div>
-              <img src="https://cdn-icons-png.flaticon.com/512/3209/3209265.png" alt="NEET" />
-            </div>
-
-            <div className="exam-card">
-              <div className="exam-content">
-                <h2>IIT JEE</h2>
-                <div className="tags" style={{margin: '15px 0'}}>
-                  <span>Class 11</span>
-                  <span>Class 12</span>
-                  <span>Dropper</span>
-                </div>
-                <Link href="#" className="explore">Explore Category →</Link>
-              </div>
-              <img src="https://cdn-icons-png.flaticon.com/512/2942/2942929.png" alt="JEE" />
-            </div>
-
-            <div className="exam-card">
-              <div className="exam-content">
-                <h2>School Boards</h2>
-                <div className="tags" style={{margin: '15px 0'}}>
-                  <span>CBSE</span>
-                  <span>ICSE</span>
-                  <span>State Boards</span>
-                </div>
-                <Link href="#" className="explore">Explore Category →</Link>
-              </div>
-              <img src="https://cdn-icons-png.flaticon.com/512/3135/3135755.png" alt="Boards" />
-            </div>
-          </div>
-        </section>
-      </div>
-
-      <footer>
-        © 2026 StudyHub | Free Education Platform | Made by Bhaswar Ray
-      </footer>
-    </>
-  )
-}
+        <img src="https://
