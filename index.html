@@ -4,6 +4,135 @@
 <title>StudyHub - NEET | JEE | Boards</title>
 <style>
 
+<style>
+
+header{
+display:flex;
+align-items:center;
+justify-content:space-between;
+padding:15px 40px;
+background:white;
+box-shadow:0 2px 10px rgba(0,0,0,0.1);
+}
+
+nav ul{
+display:flex;
+gap:30px;
+list-style:none;
+align-items:center;
+font-size:17px;
+}
+
+.mega-wrapper{
+position:relative;
+padding-bottom:15px;
+}
+
+.all-courses{
+border:2px solid #6c63ff;
+padding:10px 20px;
+border-radius:14px;
+color:#6c63ff;
+font-weight:600;
+cursor:pointer;
+display:flex;
+align-items:center;
+gap:10px;
+transition:0.2s;
+}
+
+.all-courses:hover{
+background:#f3f2ff;
+}
+
+.arrow{
+width:0;
+height:0;
+border-left:5px solid transparent;
+border-right:5px solid transparent;
+border-top:7px solid #6c63ff;
+transition:0.3s;
+}
+
+.mega-wrapper:hover .arrow{
+transform:rotate(180deg);
+}
+
+.mega-menu{
+position:absolute;
+top:100%;
+left:0;
+width:900px;
+background:white;
+border-radius:12px;
+box-shadow:0 12px 30px rgba(0,0,0,0.15);
+display:none;
+overflow:hidden;
+}
+
+.mega-wrapper:hover .mega-menu{
+display:block;
+}
+
+.mega-container{
+display:flex;
+}
+
+.mega-left{
+width:35%;
+background:#f7f7f7;
+padding:20px;
+}
+
+.mega-left div{
+padding:14px;
+border-radius:8px;
+cursor:pointer;
+margin-bottom:6px;
+transition:0.2s;
+}
+
+.mega-left div:hover{
+background:white;
+}
+
+.mega-right{
+width:65%;
+padding:20px;
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:15px;
+}
+
+.course-card{
+background:#fafafa;
+padding:18px;
+border-radius:10px;
+box-shadow:0 2px 6px rgba(0,0,0,0.08);
+font-weight:600;
+transition:0.2s;
+}
+
+.course-card:hover{
+background:#f2f2f2;
+}
+
+.login{
+background:#6c63ff;
+color:white;
+padding:11px 24px;
+border-radius:8px;
+cursor:pointer;
+font-weight:600;
+transition:0.3s;
+}
+
+.login:hover{
+background:#4f46e5;
+}
+
+</style>
+
 /* GENERAL */
 
 *{
@@ -202,7 +331,72 @@ font-size:16px;
 </style>
 </head>
 <body>
+<header>
 
+<div style="font-weight:bold;font-size:20px;">StudyHub</div>
+
+<nav>
+<ul>
+
+<li class="mega-wrapper">
+
+<div class="all-courses">
+All Courses
+<div class="arrow"></div>
+</div>
+
+<div class="mega-menu">
+
+<div class="mega-container">
+
+<div class="mega-left">
+
+<div>
+<b>Competitive Exams</b><br>
+<small>IIT JEE, NEET</small>
+</div>
+
+<div>
+<b>School Preparation</b>
+</div>
+
+<div>
+<b>School Boards</b>
+</div>
+
+<div>
+<b>Mock Tests</b>
+</div>
+
+</div>
+
+<div class="mega-right">
+
+<div class="course-card">IIT JEE</div>
+<div class="course-card">NEET</div>
+<div class="course-card">Class 11</div>
+<div class="course-card">Class 12</div>
+<div class="course-card">Dropper Batch</div>
+<div class="course-card">Olympiad</div>
+
+</div>
+
+</div>
+
+</div>
+
+</li>
+
+<li>Vidyapeeth</li>
+<li>Upskilling</li>
+<li>Mock Test</li>
+
+</ul>
+</nav>
+
+<div class="login">Login</div>
+
+</header>
 <!-- NAVBAR -->
 
 <div class="navbar">
@@ -448,6 +642,7 @@ transform: scale(1.2);
 </body>
 
 </html>
+
 
 
 
