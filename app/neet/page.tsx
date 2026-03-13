@@ -5,11 +5,13 @@ import Link from "next/link"
 import { useState, useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
 
-// Initialize Supabase
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+// Safe Initialization: Prevents build-time crashes if keys are missing
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+
+const supabase = (supabaseUrl && supabaseKey) 
+  ? createClient(supabaseUrl, supabaseKey) 
+  : null;
 
 export default function NeetPage() {
   const { data: session, status } = useSession()
@@ -20,6 +22,8 @@ export default function NeetPage() {
 
   useEffect(() => {
     setMounted(true)
+    if (!supabase) return;
+
     fetchInitialStatus()
 
     // Realtime listener for status changes
@@ -37,6 +41,7 @@ export default function NeetPage() {
   }, [])
 
   const fetchInitialStatus = async () => {
+    if (!supabase) return;
     const { data } = await supabase.from('class_status').select('*')
     if (data) {
       const statusMap = data.reduce((acc, curr) => ({ ...acc, [curr.id]: curr.is_live }), {})
@@ -45,7 +50,7 @@ export default function NeetPage() {
   }
 
   const toggleClassStatus = async (batchId: string, currentStatus: boolean) => {
-    if (!isOwner) return
+    if (!isOwner || !supabase) return
     await supabase.from('class_status').update({ is_live: !currentStatus }).eq('id', batchId)
   }
 
