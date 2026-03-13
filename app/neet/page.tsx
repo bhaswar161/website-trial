@@ -21,7 +21,7 @@ export default function NeetPage() {
     setMounted(true)
     
     if (!supabase) {
-      console.error("❌ Supabase client failed to initialize. Check your Vercel Environment Variables!");
+      console.error("❌ Supabase client failed to initialize.");
       return;
     }
 
@@ -46,10 +46,7 @@ export default function NeetPage() {
   }, [])
 
   const toggleClassStatus = async (batchId: string, currentStatus: boolean) => {
-    if (!supabase) {
-      alert("Database not connected. Check Vercel Environment Variables.");
-      return;
-    }
+    if (!supabase) return;
     
     setLiveStatuses(prev => ({ ...prev, [batchId]: !currentStatus }));
 
@@ -65,30 +62,34 @@ export default function NeetPage() {
     }
   };
 
-  const handleJoinClass = (roomBaseName: string) => {
-    const today = new Date().toISOString().split('T')[0]; 
-    const finalRoomName = `${roomBaseName}_${today}`;
-    
-    // --- JITSI MODERATION LOGIC ---
-    
-    // 1. Faculty Config: Full access
-    const facultyConfig = "#config.startWithAudioMuted=false" + 
-                         "&config.prejoinPageEnabled=false";
+  const handleJoinClass = async (roomBaseName: string) => {
+    try {
+      const today = new Date().toISOString().split('T')[0]; 
+      const roomName = `${roomBaseName}_${today}`;
 
-    // 2. Student Config: Restricted access
-    // We disable their ability to kick others, mute others, or see admin buttons.
-    const studentButtons = "['microphone','camera','fullscreen','fodeviceselection','hangup','profile','chat','settings','raisehand','videoquality','filmstrip','tileview']";
-    
-    const studentConfig = "#config.startWithAudioMuted=true" +
-                         "&config.prejoinPageEnabled=true" +
-                         `&config.toolbarButtons=${studentButtons}` +
-                         "&config.remoteVideoMenu.disableKick=true" + // Prevents kicking
-                         "&config.disableRemoteMute=true" +          // Prevents muting others
-                         "&config.disableSelfDemote=true";           // Extra safety
+      // 1. Fetch the secure token from your new API route
+      const response = await fetch('/api/jitsi-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ roomName, isOwner })
+      });
 
-    const finalConfig = isOwner ? facultyConfig : studentConfig;
+      const data = await response.json();
 
-    window.open(`https://meet.jit.si/${finalRoomName}${finalConfig}`, '_blank', 'noopener,noreferrer');
+      if (data.error) {
+        alert("Meeting Security Error: " + data.error);
+        return;
+      }
+
+      // 2. Open Jitsi using your professional JaaS App ID
+      const appId = process.env.NEXT_PUBLIC_JITSI_APP_ID;
+      const url = `https://8x8.vc/${appId}/${roomName}?jwt=${data.token}`;
+
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      console.error("Jitsi connection error:", err);
+      alert("Failed to connect to the meeting server.");
+    }
   };
 
   if (status === "unauthenticated") redirect("/api/auth/signin")

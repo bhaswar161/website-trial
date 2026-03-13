@@ -11,12 +11,14 @@
   "dependencies": {
     "@jitsi/react-sdk": "^1.4.0",
     "@supabase/supabase-js": "^2.48.2",
+    "jsonwebtoken": "^9.0.3",
     "next": "15.1.12",
     "next-auth": "4.24.10",
     "react": "19.0.0",
     "react-dom": "19.0.0"
   },
   "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "20.17.10",
     "@types/react": "19.0.1",
     "@types/react-dom": "19.0.1",
