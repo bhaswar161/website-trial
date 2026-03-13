@@ -1,4 +1,4 @@
-'use client'
+"use client";
 import { useSession } from "next-auth/react"
 import { redirect } from "next/navigation"
 import Link from "next/link"
@@ -19,11 +19,15 @@ export default function NeetPage() {
 
   useEffect(() => {
     setMounted(true)
-    if (!supabase) return;
+    
+    if (!supabase) {
+      console.error("❌ Supabase client failed to initialize. Check your Vercel Environment Variables!");
+      return;
+    }
 
-    // Fetch initial status
     const fetchStatus = async () => {
-      const { data } = await supabase.from('class_status').select('*')
+      const { data, error } = await supabase.from('class_status').select('*')
+      if (error) console.error("❌ Error fetching status:", error)
       if (data) {
         const statusMap = data.reduce((acc: any, curr: any) => ({ ...acc, [curr.id]: curr.is_live }), {})
         setLiveStatuses(statusMap)
@@ -31,7 +35,6 @@ export default function NeetPage() {
     }
     fetchStatus()
 
-    // Realtime subscription
     const channel = supabase
       .channel('schema-db-changes')
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'class_status' }, (payload) => {
@@ -43,9 +46,26 @@ export default function NeetPage() {
   }, [])
 
   const toggleClassStatus = async (batchId: string, currentStatus: boolean) => {
-    if (!isOwner || !supabase) return
-    await supabase.from('class_status').update({ is_live: !currentStatus }).eq('id', batchId)
-  }
+    if (!supabase) {
+      alert("Database not connected. Check Vercel Environment Variables.");
+      return;
+    }
+    
+    // Update local state immediately for instant button feedback (Optimistic UI)
+    setLiveStatuses(prev => ({ ...prev, [batchId]: !currentStatus }));
+
+    const { error } = await supabase
+      .from('class_status')
+      .update({ is_live: !currentStatus })
+      .eq('id', batchId);
+
+    if (error) {
+      console.error("❌ Toggle Error:", error);
+      alert("Failed to update database.");
+      // Rollback if it fails
+      setLiveStatuses(prev => ({ ...prev, [batchId]: currentStatus }));
+    }
+  };
 
   const handleJoinClass = (roomBaseName: string) => {
     const today = new Date().toISOString().split('T')[0]; 
@@ -79,21 +99,30 @@ export default function NeetPage() {
         {batches.map((batch) => {
           const isLive = liveStatuses[batch.id] || false;
           return (
-            <div key={batch.id} style={{ background: 'white', padding: '30px', borderRadius: '20px', borderTop: `8px solid ${batch.color}` }}>
-              <h3>{batch.name} {isLive && <span style={{ color: 'red', fontSize: '12px' }}>● LIVE</span>}</h3>
+            <div key={batch.id} style={{ background: 'white', padding: '30px', borderRadius: '20px', borderTop: `8px solid ${batch.color}`, boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                 <h3>{batch.name}</h3>
+                 {isLive && <span style={{ color: '#ff4757', fontWeight: 'bold', fontSize: '14px' }}>● LIVE</span>}
+              </div>
+              
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '20px' }}>
                 <button 
-                  onClick={() => isOwner ? toggleClassStatus(batch.id, isLive) : (isLive && handleJoinClass(batch.roomName))}
+                  onClick={() => isOwner ? toggleClassStatus(batch.id, isLive) : handleJoinClass(batch.roomName)}
                   disabled={!isOwner && !isLive}
                   style={{ 
-                    padding: '12px', borderRadius: '10px', border: 'none', cursor: (isOwner || isLive) ? 'pointer' : 'not-allowed',
-                    background: isOwner ? (isLive ? '#ff4757' : batch.color) : (isLive ? '#ff4757' : '#ccc'),
-                    color: 'white', fontWeight: 'bold'
+                    padding: '14px', borderRadius: '12px', border: 'none', 
+                    cursor: (isOwner || isLive) ? 'pointer' : 'not-allowed',
+                    transition: 'all 0.2s',
+                    background: isOwner ? (isLive ? '#ff4757' : batch.color) : (isLive ? '#ff4757' : '#e0e0e0'),
+                    color: 'white', fontWeight: 'bold', fontSize: '16px'
                   }}>
-                  {isOwner ? (isLive ? "End Session" : "Start Session") : (isLive ? "Join Now" : "Waiting...")}
+                  {isOwner ? (isLive ? "🔴 End Session" : "▶ Start Session") : (isLive ? "Join Now" : "Class is Offline")}
                 </button>
+
                 {isOwner && isLive && (
-                  <button onClick={() => handleJoinClass(batch.roomName)} style={{ padding: '10px', borderRadius: '10px', border: '1px solid #ccc', cursor: 'pointer' }}>
+                  <button 
+                    onClick={() => handleJoinClass(batch.roomName)} 
+                    style={{ padding: '12px', borderRadius: '12px', border: '2px solid #6c63ff', background: 'transparent', color: '#6c63ff', fontWeight: 'bold', cursor: 'pointer' }}>
                     Enter Meeting Room
                   </button>
                 )}
