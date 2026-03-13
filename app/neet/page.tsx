@@ -103,7 +103,7 @@ export default function NeetPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <h3 style={{ fontSize: '24px', marginBottom: '12px', color: batch.color }}>{batch.name}</h3>
                 {isLive && (
-                   <span style={{ background: '#ff4757', color: 'white', padding: '4px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: 'bold', animation: 'pulse 1.5s infinite' }}>LIVE</span>
+                   <span style={{ background: '#ff4757', color: 'white', padding: '4px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: 'bold' }}>LIVE</span>
                 )}
               </div>
               <p style={{ color: '#555', lineHeight: '1.6', marginBottom: '30px', fontSize: '15px' }}>{batch.description}</p>
@@ -144,14 +144,6 @@ export default function NeetPage() {
       <footer style={{ marginTop: '50px', textAlign: 'center', borderTop: '1px solid #ddd', paddingTop: '20px', color: '#999', fontSize: '14px' }}>
         © 2026 StudyHub NEET Portal | Admin: Bhaswar Ray
       </footer>
-
-      <style jsx global>{`
-        @keyframes pulse {
-          0% { opacity: 1; }
-          50% { opacity: 0.5; }
-          100% { opacity: 1; }
-        }
-      `}</style>
     </div>
   )
 }
