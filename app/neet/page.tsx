@@ -67,7 +67,7 @@ export default function NeetPage() {
       const today = new Date().toISOString().split('T')[0]; 
       const roomName = `${roomBaseName}_${today}`;
 
-      // 1. Fetch the secure token from your new API route
+      // 1. Fetch the secure token from your API
       const response = await fetch('/api/jitsi-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -81,8 +81,16 @@ export default function NeetPage() {
         return;
       }
 
-      // 2. Open Jitsi using your professional JaaS App ID
+      // 2. BUILD THE SECURE URL
+      // Use the NEXT_PUBLIC_JITSI_APP_ID (The clean one without the slash)
       const appId = process.env.NEXT_PUBLIC_JITSI_APP_ID;
+      
+      if (!appId) {
+        alert("Configuration Error: Jitsi App ID missing.");
+        return;
+      }
+
+      // Final correct format: https://8x8.vc/YOUR_APP_ID/ROOM_NAME?jwt=TOKEN
       const url = `https://8x8.vc/${appId}/${roomName}?jwt=${data.token}`;
 
       window.open(url, '_blank', 'noopener,noreferrer');
