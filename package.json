@@ -11,7 +11,7 @@
   "dependencies": {
     "@jitsi/react-sdk": "^1.4.0",
     "@supabase/supabase-js": "^2.48.2",
-    "next": "15.1.6",
+    "next": "15.1.12",
     "next-auth": "4.24.10",
     "react": "19.0.0",
     "react-dom": "19.0.0"
