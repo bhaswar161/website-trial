@@ -9,17 +9,17 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@jitsi/react-sdk": "^1.4.4",
-    "@supabase/supabase-js": "^2.99.1",
-    "next": "latest",
-    "next-auth": "latest",
-    "react": "latest",
-    "react-dom": "latest"
+    "@jitsi/react-sdk": "^1.4.0",
+    "@supabase/supabase-js": "^2.48.2",
+    "next": "15.1.0",
+    "next-auth": "4.24.10",
+    "react": "19.0.0",
+    "react-dom": "19.0.0"
   },
   "devDependencies": {
-    "@types/node": "latest",
-    "@types/react": "latest",
-    "@types/react-dom": "latest",
-    "typescript": "latest"
+    "@types/node": "20.17.10",
+    "@types/react": "19.0.1",
+    "@types/react-dom": "19.0.1",
+    "typescript": "5.7.2"
   }
 }
