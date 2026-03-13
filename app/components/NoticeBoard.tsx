@@ -10,8 +10,19 @@ const supabase = createClient(
 export default function NoticeBoard({ category, isOwner }: { category: 'neet' | 'jee', isOwner: boolean }) {
   const [notices, setNotices] = useState<any[]>([]);
 
+  // Helper to format the Supabase timestamp
+  const formatDateTime = (timestamp: string) => {
+    const date = new Date(timestamp);
+    return date.toLocaleString('en-IN', {
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+  };
+
   useEffect(() => {
-    // 1. Initial Fetch
     const fetchNotices = async () => {
       const { data } = await supabase
         .from('notices')
@@ -22,7 +33,6 @@ export default function NoticeBoard({ category, isOwner }: { category: 'neet' | 
     };
     fetchNotices();
 
-    // 2. Realtime Listener (INSERT, UPDATE, DELETE)
     const channel = supabase
       .channel(`notices-${category}`)
       .on('postgres_changes', 
@@ -42,6 +52,7 @@ export default function NoticeBoard({ category, isOwner }: { category: 'neet' | 
     return () => { supabase.removeChannel(channel); };
   }, [category]);
 
+  // ... (addNotice, editNotice, deleteNotice functions stay the same as before)
   const addNotice = async () => {
     const title = prompt("Notice Title:");
     const content = prompt("Notice Content:");
@@ -53,10 +64,7 @@ export default function NoticeBoard({ category, isOwner }: { category: 'neet' | 
     const newTitle = prompt("Edit Title:", notice.title);
     const newContent = prompt("Edit Content:", notice.content);
     if (!newTitle || !newContent) return;
-
-    await supabase.from('notices')
-      .update({ title: newTitle, content: newContent })
-      .eq('id', notice.id);
+    await supabase.from('notices').update({ title: newTitle, content: newContent }).eq('id', notice.id);
   };
 
   const deleteNotice = async (id: string) => {
@@ -69,20 +77,23 @@ export default function NoticeBoard({ category, isOwner }: { category: 'neet' | 
     <div style={{ background: '#fff', padding: '20px', borderRadius: '24px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', height: 'fit-content', border: '1px solid #f0f0f0' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <h3 style={{ margin: 0, color: '#1a1a1a', fontSize: '1.2rem' }}>📢 {category.toUpperCase()} Feed</h3>
-        {isOwner && <span style={{fontSize: '10px', background: '#e8f5e9', color: '#2e7d32', padding: '4px 8px', borderRadius: '10px'}}>Admin</span>}
       </div>
       
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', maxHeight: '500px', overflowY: 'auto', paddingRight: '5px' }}>
-        {notices.length === 0 && <p style={{color: '#999', textAlign: 'center', fontSize: '14px', padding: '20px'}}>No notices posted yet.</p>}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', maxHeight: '600px', overflowY: 'auto' }}>
         {notices.map(n => (
-          <div key={n.id} style={{ padding: '16px', borderRadius: '16px', background: '#fcfcfd', border: '1px solid #efefff', transition: 'transform 0.2s' }}>
-            <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#333', marginBottom: '4px' }}>{n.title}</div>
-            <div style={{ fontSize: '13px', color: '#666', lineHeight: '1.4' }}>{n.content}</div>
+          <div key={n.id} style={{ padding: '16px', borderRadius: '16px', background: '#fcfcfd', border: '1px solid #efefff' }}>
+            <div style={{ fontWeight: 'bold', fontSize: '14px', color: '#333' }}>{n.title}</div>
+            <div style={{ fontSize: '13px', color: '#666', marginTop: '4px', lineHeight: '1.4' }}>{n.content}</div>
             
+            {/* TIMESTAMP ADDED HERE */}
+            <div style={{ marginTop: '10px', fontSize: '10px', color: '#b2bec3', fontStyle: 'italic' }}>
+              Posted on: {formatDateTime(n.created_at)}
+            </div>
+
             {isOwner && (
-              <div style={{ marginTop: '10px', display: 'flex', gap: '10px', borderTop: '1px solid #eee', paddingTop: '10px' }}>
-                <button onClick={() => editNotice(n)} style={{ background: 'none', border: 'none', color: '#6c63ff', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>Edit</button>
-                <button onClick={() => deleteNotice(n.id)} style={{ background: 'none', border: 'none', color: '#ff4757', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}>Delete</button>
+              <div style={{ marginTop: '10px', display: 'flex', gap: '10px', borderTop: '1px solid #f1f2f6', paddingTop: '10px' }}>
+                <button onClick={() => editNotice(n)} style={{ background: 'none', border: 'none', color: '#6c63ff', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>EDIT</button>
+                <button onClick={() => deleteNotice(n.id)} style={{ background: 'none', border: 'none', color: '#ff4757', cursor: 'pointer', fontSize: '11px', fontWeight: 'bold' }}>DELETE</button>
               </div>
             )}
           </div>
@@ -90,7 +101,7 @@ export default function NoticeBoard({ category, isOwner }: { category: 'neet' | 
       </div>
 
       {isOwner && (
-        <button onClick={addNotice} style={{ marginTop: '20px', width: '100%', padding: '12px', borderRadius: '12px', border: 'none', background: '#6c63ff', color: '#fff', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 12px rgba(108, 99, 255, 0.3)' }}>
+        <button onClick={addNotice} style={{ marginTop: '20px', width: '100%', padding: '12px', borderRadius: '12px', border: 'none', background: '#6c63ff', color: '#fff', fontWeight: 'bold', cursor: 'pointer' }}>
           + Create Notice
         </button>
       )}
