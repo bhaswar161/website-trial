@@ -15,7 +15,7 @@ export async function POST(req: Request) {
 
     const payload = {
       aud: "jitsi",
-      iss: "chat", 
+      iss: appId, 
       sub: appId,
       room: roomName,
       iat: Math.floor(Date.now() / 1000),
