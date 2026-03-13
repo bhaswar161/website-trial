@@ -5,21 +5,24 @@ export async function POST(req: Request) {
   try {
     const { roomName, isOwner } = await req.json();
 
-    // 1. Get keys and fix the Private Key newlines
+    // 1. Get keys and fix the Private Key "Yellow Arrow" newlines
+    // This replaces literal '\n' strings with actual line breaks
     const privateKey = (process.env.JITSI_PRIVATE_KEY || '').replace(/\\n/g, '\n'); 
     const appId = process.env.JITSI_APP_ID || '';
-    const apiKey = process.env.JITSI_API_KEY || ''; // This is the 'kid' (with slash)
+    const apiKey = process.env.JITSI_API_KEY || ''; // This is your 'kid' (the one with the slash)
 
+    // 2. Security Guard: Stop if variables are missing
     if (!privateKey || !appId || !apiKey) {
-      return NextResponse.json({ error: "Missing environment variables" }, { status: 500 });
+      console.error("❌ Environment Variables Missing");
+      return NextResponse.json({ error: "Server Configuration Error" }, { status: 500 });
     }
 
-    // 2. The Payload: JaaS is very strict about these fields
+    // 3. The Payload: Specific claims required by 8x8 JaaS
     const payload = {
       aud: "jitsi",
-      iss: "chat", // Must be 'chat'
-      sub: appId,  // Must be your App ID (no slash)
-      room: "*",   // Using '*' allows this token for any room in your App ID
+      iss: "chat", 
+      sub: appId,  // Your App ID (NO slash here)
+      room: "*",   // Allows access to any room within your App ID
       context: {
         user: {
           name: isOwner ? "Faculty: Bhaswar" : "Student",
@@ -29,27 +32,29 @@ export async function POST(req: Request) {
         features: {
           livestreaming: true,
           recording: true,
-          moderation: isOwner, // Locks the room for students
+          moderation: isOwner, // This locks the room so students can't kick you
           "outbound-call": false
         }
       }
     };
 
+    // 4. Token Options: This is where we link your API Key (kid)
     const options: SignOptions = {
       algorithm: 'RS256',
       header: { 
-        kid: apiKey, // This MUST be the ID with the slash: appId/keyId
+        kid: apiKey, // The ID WITH the slash: e.g., vpaas-xxx/e307bb
         typ: 'JWT',
         alg: 'RS256'
       } as any,
       expiresIn: '1h'
     };
 
+    // 5. Generate the Signed Token
     const token = jwt.sign(payload, privateKey, options);
 
     return NextResponse.json({ token });
   } catch (error) {
-    console.error("JWT Error:", error);
-    return NextResponse.json({ error: "Failed to generate token" }, { status: 500 });
+    console.error("❌ JWT Generation Error:", error);
+    return NextResponse.json({ error: "Authentication failed to generate" }, { status: 500 });
   }
 }
