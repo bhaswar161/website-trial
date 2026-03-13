@@ -9,15 +9,16 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@jitsi/react-sdk": "^1.4.4",
     "next": "latest",
+    "next-auth": "latest",
     "react": "latest",
-    "react-dom": "latest",
-    "next-auth": "latest"
+    "react-dom": "latest"
   },
   "devDependencies": {
-    "typescript": "latest",
     "@types/node": "latest",
     "@types/react": "latest",
-    "@types/react-dom": "latest"
+    "@types/react-dom": "latest",
+    "typescript": "latest"
   }
 }
