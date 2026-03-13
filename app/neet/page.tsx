@@ -51,7 +51,6 @@ export default function NeetPage() {
       return;
     }
     
-    // Update local state immediately for instant button feedback (Optimistic UI)
     setLiveStatuses(prev => ({ ...prev, [batchId]: !currentStatus }));
 
     const { error } = await supabase
@@ -62,7 +61,6 @@ export default function NeetPage() {
     if (error) {
       console.error("❌ Toggle Error:", error);
       alert("Failed to update database.");
-      // Rollback if it fails
       setLiveStatuses(prev => ({ ...prev, [batchId]: currentStatus }));
     }
   };
@@ -70,11 +68,27 @@ export default function NeetPage() {
   const handleJoinClass = (roomBaseName: string) => {
     const today = new Date().toISOString().split('T')[0]; 
     const finalRoomName = `${roomBaseName}_${today}`;
-    const config = isOwner 
-      ? "#config.startWithAudioMuted=false"
-      : "#config.startWithAudioMuted=true&config.prejoinPageEnabled=true";
+    
+    // --- JITSI MODERATION LOGIC ---
+    
+    // 1. Faculty Config: Full access
+    const facultyConfig = "#config.startWithAudioMuted=false" + 
+                         "&config.prejoinPageEnabled=false";
 
-    window.open(`https://meet.jit.si/${finalRoomName}${config}`, '_blank', 'noopener,noreferrer');
+    // 2. Student Config: Restricted access
+    // We disable their ability to kick others, mute others, or see admin buttons.
+    const studentButtons = "['microphone','camera','fullscreen','fodeviceselection','hangup','profile','chat','settings','raisehand','videoquality','filmstrip','tileview']";
+    
+    const studentConfig = "#config.startWithAudioMuted=true" +
+                         "&config.prejoinPageEnabled=true" +
+                         `&config.toolbarButtons=${studentButtons}` +
+                         "&config.remoteVideoMenu.disableKick=true" + // Prevents kicking
+                         "&config.disableRemoteMute=true" +          // Prevents muting others
+                         "&config.disableSelfDemote=true";           // Extra safety
+
+    const finalConfig = isOwner ? facultyConfig : studentConfig;
+
+    window.open(`https://meet.jit.si/${finalRoomName}${finalConfig}`, '_blank', 'noopener,noreferrer');
   };
 
   if (status === "unauthenticated") redirect("/api/auth/signin")
