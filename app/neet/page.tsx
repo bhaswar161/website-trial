@@ -19,7 +19,6 @@ export default function NeetPage() {
   const [materials, setMaterials] = useState<any[]>([])
   const [showUploadModal, setShowUploadModal] = useState<string | null>(null)
   
-  // Dual Upload States
   const [selectedVideo, setSelectedVideo] = useState<File | null>(null);
   const [selectedNotes, setSelectedNotes] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -46,13 +45,16 @@ export default function NeetPage() {
     return () => { supabase.removeChannel(channel) }
   }, [session])
 
-  // --- LOGIC FUNCTIONS ---
-
   const handleEnroll = async (batchId: string) => {
     if (!supabase || !session?.user?.email) return alert("Please sign in to enroll");
     const { error } = await supabase.from('enrollments').insert([{ student_email: session.user.email, batch_id: batchId }]);
-    if (error) alert("Enrollment failed. You might already be enrolled.");
-    else setEnrolledBatches(prev => [...prev, batchId]);
+    
+    // Check if error is specifically "already exists" (PostgREST code 23505)
+    if (!error || (error as any).code === '23505') {
+      setEnrolledBatches(prev => [...prev, batchId]);
+    } else {
+      alert("Enrollment failed. Please try again.");
+    }
   };
 
   const handleUpload = async (e: any) => {
@@ -65,39 +67,25 @@ export default function NeetPage() {
     const title = formData.get('title');
 
     try {
-      let videoUrl = null;
-      let notesUrl = null;
-
+      let videoUrl = null, notesUrl = null;
       if (selectedVideo) {
-        const vPath = `neet/${showUploadModal}/${subject}/v_${Date.now()}.${selectedVideo.name.split('.').pop()}`;
-        await supabase.storage.from('batch-materials').upload(vPath, selectedVideo);
-        videoUrl = supabase.storage.from('batch-materials').getPublicUrl(vPath).data.publicUrl;
+        const path = `neet/${showUploadModal}/${subject}/v_${Date.now()}`;
+        await supabase.storage.from('batch-materials').upload(path, selectedVideo);
+        videoUrl = supabase.storage.from('batch-materials').getPublicUrl(path).data.publicUrl;
       }
-
       if (selectedNotes) {
-        const nPath = `neet/${showUploadModal}/${subject}/n_${Date.now()}.${selectedNotes.name.split('.').pop()}`;
-        await supabase.storage.from('batch-materials').upload(nPath, selectedNotes);
-        notesUrl = supabase.storage.from('batch-materials').getPublicUrl(nPath).data.publicUrl;
+        const path = `neet/${showUploadModal}/${subject}/n_${Date.now()}`;
+        await supabase.storage.from('batch-materials').upload(path, selectedNotes);
+        notesUrl = supabase.storage.from('batch-materials').getPublicUrl(path).data.publicUrl;
       }
 
       await supabase.from('materials').insert([{
-        batch_id: showUploadModal,
-        subject,
-        title,
-        video_url: videoUrl,
-        notes_url: notesUrl,
-        category: 'neet'
+        batch_id: showUploadModal, subject, title, video_url: videoUrl, notes_url: notesUrl, category: 'neet'
       }]);
 
       alert("Upload Complete!");
-      setShowUploadModal(null);
-      setSelectedVideo(null);
-      setSelectedNotes(null);
-    } catch (err) {
-      alert("Upload failed.");
-    } finally {
-      setUploadProgress(0);
-    }
+      setShowUploadModal(null); setSelectedVideo(null); setSelectedNotes(null);
+    } catch (err) { alert("Upload failed."); } finally { setUploadProgress(0); }
   };
 
   const toggleClassStatus = async (batchId: string, currentStatus: boolean) => {
@@ -120,20 +108,18 @@ export default function NeetPage() {
   ]
 
   const isAnyBatchUnlocked = enrolledBatches.length > 0 || isOwner;
-  const inputStyle = { padding: '12px', borderRadius: '10px', border: '1px solid #eee', fontSize: '14px' };
-  const tileStyle = { background: '#fff', padding: '16px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', cursor: 'pointer', border: '1px solid #f0f0f0' };
+  const tileStyle = { background: '#fff', padding: '16px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', border: '1px solid #f0f0f0' };
 
   return (
     <div style={{ padding: '40px 5%', background: '#f5f7fb', minHeight: '100vh', fontFamily: 'sans-serif' }}>
       
-      {/* SEPARATE DUAL UPLOAD MODAL */}
       {showUploadModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <form onSubmit={handleUpload} style={{ background: 'white', padding: '30px', borderRadius: '25px', width: '480px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
             <h3 style={{margin:0}}>Add to {batches.find(b => b.id === showUploadModal)?.name}</h3>
             <div style={{ display: 'flex', gap: '10px' }}>
-              <select name="subject" required style={{...inputStyle, flex: 1}}><option>Physics</option><option>Chemistry</option><option>Biology</option></select>
-              <input name="title" placeholder="Topic Name" required style={{...inputStyle, flex: 2}} />
+              <select name="subject" required style={{padding:'12px', borderRadius:'10px', border:'1px solid #eee', flex: 1}}><option>Physics</option><option>Chemistry</option><option>Biology</option></select>
+              <input name="title" placeholder="Topic Name" required style={{padding:'12px', borderRadius:'10px', border:'1px solid #eee', flex: 2}} />
             </div>
 
             <div onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); if(e.dataTransfer.files[0]) setSelectedVideo(e.dataTransfer.files[0]) }}
@@ -151,7 +137,7 @@ export default function NeetPage() {
             </div>
 
             <div style={{ display: 'flex', gap: '10px' }}>
-              <button type="button" onClick={() => {setShowUploadModal(null); setSelectedVideo(null); setSelectedNotes(null);}} style={{ flex: 1, padding: '12px', borderRadius: '10px', border: '1px solid #ddd' }}>Cancel</button>
+              <button type="button" onClick={() => setShowUploadModal(null)} style={{ flex: 1, padding: '12px', borderRadius: '10px', border: '1px solid #ddd' }}>Cancel</button>
               <button type="submit" style={{ flex: 1, padding: '12px', borderRadius: '10px', background: '#6c63ff', color: 'white', border: 'none', fontWeight:'bold' }}>Upload Both</button>
             </div>
           </form>
@@ -163,8 +149,7 @@ export default function NeetPage() {
         {isOwner && <div style={{ color: '#2e7d32', fontWeight: 'bold' }}>Faculty Mode Active</div>}
       </header>
 
-      <div style={{ display: 'grid', gridTemplateColumns: isAnyBatchUnlocked ? '1fr 320px 320px' : '1fr', gap: '30px' }}>
-        
+      <div style={{ display: 'grid', gridTemplateColumns: isAnyBatchUnlocked ? '1fr 320px' : '1fr', gap: '30px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
           {batches.map((batch) => {
             const isEnrolled = enrolledBatches.includes(batch.id) || isOwner;
@@ -176,23 +161,31 @@ export default function NeetPage() {
                 </div>
 
                 <div style={{ padding: '24px' }}>
-                  {!isEnrolled ? (
-                    /* MARKETPLACE VIEW */
-                    <div style={{ textAlign: 'left' }}>
-                      <div style={{ color: '#666', fontSize: '14px', marginBottom: '10px' }}>🎓 For NEET Aspirants | 📅 Starts: {batch.starts}</div>
-                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginBottom: '20px' }}>
-                        <span style={{ fontSize: '28px', fontWeight: 'bold', color: '#333' }}>FREE</span>
-                        <span style={{ textDecoration: 'line-through', color: '#999' }}>₹{batch.originalPrice}</span>
-                        <span style={{ color: '#2e7d32', fontWeight: 'bold', fontSize: '14px' }}>100% OFF</span>
-                      </div>
-                      <div style={{ display: 'flex', gap: '10px' }}>
-                        <button style={{ flex: 1, padding: '12px', borderRadius: '10px', border: `1.5px solid ${batch.color}`, color: batch.color, background: 'white', fontWeight: 'bold' }}>EXPLORE</button>
-                        <button onClick={() => handleEnroll(batch.id)} style={{ flex: 1, padding: '12px', borderRadius: '10px', border: 'none', background: batch.color, color: 'white', fontWeight: 'bold', cursor:'pointer' }}>ENROLL NOW</button>
-                      </div>
-                    </div>
-                  ) : (
-                    /* DASHBOARD INSIDE VIEW */
-                    <div>
+                  <div style={{ color: '#666', fontSize: '14px', marginBottom: '10px' }}>🎓 For NEET Aspirants | 📅 Starts: {batch.starts}</div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginBottom: '20px' }}>
+                    <span style={{ fontSize: '28px', fontWeight: 'bold', color: '#333' }}>FREE</span>
+                    <span style={{ textDecoration: 'line-through', color: '#999' }}>₹{batch.originalPrice}</span>
+                    <span style={{ color: '#2e7d32', fontWeight: 'bold', fontSize: '14px' }}>100% OFF</span>
+                  </div>
+
+                  {/* SINGLE BUTTON LOGIC */}
+                  <div style={{ marginTop: '20px' }}>
+                    {isEnrolled ? (
+                      <Link href={`/neet/${batch.id}`} style={{ textDecoration: 'none' }}>
+                        <button style={{ width: '100%', padding: '14px', borderRadius: '12px', border: `2px solid ${batch.color}`, color: batch.color, background: 'white', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer', textTransform: 'uppercase' }}>
+                          Explore
+                        </button>
+                      </Link>
+                    ) : (
+                      <button onClick={() => handleEnroll(batch.id)} style={{ width: '100%', padding: '14px', borderRadius: '12px', border: 'none', background: batch.color, color: 'white', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer', textTransform: 'uppercase' }}>
+                        Enroll Now
+                      </button>
+                    )}
+                  </div>
+
+                  {/* DASHBOARD PREVIEW FOR ENROLLED USERS */}
+                  {isEnrolled && (
+                    <div style={{ marginTop: '25px', borderTop: '1px solid #eee', paddingTop: '20px' }}>
                       <h4 style={{ color: '#666', fontSize: '13px', marginBottom: '15px' }}>Batch Offerings</h4>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '25px' }}>
                         <div style={tileStyle}>📚 All Classes</div>
@@ -203,17 +196,14 @@ export default function NeetPage() {
 
                       {liveStatuses[batch.id] && (
                         <div style={{ background: '#f8f9ff', padding: '15px', borderRadius: '15px', border: '1px solid #eee', display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '25px' }}>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: '11px', color: '#6c63ff', fontWeight: 'bold' }}>🕒 UPCOMING EVENTS (1)</div>
-                            <div style={{ fontWeight: 'bold', fontSize: '14px' }}>Lecture • Live Session</div>
-                          </div>
+                          <div style={{ flex: 1 }}><div style={{ fontSize: '11px', color: '#6c63ff', fontWeight: 'bold' }}>🕒 LIVE NOW</div><div style={{ fontWeight: 'bold', fontSize: '14px' }}>Lecture • Live Session</div></div>
                           <button style={{ padding: '8px 20px', background: '#6c63ff', color: 'white', border: 'none', borderRadius: '8px', fontWeight:'bold', cursor:'pointer' }}>Join</button>
                         </div>
                       )}
 
                       <h4 style={{ color: '#666', fontSize: '13px', marginBottom: '15px' }}>Study Zone</h4>
                       {['Physics', 'Chemistry', 'Biology'].map(sub => (
-                        <details key={sub} open style={{ border: '1px solid #f0f0f0', borderRadius: '12px', padding: '12px', marginBottom: '10px' }}>
+                        <details key={sub} style={{ border: '1px solid #f0f0f0', borderRadius: '12px', padding: '12px', marginBottom: '10px' }}>
                           <summary style={{ fontWeight: 'bold', color: batch.color, cursor: 'pointer', outline: 'none' }}>📂 {sub}</summary>
                           <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             {materials.filter(m => m.batch_id === batch.id && m.subject === sub).map(m => (
@@ -226,7 +216,6 @@ export default function NeetPage() {
                                 </div>
                               </div>
                             ))}
-                            {materials.filter(m => m.batch_id === batch.id && m.subject === sub).length === 0 && <span style={{fontSize: '11px', color: '#999'}}>No materials uploaded yet.</span>}
                           </div>
                         </details>
                       ))}
