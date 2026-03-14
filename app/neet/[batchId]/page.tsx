@@ -67,7 +67,7 @@ export default function BatchDashboard({ params }: PageProps) {
     const filePath = `uploads/${fileName}`;
 
     const { error: uploadError } = await supabase.storage
-      .from('NOTICES') // Matches your Uppercase bucket name
+      .from('NOTICES') 
       .upload(filePath, file);
 
     if (uploadError) throw uploadError;
@@ -85,7 +85,6 @@ export default function BatchDashboard({ params }: PageProps) {
     try {
       let finalImageUrl = editingNotif?.image_url || "";
 
-      // Only attempt upload if a local file is selected
       if (selectedFile) {
         finalImageUrl = await uploadImage(selectedFile);
       }
@@ -111,7 +110,6 @@ export default function BatchDashboard({ params }: PageProps) {
         if (error) throw error;
       }
 
-      // Reset States
       setNewNotice("");
       setSelectedFile(null);
       setEditingNotif(null);
@@ -135,7 +133,7 @@ export default function BatchDashboard({ params }: PageProps) {
     if (!error) setNotices(prev => prev.filter(n => n.id !== id));
   };
 
-  // --- EVENT LOGIC ---
+  // --- EVENT LOGIC (FIXED DELETE & EDIT) ---
   const handleSaveEvent = async () => {
     if (!eventTitle || !eventDate) return alert("Please fill both Title and Date");
     setUploading(true);
@@ -159,6 +157,16 @@ export default function BatchDashboard({ params }: PageProps) {
       alert("Event Error: " + err.message);
     } finally {
       setUploading(false);
+    }
+  };
+
+  const deleteEvent = async (id: string) => {
+    if (!confirm("Delete this event?")) return;
+    const { error } = await supabase.from('events').delete().eq('id', id);
+    if (error) {
+        alert("Error deleting event: " + error.message);
+    } else {
+        fetchData();
     }
   };
 
@@ -246,7 +254,7 @@ export default function BatchDashboard({ params }: PageProps) {
                   {isOwner && (
                     <div style={{ display: 'flex', gap: '10px' }}>
                       <button onClick={() => openEditModal(ev)} style={editActionBtn}>Edit</button>
-                      <button onClick={() => { if(confirm("Delete event?")) supabase.from('events').delete().eq('id', ev.id).then(() => fetchData()); }} style={deleteActionBtn}>Delete</button>
+                      <button onClick={() => deleteEvent(ev.id)} style={deleteActionBtn}>Delete</button>
                     </div>
                   )}
                 </motion.div>
@@ -278,7 +286,7 @@ export default function BatchDashboard({ params }: PageProps) {
                   </label>
                   <div style={{display:'flex', gap:'10px', marginTop:'10px'}}>
                     <button onClick={() => handlePostNotice()} disabled={uploading} style={sendBtn}>
-                      {uploading ? "..." : editingNotif ? "Update" : "Post"}
+                      {uploading ? "Uploading..." : editingNotif ? "Update Notice" : "Post Notice"}
                     </button>
                     {editingNotif && <button onClick={() => {setEditingNotif(null); setNewNotice(""); setSelectedFile(null);}} style={cancelBtn}>Cancel</button>}
                   </div>
@@ -326,7 +334,7 @@ export default function BatchDashboard({ params }: PageProps) {
   )
 }
 
-// --- STYLES ---
+// Styles remain identical to your previous code to maintain the look
 const headerWrapper: any = { position:'fixed', top:0, left:0, width:'100%', background:'#fff', borderBottom:'1px solid #f0f0f0', zIndex: 1000, height: '65px' };
 const headerInner: any = { maxWidth:'1200px', margin:'0 auto', display:'flex', justifyContent:'space-between', alignItems:'center', height:'100%', padding:'0 20px' };
 const backBtnCircle: any = { textDecoration:'none', color:'#333', background:'#f5f5f5', width:'35px', height:'35px', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center' };
@@ -343,8 +351,8 @@ const statsSidebar: any = { flex:1, borderLeft:'1px solid #eee', paddingLeft:'30
 const statRow: any = { display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'15px', fontSize:'14px', fontWeight:'600', color: '#666' };
 const dataRow: any = { background:'#fff', padding:'20px', borderRadius:'18px', marginBottom:'12px', border:'1px solid #f0f0f0', display:'flex', justifyContent:'space-between', alignItems:'center' };
 const emptyBox: any = { padding: '40px', textAlign: 'center', color: '#aaa', fontSize: '14px' };
-const overlay: any = { position:'fixed', top:0, left:0, width:'100%', height:'100%', background:'rgba(0,0,0,0.4)', zIndex:2000, display:'flex', justifyContent:'flex-end', alignItems: 'center' };
-const drawer: any = { width:'420px', height:'100%', background:'#fff', display:'flex', flexDirection:'column', boxShadow: '-10px 0 30px rgba(0,0,0,0.1)' };
+const overlay: any = { position:'fixed', top:0, left:0, width:'100%', height:'100%', background:'rgba(0,0,0,0.4)', zIndex:2000, display:'flex', justifyContent:'center', alignItems: 'center' };
+const drawer: any = { position: 'fixed', right: 0, top: 0, width:'420px', height:'100%', background:'#fff', display:'flex', flexDirection:'column', boxShadow: '-10px 0 30px rgba(0,0,0,0.1)' };
 const drawerHeader: any = { padding:'25px', borderBottom:'1px solid #f0f0f0', display:'flex', justifyContent:'space-between', alignItems: 'center' };
 const adminPanel: any = { padding:'20px', background:'#f9fafc', borderBottom:'1px solid #eee' };
 const notifInput: any = { width:'100%', padding:'12px', borderRadius:'12px', border:'1px solid #eee', resize:'none', fontSize:'14px' };
@@ -357,7 +365,7 @@ const closeBtn: any = { background:'none', border:'none', fontSize:'24px', curso
 const editLinkBtn: any = { background:'none', border:'none', color:'#0070f3', fontSize:'12px', fontWeight:'bold', cursor:'pointer' };
 const delLinkBtn: any = { background:'none', border:'none', color:'#ff4d4d', fontSize:'12px', fontWeight:'bold', cursor:'pointer' };
 const addBtn: any = { background:'#6157ff', color:'#fff', border:'none', padding:'10px 20px', borderRadius:'12px', fontWeight:'bold', cursor:'pointer' };
-const modal: any = { background:'#fff', padding:'40px', borderRadius:'30px', width:'400px', margin:'auto' };
+const modal: any = { background:'#fff', padding:'40px', borderRadius:'30px', width:'400px', margin:'auto', zIndex: 3000 };
 const modalInput: any = { width:'100%', padding:'15px', borderRadius:'12px', border:'1px solid #eee', marginTop:'5px' };
 const dropdownMenu: any = { position: 'absolute', top: '45px', right: 0, background: '#fff', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', border: '1px solid #f0f0f0', width: '150px', overflow: 'hidden', zIndex: 100 };
 const dropLogout: any = { padding: '12px 25px', color: 'red', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 'bold', width: '100%', textAlign: 'left' };
