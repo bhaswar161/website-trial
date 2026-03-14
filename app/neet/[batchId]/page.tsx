@@ -55,13 +55,16 @@ export default function BatchDashboard({ params }: PageProps) {
     }
   };
 
-  const handlePostNotice = async () => {
-    if (!newNotice.trim()) return;
+  // Fixed handlePostNotice: Accepts optional text for automation
+  const handlePostNotice = async (textOverride?: string) => {
+    const textToSend = textOverride || newNotice;
+    if (!textToSend.trim()) return;
+    
     setUploading(true);
     try {
       const { data, error } = await supabase.from('notices').insert([{ 
           batch_id: batchId, 
-          content: newNotice 
+          content: textToSend 
       }]).select();
 
       if (error) throw error;
@@ -70,7 +73,7 @@ export default function BatchDashboard({ params }: PageProps) {
         setNewNotice("");
       }
     } catch (err: any) {
-      alert("Database Sync Error: " + err.message + ". Please refresh your Supabase schema cache.");
+      alert("Database Sync Error: " + err.message);
     } finally {
       setUploading(false);
     }
@@ -83,14 +86,35 @@ export default function BatchDashboard({ params }: PageProps) {
   };
 
   const handleCreateEvent = async () => {
-    if (!eventTitle || !eventDate) return;
-    const { data, error } = await supabase.from('events').insert([{ batch_id: batchId, title: eventTitle, event_time: eventDate }]).select();
-    if (!error && data) {
-      setEvents(prev => [...prev, data[0]].sort((a,b) => new Date(a.event_time).getTime() - new Date(b.event_time).getTime()));
+    if (!eventTitle || !eventDate) return alert("Please fill both Title and Date");
+    setUploading(true);
+    try {
+      const { data, error } = await supabase.from('events').insert([{ 
+        batch_id: batchId, 
+        title: eventTitle, 
+        event_time: eventDate 
+      }]).select();
+
+      if (error) throw error;
+      
+      // Fixed: Now calling the updated function with an argument
+      await handlePostNotice(`🗓️ New Event: ${eventTitle} scheduled for ${new Date(eventDate).toLocaleString()}`);
+      
       setShowEventModal(false);
       setEventTitle("");
       setEventDate("");
+      fetchData(); 
+    } catch (err: any) {
+      alert("Event Error: " + err.message);
+    } finally {
+      setUploading(false);
     }
+  };
+
+  const deleteEvent = async (id: string) => {
+    if (!confirm("Delete this event?")) return;
+    const { error } = await supabase.from('events').delete().eq('id', id);
+    if (!error) fetchData();
   };
 
   if (status === "loading" || !mounted) return null;
@@ -110,17 +134,22 @@ export default function BatchDashboard({ params }: PageProps) {
             <motion.div whileTap={{ scale: 0.9 }} style={statPill} onClick={() => setShowNotifs(true)}>
               🔔 {notices.length}
             </motion.div>
-            <div style={{ position: 'relative' }}>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '10px' }}>
               <img 
                 src={userProfile?.avatar_url || "https://ui-avatars.com/api/?name=" + session?.user?.name} 
                 style={navAvatar} 
                 onClick={() => setShowProfileMenu(!showProfileMenu)}
               />
-              {showProfileMenu && (
-                <div style={dropdownMenu}>
-                  <button onClick={() => signOut()} style={dropLogout}>Logout</button>
-                </div>
-              )}
+              <span style={navName} onClick={() => setShowProfileMenu(!showProfileMenu)}>
+                {userProfile?.student_name || session?.user?.name?.split(' ')[0]}
+              </span>
+              <AnimatePresence>
+                {showProfileMenu && (
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} style={dropdownMenu}>
+                    <button onClick={() => signOut()} style={dropLogout}>Logout</button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
         </div>
@@ -159,9 +188,11 @@ export default function BatchDashboard({ params }: PageProps) {
                 <motion.div layout key={ev.id} style={dataRow}>
                   <div>
                     <div style={{ fontWeight: 'bold' }}>{ev.title}</div>
-                    <div style={{ fontSize: '12px', color: '#6157ff', fontWeight: '600' }}>{new Date(ev.event_time).toLocaleString()}</div>
+                    <div style={{ fontSize: '12px', color: '#6157ff', fontWeight: '600' }}>
+                        {new Date(ev.event_time).toLocaleString()}
+                    </div>
                   </div>
-                  {isOwner && <button onClick={() => {supabase.from('events').delete().eq('id', ev.id); fetchData()}} style={trashBtn}>🗑️</button>}
+                  {isOwner && <button onClick={() => deleteEvent(ev.id)} style={trashBtn}>🗑️</button>}
                 </motion.div>
               ))
             )}
@@ -193,7 +224,7 @@ export default function BatchDashboard({ params }: PageProps) {
               {isOwner && (
                 <div style={adminPanel}>
                   <textarea value={newNotice} onChange={e => setNewNotice(e.target.value)} placeholder="Send an update..." style={notifInput} />
-                  <button onClick={handlePostNotice} disabled={uploading} style={sendBtn}>
+                  <button onClick={() => handlePostNotice()} disabled={uploading} style={sendBtn}>
                     {uploading ? "Posting..." : "Post Announcement"}
                   </button>
                 </div>
@@ -236,7 +267,8 @@ const headerWrapper: any = { position:'fixed', top:0, left:0, width:'100%', back
 const headerInner: any = { maxWidth:'1200px', margin:'0 auto', display:'flex', justifyContent:'space-between', alignItems:'center', height:'100%', padding:'0 20px' };
 const backBtnCircle: any = { textDecoration:'none', color:'#333', background:'#f5f5f5', width:'35px', height:'35px', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center' };
 const statPill: any = { background:'#f9fafc', padding:'8px 15px', borderRadius:'20px', fontSize:'14px', fontWeight:'bold', cursor:'pointer', border:'1px solid #eee' };
-const navAvatar: any = { width:'36px', height:'36px', borderRadius:'50%', border:'2px solid #6157ff', cursor:'pointer' };
+const navAvatar: any = { width:'36px', height:'36px', borderRadius:'50%', border:'2px solid #6157ff', cursor:'pointer', objectFit: 'cover' };
+const navName: any = { fontWeight: '700', fontSize: '14px', color: '#333', cursor: 'pointer' };
 const contentArea: any = { paddingTop:'100px', maxWidth:'1100px', margin:'0 auto', padding:'20px' };
 const batchBanner: any = { background:'#1c252e', color:'#fff', padding:'50px', borderRadius:'25px', marginBottom:'40px' };
 const sectionTitle: any = { fontSize:'18px', fontWeight:'800', margin:'0 0 20px', color: '#333' };
@@ -256,9 +288,9 @@ const sendBtn: any = { width:'100%', padding:'15px', background:'#6157ff', color
 const notifCard: any = { padding:'20px', borderBottom:'1px solid #f9f9f9', fontSize:'14px' };
 const closeBtn: any = { background:'none', border:'none', fontSize:'24px', cursor:'pointer', color:'#ccc' };
 const delTextBtn: any = { background:'none', border:'none', color:'#ff4d4d', fontSize:'12px', fontWeight:'bold', cursor:'pointer' };
-const trashBtn: any = { background:'none', border:'none', cursor:'pointer' };
+const trashBtn: any = { background:'none', border:'none', cursor:'pointer', fontSize: '18px' };
 const addBtn: any = { background:'#6157ff', color:'#fff', border:'none', padding:'10px 20px', borderRadius:'12px', fontWeight:'bold', cursor:'pointer' };
 const modal: any = { background:'#fff', padding:'40px', borderRadius:'30px', width:'400px', margin:'auto' };
 const modalInput: any = { width:'100%', padding:'15px', borderRadius:'12px', border:'1px solid #eee', marginTop:'15px' };
-const dropdownMenu: any = { position:'absolute', top:'45px', right:0, background:'#fff', borderRadius:'12px', boxShadow:'0 10px 25px rgba(0,0,0,0.1)', border: '1px solid #f0f0f0' };
-const dropLogout: any = { padding:'12px 25px', color:'red', border:'none', background:'none', cursor:'pointer', fontWeight:'bold' };
+const dropdownMenu: any = { position: 'absolute', top: '45px', right: 0, background: '#fff', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', border: '1px solid #f0f0f0', width: '150px', overflow: 'hidden' };
+const dropLogout: any = { padding: '12px 25px', color: 'red', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 'bold', width: '100%', textAlign: 'left' };
