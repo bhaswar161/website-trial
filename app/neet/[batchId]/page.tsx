@@ -70,6 +70,7 @@ export default function BatchDashboard({ params }: PageProps) {
     if (data) setStreakData(data);
   };
 
+  // --- ACTIONS ---
   const handleDownloadBadge = async () => {
     if (badgeRef.current) {
       const canvas = await html2canvas(badgeRef.current, { scale: 2, backgroundColor: '#ffffff' });
@@ -89,9 +90,6 @@ export default function BatchDashboard({ params }: PageProps) {
     }, 600);
   };
 
-  const unreadCount = notices.filter(n => new Date(n.created_at).getTime() > lastReadTime).length;
-
-  // --- ACTIONS ---
   const handlePostNotice = async () => {
     if (!newNotice.trim()) return;
     setUploading(true);
@@ -130,28 +128,54 @@ export default function BatchDashboard({ params }: PageProps) {
     fetchData();
   };
 
+  const unreadCount = notices.filter(n => new Date(n.created_at).getTime() > lastReadTime).length;
+
   if (status === "loading" || !mounted) return null;
+  if (status === "unauthenticated") redirect("/api/auth/signin")
 
   return (
     <div style={{ background: '#f8f9fa', minHeight: '100vh', fontFamily: 'sans-serif' }}>
+      
+      {/* HEADER - Connected with Homepage Profile Style */}
       <header style={headerWrapper}>
         <div style={headerInner}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <Link href="/neet" style={{ textDecoration: 'none' }}>
               <motion.div whileHover={{ scale: 1.1, backgroundColor: '#eee' }} whileTap={{ scale: 0.9 }} style={backBtnCircle}>←</motion.div>
             </Link>
-            <h1 style={{ fontSize: '18px', fontWeight: '800' }}>Study Hub</h1>
+            <h1 style={{ fontSize: '20px', fontWeight: '800', color: '#5b6cfd' }}>StudyHub</h1>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
             <div style={statPillGroup}>
-                <motion.div whileHover={{ scale: 1.05, filter: 'brightness(0.95)' }} whileTap={{ scale: 0.95 }} style={streakPill} onClick={() => setShowStreakModal(true)}>
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} style={streakPill} onClick={() => setShowStreakModal(true)}>
                     🔥 {streakData.current_streak || 0}
                 </motion.div>
                 <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} style={bellContainer} onClick={() => setShowNotifs(true)}>
-                    🔔 {unreadCount > 0 && <span style={bellBadge}>{unreadCount}</span>}
+                    <span style={{fontSize: '18px'}}>🔔</span>
+                    {unreadCount > 0 && <span style={bellBadge}>{unreadCount}</span>}
                 </motion.div>
             </div>
-            <img src={userProfile?.avatar_url || "https://ui-avatars.com/api/?name=" + session?.user?.name} style={navAvatar} onClick={() => setShowProfileMenu(!showProfileMenu)} />
+
+            {/* Profile synced with Homepage */}
+            <div style={profileTrigger} onClick={() => setShowProfileMenu(!showProfileMenu)}>
+              <motion.img 
+                whileHover={{ scale: 1.05 }}
+                src={session?.user?.image || userProfile?.avatar_url || `https://ui-avatars.com/api/?name=${session?.user?.name}&background=random`} 
+                style={navAvatar} 
+              />
+              <div style={nameWrapper}>
+                <span style={navNameText}>Hi, {session?.user?.name?.split(' ')[0] || 'User'}</span>
+                <span style={navRoleText}>{isOwner ? 'FACULTY' : 'STUDENT'}</span>
+              </div>
+              <AnimatePresence>
+                {showProfileMenu && (
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} style={logoutDropdown}>
+                    <button onClick={() => signOut()} style={logoutBtnInline}>Logout</button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </div>
       </header>
@@ -167,11 +191,7 @@ export default function BatchDashboard({ params }: PageProps) {
           <div style={offeringGrid}>
             {['All Classes', 'All Tests', 'My Doubts', 'Community'].map((item) => (
               <Link key={item} href={item === 'All Classes' ? `/neet/${batchId}/all-classes` : '#'} style={{ textDecoration: 'none' }}>
-                <motion.div 
-                  whileHover={{ y: -8, scale: 1.02, boxShadow: '0 12px 24px rgba(0,0,0,0.08)' }} 
-                  whileTap={{ scale: 0.98 }} 
-                  style={offeringItem}
-                >
+                <motion.div whileHover={{ y: -8, scale: 1.02, boxShadow: '0 12px 24px rgba(0,0,0,0.08)' }} whileTap={{ scale: 0.98 }} style={offeringItem}>
                   <span style={{ fontWeight: '800', color: '#000', fontSize: '16px' }}>{item}</span>
                   <span style={{ color: '#6157ff', fontWeight: 'bold' }}>❯</span>
                 </motion.div>
@@ -185,14 +205,7 @@ export default function BatchDashboard({ params }: PageProps) {
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: '15px' }}>
               <h3 style={sectionTitle}>Upcoming Events</h3>
               {isOwner && (
-                <motion.button 
-                  whileHover={{ scale: 1.05, backgroundColor: '#5145e5' }} 
-                  whileTap={{ scale: 0.95 }} 
-                  onClick={() => {setEditingEvent(null); setEventTitle(""); setEventDate(""); setShowEventModal(true)}} 
-                  style={addBtn}
-                >
-                  + Create
-                </motion.button>
+                <motion.button whileHover={{ scale: 1.05, backgroundColor: '#5145e5' }} whileTap={{ scale: 0.95 }} onClick={() => {setEditingEvent(null); setShowEventModal(true)}} style={addBtn}>+ Create</motion.button>
               )}
             </div>
             {events.length === 0 ? <div style={emptyBox}>🕒 No upcoming events.</div> : events.map(ev => (
@@ -203,22 +216,8 @@ export default function BatchDashboard({ params }: PageProps) {
                 </div>
                 {isOwner && (
                     <div style={{display:'flex', gap:'10px'}}>
-                        <motion.button 
-                          whileHover={{ scale: 1.05, backgroundColor: '#f0f7ff' }} 
-                          whileTap={{ scale: 0.9 }} 
-                          onClick={() => {setEditingEvent(ev); setEventTitle(ev.title); setEventDate(ev.event_time.slice(0,16)); setShowEventModal(true)}} 
-                          style={editActionBtn}
-                        >
-                          Edit
-                        </motion.button>
-                        <motion.button 
-                          whileHover={{ scale: 1.05, backgroundColor: '#fff1f1' }} 
-                          whileTap={{ scale: 0.9 }} 
-                          onClick={() => deleteEvent(ev.id)} 
-                          style={deleteActionBtn}
-                        >
-                          Delete
-                        </motion.button>
+                        <motion.button whileHover={{scale:1.1}} onClick={() => {setEditingEvent(ev); setEventTitle(ev.title); setEventDate(ev.event_time.slice(0,16)); setShowEventModal(true)}} style={editActionBtn}>Edit</motion.button>
+                        <motion.button whileHover={{scale:1.1}} onClick={() => deleteEvent(ev.id)} style={deleteActionBtn}>Delete</motion.button>
                     </div>
                 )}
               </motion.div>
@@ -227,7 +226,7 @@ export default function BatchDashboard({ params }: PageProps) {
         </div>
       </main>
 
-      {/* STREAK MODAL (Downloadable) */}
+      {/* MODALS */}
       <AnimatePresence>
         {showStreakModal && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={modalOverlay} onClick={() => setShowStreakModal(false)}>
@@ -256,7 +255,6 @@ export default function BatchDashboard({ params }: PageProps) {
         )}
       </AnimatePresence>
 
-      {/* NOTIFICATION DRAWER (Mission 100 Style) */}
       <AnimatePresence>
         {showNotifs && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={modalOverlay} onClick={() => setShowNotifs(false)}>
@@ -310,7 +308,6 @@ export default function BatchDashboard({ params }: PageProps) {
         )}
       </AnimatePresence>
 
-      {/* EVENT MODAL */}
       <AnimatePresence>
         {showEventModal && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={modalOverlay} onClick={() => setShowEventModal(false)}>
@@ -328,21 +325,29 @@ export default function BatchDashboard({ params }: PageProps) {
 }
 
 // --- STYLES ---
-const headerWrapper: any = { position:'fixed', top:0, left:0, width:'100%', background:'#fff', borderBottom:'1px solid #f0f0f0', zIndex: 1000, height: '70px' };
+const headerWrapper: any = { position:'fixed', top:0, left:0, width:'100%', background:'#fff', borderBottom:'1px solid #f0f0f0', zIndex: 1000, height: '75px' };
 const headerInner: any = { maxWidth:'1200px', margin:'0 auto', display:'flex', justifyContent:'space-between', alignItems:'center', height:'100%', padding:'0 20px' };
 const backBtnCircle: any = { color:'#333', background:'#f5f5f5', width:'35px', height:'35px', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', cursor: 'pointer' };
+const profileTrigger: any = { display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', position: 'relative' };
+const navAvatar: any = { width: '42px', height: '42px', borderRadius: '50%', border: '2px solid #5b6cfd', objectFit: 'cover' };
+const nameWrapper: any = { display: 'flex', flexDirection: 'column' };
+const navNameText: any = { fontSize: '14px', fontWeight: '800', color: '#5b6cfd', lineHeight: '1.2' };
+const navRoleText: any = { fontSize: '10px', fontWeight: '700', color: '#888', letterSpacing: '0.5px' };
+const logoutDropdown: any = { position: 'absolute', top: '55px', right: '0', background: '#fff', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', borderRadius: '12px', padding: '10px', zIndex: 100, minWidth: '120px', border: '1px solid #f0f0f0' };
+const logoutBtnInline: any = { width: '100%', padding: '8px', background: '#ff4d4d', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px' };
+
 const statPillGroup: any = { display: 'flex', gap: '10px', alignItems: 'center' };
 const streakPill: any = { background: '#fff5f5', border: '1px solid #ffdcdc', padding: '8px 15px', borderRadius: '12px', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer' };
 const bellContainer: any = { position: 'relative', background: '#f8f9ff', padding: '10px', borderRadius: '12px', cursor: 'pointer', border: '1px solid #eee' };
 const bellBadge: any = { position: 'absolute', top: '-5px', right: '-5px', background: '#ef4444', color: '#fff', fontSize: '10px', fontWeight: 'bold', padding: '2px 6px', borderRadius: '10px', border: '2px solid #fff' };
-const navAvatar: any = { width:'40px', height:'40px', borderRadius:'50%', border:'2px solid #6157ff', cursor:'pointer' };
-const contentArea: any = { paddingTop:'110px', maxWidth:'1100px', margin:'0 auto', padding:'20px' };
-const batchBanner: any = { background:'#1c252e', color:'#fff', padding:'60px 50px', borderRadius:'30px', marginBottom:'40px', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' };
-const sectionTitle: any = { fontSize:'20px', fontWeight:'800', margin:'0 0 25px', color: '#111' };
-const offeringGrid: any = { display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:'20px' };
+
+const contentArea: any = { paddingTop:'115px', maxWidth:'1100px', margin:'0 auto', padding:'20px' };
+const batchBanner: any = { background:'#1c252e', color:'#fff', padding:'50px', borderRadius:'30px', marginBottom:'40px', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' };
+const sectionTitle: any = { fontSize:'18px', fontWeight:'800', margin:'0 0 20px', color: '#111' };
+const offeringGrid: any = { display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:'15px' };
 const offeringItem: any = { padding:'25px', background:'#fff', borderRadius:'20px', border:'1px solid #f0f0f0', display:'flex', justifyContent:'space-between', alignItems:'center', cursor: 'pointer' };
 const dashboardGrid: any = { display:'flex', gap:'40px', marginTop: '20px' };
-const dataRow: any = { background:'#fff', padding:'25px', borderRadius:'20px', marginBottom:'15px', border:'1px solid #f0f0f0', display:'flex', justifyContent:'space-between', alignItems:'center' };
+const dataRow: any = { background:'#fff', padding:'20px', borderRadius:'18px', marginBottom:'12px', border:'1px solid #f0f0f0', display:'flex', justifyContent:'space-between', alignItems:'center' };
 
 const modalOverlay: any = { position:'fixed', top:0, left:0, width:'100%', height:'100%', background:'rgba(0,0,0,0.4)', zIndex:3000, display:'flex', alignItems:'center', justifyContent:'center' };
 const streakCard: any = { width:'380px', background:'#fff', borderRadius:'24px', overflow:'hidden', position:'relative', textAlign:'center', boxShadow:'0 20px 40px rgba(0,0,0,0.2)' };
@@ -372,11 +377,11 @@ const notifTimeUI: any = { fontSize: '12px', color: '#bbb' };
 const notifBodyUI: any = { fontSize: '14px', color: '#666', marginTop: '4px', lineHeight: '1.4' };
 const adminPanelNotifUI: any = { padding: '20px', borderTop: '1px solid #eee', background: '#fcfdfe' };
 const notifInputUI: any = { width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #eee', fontSize: '14px', minHeight: '60px' };
-const notifSendBtn: any = { flex: 1, padding: '12px', background: '#111', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 'bold', cursor:'pointer' };
+const notifSendBtn: any = { flex: 1, padding: '12px', background: '#111', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 'bold', marginTop: '10px', cursor:'pointer' };
 const cancelTextBtn: any = { padding: '12px 20px', background: '#eee', color: '#666', border: 'none', borderRadius: '10px', cursor:'pointer' };
 
-const addBtn: any = { background:'#6157ff', color:'#fff', border:'none', padding:'12px 25px', borderRadius:'14px', fontWeight:'bold', cursor:'pointer' };
-const editActionBtn: any = { background: '#fff', color: '#6157ff', border: '1px solid #e0e0e0', padding: '8px 18px', borderRadius: '10px', fontWeight: '700', cursor: 'pointer', fontSize: '13px' };
+const addBtn: any = { background:'#6157ff', color:'#fff', border:'none', padding:'10px 20px', borderRadius:'12px', fontWeight:'bold', cursor:'pointer' };
+const editActionBtn: any = { background: '#f0f7ff', color: '#0070f3', border: 'none', padding: '6px 14px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px' };
 const deleteActionBtn: any = { background: '#fff', color: '#ff4d4d', border: '1px solid #ffcccc', padding: '8px 18px', borderRadius: '10px', fontWeight: '700', cursor: 'pointer', fontSize: '13px' };
 const textActionBtn: any = { background:'none', border:'none', color:'#0070f3', fontSize:'12px', fontWeight:'bold', cursor:'pointer', padding:0 };
 const textActionBtnRed: any = { background:'none', border:'none', color:'#ff4d4d', fontSize:'12px', fontWeight:'bold', cursor:'pointer', padding:0 };
