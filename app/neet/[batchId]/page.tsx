@@ -5,11 +5,13 @@ import Link from "next/link"
 import { useState, useEffect, useMemo, use } from 'react' 
 import { createClient } from '@supabase/supabase-js'
 
+// Next.js 15 requirement for dynamic routes
 type PageProps = {
   params: Promise<{ batchId: string }>;
 };
 
 export default function BatchDetailsPage({ params }: PageProps) {
+  // Unwrap params using the 'use' hook
   const resolvedParams = use(params);
   const batchId = resolvedParams.batchId;
 
@@ -22,7 +24,8 @@ export default function BatchDetailsPage({ params }: PageProps) {
   const [uploading, setUploading] = useState(false)
   const [materials, setMaterials] = useState<any[]>([])
 
-  // 1. Simplified Supabase Client (Removes the Invalid JWS header)
+  // 1. CLEAN SUPABASE CLIENT 
+  // We removed the global headers that caused the "Invalid Compact JWS" error.
   const supabase = useMemo(() => {
     return createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -35,7 +38,7 @@ export default function BatchDetailsPage({ params }: PageProps) {
   useEffect(() => {
     setMounted(true)
     if (batchId) fetchMaterials();
-  }, [batchId]);
+  }, [batchId, supabase]);
 
   const fetchMaterials = async () => {
     const { data } = await supabase
@@ -52,6 +55,8 @@ export default function BatchDetailsPage({ params }: PageProps) {
 
     setUploading(true);
     try {
+      // 1. Upload Video to Storage
+      // Use replace to ensure filenames don't have spaces which trigger security errors
       const vFileName = `${Date.now()}_${selectedVideo.name.replace(/\s+/g, '_')}`;
       const vPath = `neet/${batchId}/${subject}/${vFileName}`;
       
@@ -65,6 +70,7 @@ export default function BatchDetailsPage({ params }: PageProps) {
         .from('batch-materials')
         .getPublicUrl(vPath);
 
+      // 2. Upload Notes (Optional)
       let notesUrl = "";
       if (selectedNotes) {
         const nFileName = `notes_${Date.now()}_${selectedNotes.name.replace(/\s+/g, '_')}`;
@@ -73,6 +79,7 @@ export default function BatchDetailsPage({ params }: PageProps) {
         notesUrl = supabase.storage.from('batch-materials').getPublicUrl(nPath).data.publicUrl;
       }
 
+      // 3. Save to Database
       const { error: dbError } = await supabase.from('materials').insert([{
         batch_id: batchId,
         subject,
