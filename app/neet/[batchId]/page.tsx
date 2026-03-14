@@ -2,12 +2,10 @@
 import { useParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { useState, useEffect, useCallback } from 'react'
-import { createClient } from '@supabase/supabase-js'
+import { supabase } from '@/app/lib/supabase' // UPDATED: Using central client
 import NoticeBoard from '../../components/NoticeBoard'
 import Leaderboard from '../../components/Leaderboard'
 import Link from 'next/link'
-
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
 
 export default function BatchDetailsPage() {
   const { batchId } = useParams()
@@ -24,7 +22,6 @@ export default function BatchDetailsPage() {
   const batchName = batchId === "ultimate-2026" ? "Yakeen NEET 2026" : "NEET Crash Course 2026"
   const themeColor = batchId === "ultimate-2026" ? "#6c63ff" : "#ff4ecd"
 
-  // Optimized Fetch Logic
   const fetchData = useCallback(async () => {
     if (!batchId) return;
 
@@ -50,7 +47,6 @@ export default function BatchDetailsPage() {
   useEffect(() => {
     fetchData();
 
-    // REALTIME: Sync files and live status across all users instantly
     const channel = supabase
       .channel(`batch-${batchId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'materials', filter: `batch_id=eq.${batchId}` }, fetchData)
@@ -81,13 +77,15 @@ export default function BatchDetailsPage() {
 
       if (selectedVideo) {
         const vPath = `neet/${batchId}/${subject}/v_${Date.now()}.${selectedVideo.name.split('.').pop()}`;
-        await supabase.storage.from('batch-materials').upload(vPath, selectedVideo);
+        const { error: vErr } = await supabase.storage.from('batch-materials').upload(vPath, selectedVideo);
+        if (vErr) throw vErr;
         videoUrl = supabase.storage.from('batch-materials').getPublicUrl(vPath).data.publicUrl;
       }
 
       if (selectedNotes) {
         const nPath = `neet/${batchId}/${subject}/n_${Date.now()}.${selectedNotes.name.split('.').pop()}`;
-        await supabase.storage.from('batch-materials').upload(nPath, selectedNotes);
+        const { error: nErr } = await supabase.storage.from('batch-materials').upload(nPath, selectedNotes);
+        if (nErr) throw nErr;
         notesUrl = supabase.storage.from('batch-materials').getPublicUrl(nPath).data.publicUrl;
       }
 
@@ -105,10 +103,10 @@ export default function BatchDetailsPage() {
       alert("Success! Content is now live.");
       setShowUploadModal(false);
       setSelectedVideo(null); setSelectedNotes(null);
-      fetchData(); // Immediate local refresh
-    } catch (err) { 
+      fetchData(); 
+    } catch (err: any) { 
       console.error(err);
-      alert("Upload failed. Check your Supabase storage permissions."); 
+      alert(`Upload failed: ${err.message || "Check storage permissions"}`); 
     } finally { setUploadProgress(0); }
   };
 
@@ -123,13 +121,13 @@ export default function BatchDetailsPage() {
             <input name="title" placeholder="Topic Title" required style={inputStyle} />
             
             <div onDragOver={(e)=>e.preventDefault()} onDrop={(e)=>{e.preventDefault(); setSelectedVideo(e.dataTransfer.files[0])}} style={dropZoneStyle} onClick={()=>document.getElementById('vIn')?.click()}>
-               <input type="file" id="vIn" hidden accept="video/*" onChange={(e)=>setSelectedVideo(e.target.files![0])} />
-               🎥 {selectedVideo ? selectedVideo.name : "Drop Video Recording"}
+                <input type="file" id="vIn" hidden accept="video/*" onChange={(e)=>setSelectedVideo(e.target.files![0])} />
+                🎥 {selectedVideo ? selectedVideo.name : "Drop Video Recording"}
             </div>
 
             <div onDragOver={(e)=>e.preventDefault()} onDrop={(e)=>{e.preventDefault(); setSelectedNotes(e.dataTransfer.files[0])}} style={{...dropZoneStyle, borderColor:'#ff4ecd'}} onClick={()=>document.getElementById('nIn')?.click()}>
-               <input type="file" id="nIn" hidden accept=".pdf" onChange={(e)=>setSelectedNotes(e.target.files![0])} />
-               📄 {selectedNotes ? selectedNotes.name : "Drop PDF Notes"}
+                <input type="file" id="nIn" hidden accept=".pdf" onChange={(e)=>setSelectedNotes(e.target.files![0])} />
+                📄 {selectedNotes ? selectedNotes.name : "Drop PDF Notes"}
             </div>
 
             {uploadProgress > 0 && <div style={{height:'4px', width:'100%', background:'#eee', borderRadius:'2px'}}><div style={{height:'100%', width:`${uploadProgress}%`, background:themeColor, borderRadius:'2px'}} /></div>}
@@ -187,7 +185,7 @@ export default function BatchDetailsPage() {
             <details key={sub} open style={folderStyle}>
               <summary style={{ fontWeight: 'bold', cursor: 'pointer', color: themeColor, outline: 'none' }}>📂 {sub}</summary>
               <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {materials.filter(m => m.subject === sub).map(m => (
+                {materials.filter(m => m.subject?.toLowerCase() === sub.toLowerCase()).map(m => (
                   <div key={m.id} style={materialItemStyle}>
                     <span style={{ fontWeight: '500' }}>{m.title}</span>
                     <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
@@ -196,7 +194,7 @@ export default function BatchDetailsPage() {
                     </div>
                   </div>
                 ))}
-                {materials.filter(m => m.subject === sub).length === 0 && <small style={{ color: '#999', padding: '10px' }}>No materials uploaded yet.</small>}
+                {materials.filter(m => m.subject?.toLowerCase() === sub.toLowerCase()).length === 0 && <small style={{ color: '#999', padding: '10px' }}>No materials uploaded yet.</small>}
               </div>
             </details>
           ))}
