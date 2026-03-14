@@ -77,7 +77,11 @@ export default function NeetPage() {
         await supabase.storage.from('batch-materials').upload(path, selectedNotes);
         notesUrl = supabase.storage.from('batch-materials').getPublicUrl(path).data.publicUrl;
       }
-      await supabase.from('materials').insert([{ batch_id: showUploadModal, subject, title, video_url: videoUrl, notes_url: notesUrl, category: 'neet' }]);
+
+      await supabase.from('materials').insert([{
+        batch_id: showUploadModal, subject, title, video_url: videoUrl, notes_url: notesUrl, category: 'neet'
+      }]);
+
       alert("Upload Complete!");
       setShowUploadModal(null); setSelectedVideo(null); setSelectedNotes(null);
     } catch (err) { alert("Upload failed."); } finally { setUploadProgress(0); }
@@ -102,10 +106,7 @@ export default function NeetPage() {
     { id: "crash-course", name: "NEET Crash Course 2026", color: "#ff4ecd", originalPrice: "5,500", starts: "15 May, 2026" }
   ]
 
-  // IMPORTANT: For regular students, we don't show the sidebars on the main gallery.
-  // Sidebars and Folders only appear if the student is ENROLLED.
   const isAnyEnrolled = enrolledBatches.length > 0;
-  const tileStyle = { background: '#fff', padding: '16px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', border: '1px solid #f0f0f0' };
 
   return (
     <div style={{ padding: '40px 5%', background: '#f5f7fb', minHeight: '100vh', fontFamily: 'sans-serif' }}>
@@ -118,20 +119,23 @@ export default function NeetPage() {
               <select name="subject" required style={{padding:'12px', borderRadius:'10px', border:'1px solid #eee', flex: 1}}><option>Physics</option><option>Chemistry</option><option>Biology</option></select>
               <input name="title" placeholder="Topic Name" required style={{padding:'12px', borderRadius:'10px', border:'1px solid #eee', flex: 2}} />
             </div>
+
             <div onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); if(e.dataTransfer.files[0]) setSelectedVideo(e.dataTransfer.files[0]) }}
               style={{ border: '2px dashed #6c63ff', padding: '20px', borderRadius: '15px', textAlign: 'center', background: '#f8f9ff', cursor: 'pointer' }}
               onClick={() => document.getElementById('vIn')?.click()}>
               <input type="file" id="vIn" hidden accept="video/*" onChange={(e) => e.target.files && setSelectedVideo(e.target.files[0])} />
               <div style={{fontSize:'13px', fontWeight:'bold', color:'#6c63ff'}}>🎥 {selectedVideo ? selectedVideo.name : "Drop Video Recording"}</div>
             </div>
+
             <div onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); if(e.dataTransfer.files[0]) setSelectedNotes(e.dataTransfer.files[0]) }}
               style={{ border: '2px dashed #ff4ecd', padding: '20px', borderRadius: '15px', textAlign: 'center', background: '#fff0f9', cursor: 'pointer' }}
               onClick={() => document.getElementById('nIn')?.click()}>
               <input type="file" id="nIn" hidden accept=".pdf" onChange={(e) => e.target.files && setSelectedNotes(e.target.files[0])} />
               <div style={{fontSize:'13px', fontWeight:'bold', color:'#ff4ecd'}}>📄 {selectedNotes ? selectedNotes.name : "Drop PDF Notes"}</div>
             </div>
+
             <div style={{ display: 'flex', gap: '10px' }}>
-              <button type="button" onClick={() => setShowUploadModal(null)} style={{ flex: 1, padding: '12px', borderRadius: '10px', border: '1px solid #ddd' }}>Cancel</button>
+              <button type="button" onClick={() => {setShowUploadModal(null); setSelectedVideo(null); setSelectedNotes(null);}} style={{ flex: 1, padding: '12px', borderRadius: '10px', border: '1px solid #ddd' }}>Cancel</button>
               <button type="submit" style={{ flex: 1, padding: '12px', borderRadius: '10px', background: '#6c63ff', color: 'white', border: 'none', fontWeight:'bold' }}>Upload Both</button>
             </div>
           </form>
@@ -143,7 +147,6 @@ export default function NeetPage() {
         {isOwner && <div style={{ color: '#2e7d32', fontWeight: 'bold' }}>Faculty Mode Active</div>}
       </header>
 
-      {/* Main Grid: Adjust columns based on whether sidebars should show */}
       <div style={{ 
         display: 'grid', 
         gridTemplateColumns: (isAnyEnrolled || isOwner) ? '1fr 320px' : '1fr', 
@@ -161,7 +164,6 @@ export default function NeetPage() {
                 </div>
 
                 <div style={{ padding: '24px' }}>
-                  {/* MARKETPLACE SECTION (Pricing) */}
                   <div style={{ textAlign: 'left' }}>
                     <div style={{ color: '#666', fontSize: '14px', marginBottom: '10px' }}>🎓 For NEET Aspirants | 📅 Starts: {batch.starts}</div>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginBottom: '20px' }}>
@@ -171,7 +173,8 @@ export default function NeetPage() {
                     </div>
 
                     <div style={{ marginTop: '20px' }}>
-                      {isEnrolled ? (
+                      {/* logic: if Owner or Enrolled, show Explore. Else show Enroll Now. */}
+                      {(isOwner || enrolledBatches.includes(batch.id)) ? (
                         <Link href={`/neet/${batch.id}`} style={{ textDecoration: 'none' }}>
                           <button style={{ width: '100%', padding: '14px', borderRadius: '12px', border: `2px solid ${batch.color}`, color: batch.color, background: 'white', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer', textTransform: 'uppercase' }}>
                             Explore
@@ -184,59 +187,12 @@ export default function NeetPage() {
                       )}
                     </div>
                   </div>
-
-                  {/* DASHBOARD DETAILS: ONLY for Faculty or Enrolled Users */}
-                  {(isOwner) && (
-                    <div style={{ marginTop: '25px', borderTop: '1px solid #eee', paddingTop: '20px' }}>
-                      <h4 style={{ color: '#666', fontSize: '13px', marginBottom: '15px' }}>Batch Offerings</h4>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '25px' }}>
-                        <div style={tileStyle}>📚 All Classes</div>
-                        <div style={tileStyle}>📝 All Tests</div>
-                        <div style={tileStyle}>❓ My Doubts</div>
-                        <div style={tileStyle}>👥 Community</div>
-                      </div>
-
-                      {liveStatuses[batch.id] && (
-                        <div style={{ background: '#f8f9ff', padding: '15px', borderRadius: '15px', border: '1px solid #eee', display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '25px' }}>
-                          <div style={{ flex: 1 }}><div style={{ fontSize: '11px', color: '#6c63ff', fontWeight: 'bold' }}>🕒 LIVE NOW</div><div style={{ fontWeight: 'bold', fontSize: '14px' }}>Lecture • Live Session</div></div>
-                          <button style={{ padding: '8px 20px', background: '#6c63ff', color: 'white', border: 'none', borderRadius: '8px', fontWeight:'bold', cursor:'pointer' }}>Join</button>
-                        </div>
-                      )}
-
-                      <h4 style={{ color: '#666', fontSize: '13px', marginBottom: '15px' }}>Study Zone</h4>
-                      {['Physics', 'Chemistry', 'Biology'].map(sub => (
-                        <details key={sub} style={{ border: '1px solid #f0f0f0', borderRadius: '12px', padding: '12px', marginBottom: '10px' }}>
-                          <summary style={{ fontWeight: 'bold', color: batch.color, cursor: 'pointer', outline: 'none' }}>📂 {sub}</summary>
-                          <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            {materials.filter(m => m.batch_id === batch.id && m.subject === sub).map(m => (
-                              <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', background: '#f9f9fb', padding: '10px', borderRadius: '8px', fontSize: '13px' }}>
-                                <span>{m.title}</span>
-                                <div style={{display:'flex', gap:'10px', alignItems:'center'}}>
-                                  {m.video_url && <a href={m.video_url} target="_blank" style={{textDecoration:'none'}}>🎥</a>}
-                                  {m.notes_url && <a href={m.notes_url} target="_blank" style={{textDecoration:'none'}}>📄</a>}
-                                  {isOwner && <button onClick={() => handleDeleteMaterial(m.id)} style={{border:'none', background:'none', cursor:'pointer', fontSize:'12px'}}>🗑️</button>}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </details>
-                      ))}
-
-                      {isOwner && (
-                        <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
-                          <button onClick={() => toggleClassStatus(batch.id, liveStatuses[batch.id])} style={{ flex: 1, padding: '12px', borderRadius: '12px', background: liveStatuses[batch.id] ? '#ff4757' : batch.color, color: 'white', border: 'none', fontWeight: 'bold', cursor:'pointer' }}>{liveStatuses[batch.id] ? "End Session" : "Go Live"}</button>
-                          <button onClick={() => setShowUploadModal(batch.id)} style={{ flex: 1, padding: '12px', borderRadius: '12px', border: '1px dashed #6c63ff', color: '#6c63ff', background: 'none', fontWeight:'bold', cursor:'pointer' }}>+ Upload Content</button>
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
               </div>
             )
           })}
         </div>
 
-        {/* SIDEBARS: ONLY show for you (the owner) or students who ENROLLED into at least one batch */}
         {(isOwner || isAnyEnrolled) && (
           <div style={{display:'flex', flexDirection:'column', gap:'25px'}}>
             <NoticeBoard category="neet" isOwner={isOwner} />
