@@ -1,10 +1,10 @@
 "use client";
 import { useSession, signOut } from "next-auth/react"
 import { redirect } from "next/navigation"
-import Link from "next/link"
 import { useState, useEffect, useMemo, use } from 'react' 
 import { createClient } from '@supabase/supabase-js'
 import { motion, AnimatePresence } from "framer-motion"
+import Link from "next/link"
 
 type PageProps = { params: Promise<{ batchId: string }> };
 
@@ -27,7 +27,7 @@ export default function BatchDashboard({ params }: PageProps) {
   
   // Announcement/Notice Form States
   const [newNotice, setNewNotice] = useState("")
-  const [selectedFile, setSelectedFile] = useState<File | null>(null) // Local File support
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
   
   // Event Form States
   const [eventTitle, setEventTitle] = useState("")
@@ -60,23 +60,23 @@ export default function BatchDashboard({ params }: PageProps) {
     }
   };
 
-  // --- STORAGE UPLOAD LOGIC ---
+  // --- STORAGE UPLOAD LOGIC (MATCHING 'NOTICES' BUCKET) ---
   const uploadImage = async (file: File) => {
     const fileExt = file.name.split('.').pop();
-    const fileName = `${Math.random()}.${fileExt}`;
-    const filePath = `notices/${fileName}`;
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+    const filePath = `uploads/${fileName}`;
 
     const { error: uploadError } = await supabase.storage
-      .from('notices') // Ensure bucket 'notices' is Public in Supabase
+      .from('NOTICES') // Matches your uppercase bucket name
       .upload(filePath, file);
 
     if (uploadError) throw uploadError;
 
-    const { data } = supabase.storage.from('notices').getPublicUrl(filePath);
+    const { data } = supabase.storage.from('NOTICES').getPublicUrl(filePath);
     return data.publicUrl;
   };
 
-  // --- NOTIFICATION LOGIC (CREATE, EDIT, STORAGE) ---
+  // --- NOTIFICATION LOGIC ---
   const handlePostNotice = async (textOverride?: any) => {
     const content = typeof textOverride === 'string' ? textOverride : newNotice;
     if (!content || !content.trim()) return;
@@ -115,7 +115,7 @@ export default function BatchDashboard({ params }: PageProps) {
       setEditingNotif(null);
       fetchData(); 
     } catch (err: any) {
-      alert("Error: " + err.message);
+      alert("Notice Error: " + err.message);
     } finally {
       setUploading(false);
     }
@@ -124,6 +124,7 @@ export default function BatchDashboard({ params }: PageProps) {
   const startEditNotif = (notif: any) => {
     setEditingNotif(notif);
     setNewNotice(notif.content);
+    setShowNotifs(true); // Ensure drawer is open
   };
 
   const deleteNotice = async (id: string) => {
@@ -139,20 +140,14 @@ export default function BatchDashboard({ params }: PageProps) {
     try {
       const displayTime = new Date(eventDate).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
       if (editingEvent) {
-        const { error } = await supabase
-          .from('events')
-          .update({ title: eventTitle, event_time: eventDate })
-          .eq('id', editingEvent.id);
+        const { error } = await supabase.from('events').update({ title: eventTitle, event_time: eventDate }).eq('id', editingEvent.id);
         if (error) throw error;
         await handlePostNotice(`✏️ Event Updated: ${eventTitle} (${displayTime})`);
       } else {
-        const { error } = await supabase
-          .from('events')
-          .insert([{ batch_id: batchId, title: eventTitle, event_time: eventDate }]);
+        const { error } = await supabase.from('events').insert([{ batch_id: batchId, title: eventTitle, event_time: eventDate }]);
         if (error) throw error;
         await handlePostNotice(`🗓️ New Event Scheduled: ${eventTitle} at ${displayTime}`);
       }
-      
       setShowEventModal(false);
       setEditingEvent(null);
       setEventTitle("");
@@ -172,12 +167,6 @@ export default function BatchDashboard({ params }: PageProps) {
     const formattedDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
     setEventDate(formattedDate);
     setShowEventModal(true);
-  };
-
-  const deleteEvent = async (id: string) => {
-    if (!confirm("Delete this event?")) return;
-    const { error } = await supabase.from('events').delete().eq('id', id);
-    if (!error) fetchData();
   };
 
   if (status === "loading" || !mounted) return null;
@@ -255,24 +244,17 @@ export default function BatchDashboard({ params }: PageProps) {
                   {isOwner && (
                     <div style={{ display: 'flex', gap: '10px' }}>
                       <button onClick={() => openEditModal(ev)} style={editActionBtn}>Edit</button>
-                      <button onClick={() => deleteEvent(ev.id)} style={deleteActionBtn}>Delete</button>
+                      <button onClick={() => { if(confirm("Delete event?")) supabase.from('events').delete().eq('id', ev.id).then(() => fetchData()); }} style={deleteActionBtn}>Delete</button>
                     </div>
                   )}
                 </motion.div>
               ))
             )}
           </div>
-          
           <div style={statsSidebar}>
              <h3 style={sectionTitle}>Stats</h3>
-             <div style={statRow}>
-                <span>Total XP Earned</span>
-                <b style={{color:'#6157ff', fontSize:'20px'}}>{userProfile?.xp_points || 0}</b>
-             </div>
-             <div style={statRow}>
-                <span>Current Streak</span>
-                <b style={{color:'#ff9800', fontSize:'20px'}}>🔥 0</b>
-             </div>
+             <div style={statRow}><span>Total XP</span> <b>{userProfile?.xp_points || 0}</b></div>
+             <div style={statRow}><span>Streak</span> <b>🔥 0</b></div>
           </div>
         </div>
       </main>
@@ -280,35 +262,23 @@ export default function BatchDashboard({ params }: PageProps) {
       <AnimatePresence>
         {showNotifs && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={overlay} onClick={() => setShowNotifs(false)}>
-            <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type:'spring', damping:25 }} style={drawer} onClick={e => e.stopPropagation()}>
+            <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} style={drawer} onClick={e => e.stopPropagation()}>
               <div style={drawerHeader}>
                 <h3 style={{margin:0}}>Notifications</h3>
-                <button onClick={() => { setShowNotifs(false); setEditingNotif(null); }} style={closeBtn}>✕</button>
+                <button onClick={() => { setShowNotifs(false); setEditingNotif(null); setNewNotice(""); }} style={closeBtn}>✕</button>
               </div>
               {isOwner && (
                 <div style={adminPanel}>
-                  <textarea 
-                    value={newNotice} 
-                    onChange={e => setNewNotice(e.target.value)} 
-                    placeholder="Message content..." 
-                    style={notifInput} 
-                  />
+                  <textarea value={newNotice} onChange={e => setNewNotice(e.target.value)} placeholder="Message content..." style={notifInput} />
                   <label style={fileLabel}>
                     {selectedFile ? `📎 ${selectedFile.name}` : "📁 Add Image from Local"}
-                    <input 
-                      type="file" 
-                      accept="image/*" 
-                      onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} 
-                      style={{ display: 'none' }} 
-                    />
+                    <input type="file" accept="image/*" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} style={{ display: 'none' }} />
                   </label>
                   <div style={{display:'flex', gap:'10px', marginTop:'10px'}}>
                     <button onClick={() => handlePostNotice()} disabled={uploading} style={sendBtn}>
-                      {uploading ? "Uploading..." : editingNotif ? "Update Notice" : "Post Notice"}
+                      {uploading ? "..." : editingNotif ? "Update" : "Post"}
                     </button>
-                    {editingNotif && (
-                       <button onClick={() => {setEditingNotif(null); setNewNotice(""); setSelectedFile(null);}} style={cancelBtn}>Cancel</button>
-                    )}
+                    {editingNotif && <button onClick={() => {setEditingNotif(null); setNewNotice(""); setSelectedFile(null);}} style={cancelBtn}>Cancel</button>}
                   </div>
                 </div>
               )}
@@ -341,10 +311,8 @@ export default function BatchDashboard({ params }: PageProps) {
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={overlay} onClick={() => setShowEventModal(false)}>
             <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }} style={modal} onClick={e => e.stopPropagation()}>
                <h3 style={{marginTop:0}}>{editingEvent ? 'Update Event' : 'Schedule Event'}</h3>
-               <label style={{fontSize: '12px', fontWeight: 'bold', color: '#666'}}>Event Title</label>
                <input placeholder="Title" value={eventTitle} onChange={e => setEventTitle(e.target.value)} style={modalInput} />
-               <label style={{fontSize: '12px', fontWeight: 'bold', color: '#666', marginTop: '15px', display: 'block'}}>Date & Time</label>
-               <input type="datetime-local" value={eventDate} onChange={e => setEventDate(e.target.value)} style={modalInput} />
+               <input type="datetime-local" value={eventDate} onChange={e => setEventDate(e.target.value)} style={{...modalInput, marginTop:'10px'}} />
                <button onClick={handleSaveEvent} disabled={uploading} style={sendBtn}>
                  {uploading ? "Saving..." : editingEvent ? "Update Event" : "Create Event"}
                </button>
