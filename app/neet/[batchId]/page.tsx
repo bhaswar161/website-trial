@@ -8,34 +8,31 @@ import html2canvas from 'html2canvas'
 import { saveAs } from 'file-saver'
 
 export default function BatchDashboard({ params }: any) {
-  // Fix for params access in Next.js 13+
   const [batchId, setBatchId] = useState<string>("");
-  useEffect(() => {
-    params.then((p: any) => setBatchId(p.batchId));
-  }, [params]);
+  useEffect(() => { params.then((p: any) => setBatchId(p.batchId)); }, [params]);
 
   const { data: session, status } = useSession()
   const [mounted, setMounted] = useState(false)
   const badgeRef = useRef<HTMLDivElement>(null);
   
-  // Logic & Sync States
+  // States
   const [localName, setLocalName] = useState("");
   const [localPic, setLocalPic] = useState("");
   const [studySeconds, setStudySeconds] = useState(0);
   const [streak, setStreak] = useState(0);
   const [isStreakAchieved, setIsStreakAchieved] = useState(false);
-
-  // UI States
-  const [showNotifs, setShowNotifs] = useState(false)
-  const [showProfileMenu, setShowProfileMenu] = useState(false)
-  const [showEventModal, setShowEventModal] = useState(false)
-  const [showStreakModal, setShowStreakModal] = useState(false)
   const [notices, setNotices] = useState<any[]>([])
   const [events, setEvents] = useState<any[]>([])
   const [userProfile, setUserProfile] = useState<any>(null)
   const [lastReadTime, setLastReadTime] = useState<number>(0)
   
-  // Admin Input States
+  // UI Logic
+  const [showNotifs, setShowNotifs] = useState(false)
+  const [showProfileMenu, setShowProfileMenu] = useState(false)
+  const [showEventModal, setShowEventModal] = useState(false)
+  const [showStreakModal, setShowStreakModal] = useState(false)
+
+  // Admin Inputs
   const [newNotice, setNewNotice] = useState("")
   const [noticeSubject, setNoticeSubject] = useState("")
   const [eventTitle, setEventTitle] = useState("")
@@ -47,16 +44,16 @@ export default function BatchDashboard({ params }: any) {
 
   useEffect(() => { 
     setMounted(true);
-    const syncProfile = () => {
+    const sync = () => {
       setLocalName(localStorage.getItem("userFirstName") || "");
       setLocalPic(localStorage.getItem("userProfilePic") || "");
       setStreak(parseInt(localStorage.getItem("userStreak") || "0"));
+      if(batchId) {
+        const saved = localStorage.getItem(`last_read_${batchId}`);
+        if(saved) setLastReadTime(parseInt(saved));
+      }
     };
-    if (batchId) {
-      const savedTime = localStorage.getItem(`last_read_${batchId}`);
-      if (savedTime) setLastReadTime(parseInt(savedTime));
-    }
-    syncProfile();
+    sync();
 
     const interval = setInterval(() => {
       setStudySeconds(s => {
@@ -73,46 +70,48 @@ export default function BatchDashboard({ params }: any) {
         return s;
       });
     }, 1000);
-
     if (session?.user?.email && batchId) fetchData();
     return () => clearInterval(interval);
   }, [batchId, session, isStreakAchieved, streak]);
 
   const fetchData = async () => {
+    // Sync Profile Data
     supabase.from('student_stats').select('*').eq('email', session?.user?.email).single().then(({data}) => setUserProfile(data));
+    
+    // Fetch Notifications
     supabase.from('notices').select('*').eq('batch_id', batchId).order('created_at', { ascending: false }).then(({data}) => setNotices(data || []));
-    // ONLY show events where is_done is false
-    supabase.from('events').select('*').eq('batch_id', batchId).eq('is_done', false).order('event_time', { ascending: true }).then(({data}) => setEvents(data || []));
+    
+    // Fetch Events (Safe fetch - handles both old and new table schemas)
+    const { data: evData } = await supabase.from('events').select('*').eq('batch_id', batchId).order('event_time', { ascending: true });
+    // Client-side filter to ensure we show things that aren't marked done
+    setEvents(evData?.filter((ev: any) => ev.is_done !== true) || []);
   };
 
-  // --- ADMIN ACTIONS ---
+  // --- ACTIONS ---
   const handlePostNotice = async () => {
     if (!newNotice.trim() || !noticeSubject.trim()) return;
-    await supabase.from('notices').insert([{ batch_id: batchId, title: noticeSubject, content: newNotice.trim() }]);
+    if (editingNotif) {
+      await supabase.from('notices').update({ title: noticeSubject, content: newNotice.trim() }).eq('id', editingNotif.id);
+    } else {
+      await supabase.from('notices').insert([{ batch_id: batchId, title: noticeSubject, content: newNotice.trim() }]);
+    }
     setNewNotice(""); setNoticeSubject(""); setEditingNotif(null); fetchData();
   };
 
   const handleSaveEvent = async () => {
     if (!eventTitle || !eventDate) return;
-    // 1. Create the Event
+    // 1. Create Event
     await supabase.from('events').insert([{ batch_id: batchId, title: eventTitle, event_time: eventDate, is_done: false }]);
-    // 2. AUTO-POST to Notifications
-    await supabase.from('notices').insert([{ 
-      batch_id: batchId, 
-      title: "New Event Scheduled", 
-      content: `${eventTitle} set for ${new Date(eventDate).toLocaleString()}` 
-    }]);
+    // 2. Auto-Post Notice
+    await supabase.from('notices').insert([{ batch_id: batchId, title: "New Event", content: `New event "${eventTitle}" scheduled for ${new Date(eventDate).toLocaleString()}.` }]);
     setShowEventModal(false); setEventTitle(""); setEventDate(""); fetchData();
   };
 
   const handleDismissDone = async (ev: any) => {
-    // Dismisses event and notifies students
+    // 1. Mark as done in DB
     await supabase.from('events').update({ is_done: true }).eq('id', ev.id);
-    await supabase.from('notices').insert([{ 
-      batch_id: batchId, 
-      title: "Notice: Event Completed", 
-      content: `The scheduled event "${ev.title}" is now done.` 
-    }]);
+    // 2. Auto-post Mission Accomplished Notice
+    await supabase.from('notices').insert([{ batch_id: batchId, title: "Event Completed ✅", content: `The event "${ev.title}" has been successfully completed.` }]);
     fetchData();
   };
 
@@ -171,7 +170,7 @@ export default function BatchDashboard({ params }: any) {
       </header>
 
       <main style={contentArea}>
-        {/* GAP FIXED: Header won't overlap banner */}
+        {/* BANNER WITH GAP */}
         <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} style={batchBanner}>
           <div style={bannerDots} />
           <div style={{ position: 'relative', zIndex: 1 }}>
@@ -222,37 +221,42 @@ export default function BatchDashboard({ params }: any) {
         </div>
       </main>
 
-      {/* NOTIFICATION DRAWER */}
+      {/* NOTIFICATION DRAWER (EDIT ENABLED) */}
       <AnimatePresence>
         {showNotifs && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={modalOverlay} onClick={() => setShowNotifs(false)}>
             <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} style={drawerUI} onClick={e => e.stopPropagation()}>
               <div style={drawerHeaderUI}>
-                 <div style={{fontSize:'20px', fontWeight:'800'}}>Notifications</div>
+                 <div style={{fontSize:'22px', fontWeight:'900'}}>Notifications</div>
                  <div style={{display:'flex', gap:'10px'}}>
-                    <motion.button whileHover={{scale:1.05}} onClick={() => {setLastReadTime(Date.now()); localStorage.setItem(`last_read_${batchId}`, Date.now().toString())}} style={markReadBtnUI}>Read All</motion.button>
-                    <motion.button whileHover={{scale:1.05}} onClick={() => setShowNotifs(false)} style={{...markReadBtnUI, background:'#eee', color:'#333'}}>Close</motion.button>
+                    <motion.button whileTap={{scale:0.9}} onClick={() => {setLastReadTime(Date.now()); localStorage.setItem(`last_read_${batchId}`, Date.now().toString())}} style={markReadBtnUI}>Read All</motion.button>
+                    <motion.button whileTap={{scale:0.9}} onClick={() => setShowNotifs(false)} style={{...markReadBtnUI, background:'#eee', color:'#333'}}>Close</motion.button>
                  </div>
               </div>
               <div style={{padding: '0 20px', flex: 1, overflowY: 'auto'}}>
                 {notices.map(n => (
-                    <div key={n.id} style={notifCardUI}>
+                    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} key={n.id} style={notifCardUI}>
                       <div style={{flex: 1}}>
                          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
                             <div style={{fontWeight:'800', color:'#5b6cfd'}}>{n.title}</div>
                             <div style={{fontSize:'10px', color:'#aaa'}}>{new Date(n.created_at).toLocaleString()}</div>
                          </div>
                          <div style={{fontSize:'14px', marginTop:'4px'}}>{n.content}</div>
-                         {isOwner && <button onClick={() => supabase.from('notices').delete().eq('id', n.id).then(()=>fetchData())} style={{...textActionBtnRed, marginTop:'5px'}}>Delete</button>}
+                         {isOwner && (
+                             <div style={{display:'flex', gap:'10px', marginTop:'10px'}}>
+                                <button onClick={() => {setEditingNotif(n); setNoticeSubject(n.title); setNewNotice(n.content)}} style={textActionBtn}>Edit</button>
+                                <button onClick={() => supabase.from('notices').delete().eq('id', n.id).then(()=>fetchData())} style={textActionBtnRed}>Delete</button>
+                             </div>
+                         )}
                       </div>
-                    </div>
+                    </motion.div>
                 ))}
               </div>
               {isOwner && (
                 <div style={adminPanelNotifUI}>
                    <input value={noticeSubject} onChange={(e)=>setNoticeSubject(e.target.value)} placeholder="Subject..." style={subjectInputUI} />
                    <textarea value={newNotice} onChange={e => setNewNotice(e.target.value)} placeholder="Message..." style={notifInputUI} />
-                   <button onClick={handlePostNotice} style={notifSendBtn}>Post Notice</button>
+                   <button onClick={handlePostNotice} style={notifSendBtn}>{editingNotif ? 'Update' : 'Post'}</button>
                 </div>
               )}
             </motion.div>
@@ -273,10 +277,10 @@ export default function BatchDashboard({ params }: any) {
                     <div style={streakMainVal}>{streak} <small style={{fontSize:'12px', display:'block', color:'#888'}}>DAYS</small></div>
                 </motion.div>
                 <div style={streakInfoBody}>
-                    <h2 style={{margin:0, fontWeight:'900'}}>Study Streak!</h2>
+                    <h2 style={{margin:0, fontWeight:'900'}}>Daily Streak!</h2>
                     <div style={{display:'flex', justifyContent:'space-between', fontSize:'11px', color:'#888', marginTop:'15px'}}>
-                        <span>Goal: 10 mins</span>
-                        <span style={{color:'#5b6cfd', fontWeight:'700'}}>{studySeconds < 600 ? `${10 - Math.floor(studySeconds/60)}m left` : 'Completed!'}</span>
+                        <span>{Math.floor(studySeconds/60)}m done</span>
+                        <span style={{color:'#5b6cfd', fontWeight:'700'}}>{studySeconds < 600 ? `${10 - Math.floor(studySeconds/60)}m left` : 'Goal Met!'}</span>
                     </div>
                     <div style={progressBarBg}><motion.div animate={{width: `${(studySeconds/600)*100}%`}} style={progressBarFill} /></div>
                 </div>
@@ -304,8 +308,8 @@ export default function BatchDashboard({ params }: any) {
   )
 }
 
-// --- ALL STYLE DEFINITIONS (FIXES TERMINAL ERRORS) ---
-const headerWrapper: any = { position:'fixed', top:0, left:0, width:'100%', background:'#fff', borderBottom:'1px solid #f0f0f0', zIndex: 1000, height: '80px', boxShadow:'0 2px 10px rgba(0,0,0,0.03)' };
+// --- ALL REQUIRED STYLES (Fixes Visual Errors) ---
+const headerWrapper: any = { position:'fixed', top:0, left:0, width:'100%', background:'#fff', borderBottom:'1px solid #f0f0f0', zIndex: 1000, height: '80px', boxShadow:'0 2px 15px rgba(0,0,0,0.03)' };
 const headerInner: any = { maxWidth:'1300px', margin:'0 auto', display:'flex', justifyContent:'space-between', alignItems:'center', height:'100%', padding:'0 25px' };
 const contentArea: any = { paddingTop:'180px', maxWidth:'1200px', margin:'0 auto', paddingBottom:'60px' };
 const statPillGroup: any = { display: 'flex', gap: '12px', alignItems: 'center' };
@@ -318,7 +322,7 @@ const nameWrapper: any = { display: 'flex', flexDirection: 'column' };
 const navNameText: any = { fontSize: '15px', fontWeight: '800', color: '#5b6cfd' };
 const navRoleText: any = { fontSize: '10px', fontWeight: '700', color: '#888' };
 const backBtnCircle: any = { color:'#333', background:'#f5f5f5', width:'35px', height:'35px', borderRadius:'10px', display:'flex', alignItems:'center', justifyContent:'center', cursor: 'pointer' };
-const batchBanner: any = { background:'#1c252e', color:'#fff', padding:'80px 60px', borderRadius:'30px 30px 100px 30px', marginBottom:'50px', position: 'relative', overflow: 'hidden' };
+const batchBanner: any = { background:'#1c252e', color:'#fff', padding:'80px 60px', borderRadius:'30px 30px 100px 30px', marginBottom:'50px', position: 'relative', overflow: 'hidden', boxShadow: '0 15px 30px rgba(0,0,0,0.1)' };
 const bannerDots: any = { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.05) 1px, transparent 0)', backgroundSize: '24px 24px' };
 const studyGoalText: any = { marginTop:'20px', background:'rgba(255,255,255,0.1)', padding:'8px 16px', borderRadius:'10px', display:'inline-block', fontSize:'13px' };
 const offeringGrid: any = { display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(260px, 1fr))', gap:'20px' };
