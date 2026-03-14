@@ -2,16 +2,14 @@
 import { useSession } from "next-auth/react"
 import { redirect } from "next/navigation"
 import Link from "next/link"
-import { useState, useEffect, useMemo, use } from 'react' // Added 'use'
+import { useState, useEffect, useMemo, use } from 'react' 
 import { createClient } from '@supabase/supabase-js'
 
-// We define the type to match Next.js 15+ expectations
 type PageProps = {
   params: Promise<{ batchId: string }>;
 };
 
 export default function BatchDetailsPage({ params }: PageProps) {
-  // 1. Unwrap the params promise using 'use'
   const resolvedParams = use(params);
   const batchId = resolvedParams.batchId;
 
@@ -24,25 +22,20 @@ export default function BatchDetailsPage({ params }: PageProps) {
   const [uploading, setUploading] = useState(false)
   const [materials, setMaterials] = useState<any[]>([])
 
-  // 2. Initialize Supabase with Session Headers
+  // 1. Simplified Supabase Client (Removes the Invalid JWS header)
   const supabase = useMemo(() => {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-    return createClient(url, key, {
-      global: {
-        headers: {
-          Authorization: `Bearer ${session?.user ? 'authenticated' : ''}`,
-        },
-      },
-    });
-  }, [session]);
+    return createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+  }, []); 
 
   const isOwner = session?.user?.email === "bhaswarray@gmail.com"
 
   useEffect(() => {
     setMounted(true)
-    if (supabase && batchId) fetchMaterials();
-  }, [batchId, supabase])
+    if (batchId) fetchMaterials();
+  }, [batchId]);
 
   const fetchMaterials = async () => {
     const { data } = await supabase
