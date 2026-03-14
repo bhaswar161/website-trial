@@ -20,7 +20,7 @@ export default function BatchDashboard({ params }: PageProps) {
   // Data States
   const [notices, setNotices] = useState<any[]>([])
   const [events, setEvents] = useState<any[]>([])
-  const [userProfile, setUserProfile] = useState<{avatar_url?: string, xp_points?: number, student_name?: string} | null>(null)
+  const [userProfile, setUserProfile] = useState<any>(null)
   
   // Admin Form States
   const [newNotice, setNewNotice] = useState("")
@@ -41,11 +41,11 @@ export default function BatchDashboard({ params }: PageProps) {
   }, [batchId, session]);
 
   const fetchData = async () => {
-    // 1. Fetch Profile Info from student_stats (Internal DB)
-    const { data: sData } = await supabase.from('student_stats').select('avatar_url, xp_points, student_name').eq('email', session?.user?.email).single();
+    // 1. Fetch Profile (Internal DB priority)
+    const { data: sData } = await supabase.from('student_stats').select('*').eq('email', session?.user?.email).single();
     if (sData) setUserProfile(sData);
 
-    // 2. Fetch Notifications (Directly from table)
+    // 2. Fetch Notifications
     const { data: nData } = await supabase.from('notices').select('*').eq('batch_id', batchId).order('created_at', { ascending: false });
     setNotices(nData || []);
 
@@ -58,184 +58,155 @@ export default function BatchDashboard({ params }: PageProps) {
     const content = contentOverride || newNotice;
     if (!content && !noticeFile) return;
     setUploading(true);
-    
     try {
       let imageUrl = "";
       if (noticeFile) {
         const path = `notices/${Date.now()}_${noticeFile.name}`;
-        const { data, error: uploadError } = await supabase.storage.from('batch-materials').upload(path, noticeFile);
-        if (uploadError) throw uploadError;
+        await supabase.storage.from('batch-materials').upload(path, noticeFile);
         imageUrl = supabase.storage.from('batch-materials').getPublicUrl(path).data.publicUrl;
       }
+      await supabase.from('notices').insert([{ batch_id: batchId, content, image_url: imageUrl }]);
+      setNewNotice(""); setNoticeFile(null);
+      await fetchData();
+    } finally { setUploading(false); }
+  };
 
-      const { error } = await supabase.from('notices').insert([{ 
-        batch_id: batchId, 
-        content: content, 
-        image_url: imageUrl 
-      }]);
-
-      if (!error) {
-        setNewNotice(""); 
-        setNoticeFile(null); 
-        await fetchData(); // Force UI refresh
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setUploading(false);
+  const deleteNotice = async (id: string) => {
+    if (confirm("Delete this notification?")) {
+      await supabase.from('notices').delete().eq('id', id);
+      fetchData();
     }
   };
 
   const handleCreateEvent = async () => {
-    if (!eventTitle || !eventDate) return alert("Please fill all fields");
-    setUploading(true);
-    
-    // 1. Create the Event
-    const { error } = await supabase.from('events').insert([{ 
-      batch_id: batchId, 
-      title: eventTitle, 
-      event_time: eventDate 
-    }]);
-
+    if (!eventTitle || !eventDate) return;
+    const { error } = await supabase.from('events').insert([{ batch_id: batchId, title: eventTitle, event_time: eventDate }]);
     if (!error) {
-      // 2. Automatically post a notification about the new event
-      const eventTimeString = new Date(eventDate).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
-      await handlePostNotice(`🗓️ New Event Scheduled: ${eventTitle} at ${eventTimeString}`);
-      
-      setShowEventModal(false); 
-      setEventTitle(""); 
-      setEventDate("");
-      await fetchData();
-    } else {
-      alert("Error: " + error.message);
+      await handlePostNotice(`📢 New Event: ${eventTitle} at ${new Date(eventDate).toLocaleString()}`);
+      setShowEventModal(false); setEventTitle(""); setEventDate("");
+      fetchData();
     }
-    setUploading(false);
+  };
+
+  const deleteEvent = async (id: string) => {
+    if (confirm("Delete this event?")) {
+      await supabase.from('events').delete().eq('id', id);
+      fetchData();
+    }
   };
 
   if (status === "loading" || !mounted) return null;
-  if (status === "unauthenticated") redirect("/api/auth/signin")
 
   return (
-    <div style={{ background: '#fcfcfc', minHeight: '100vh', fontFamily: 'sans-serif' }}>
+    <div style={{ background: '#f0f2f5', minHeight: '100vh', fontFamily: 'sans-serif' }}>
       
-      {/* HEADER UI */}
-      <nav style={headerStyle}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-          <Link href="/neet" style={backBtnStyle}>←</Link>
-          <h2 style={{ fontSize: '18px', fontWeight: '700', margin: 0 }}>Study Hub</h2>
+      {/* --- SEPARATED FIXED HEADER --- */}
+      <header style={headerWrapper}>
+        <div style={headerInner}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+            <Link href="/neet" style={backCircle}>←</Link>
+            <h1 style={{ fontSize: '18px', margin: 0 }}>Dashboard</h1>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+            <div style={statChip} onClick={() => setShowNotifs(true)}>🔔 {notices.length}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', position: 'relative' }}>
+               <img 
+                 src={userProfile?.avatar_url || "https://ui-avatars.com/api/?name=" + session?.user?.name} 
+                 style={navAvatar} 
+                 onClick={() => setShowProfileMenu(!showProfileMenu)}
+               />
+               <span style={{ fontWeight: '600', fontSize: '14px' }}>{userProfile?.student_name || session?.user?.name}</span>
+               {showProfileMenu && (
+                 <div style={dropdownMenu}>
+                   <Link href="/profile" style={dropLink}>My Profile</Link>
+                   <button onClick={() => signOut()} style={dropLogout}>Logout</button>
+                 </div>
+               )}
+            </div>
+          </div>
         </div>
+      </header>
+
+      {/* --- MAIN PAGE CONTENT (INSET) --- */}
+      <main style={contentWrapper}>
         
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-          <div style={statCapsule}>🔥 0</div>
-          <div style={statCapsule}>XP {userProfile?.xp_points || 0}</div>
-          <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => setShowNotifs(true)}>
-            🔔 {notices.length > 0 && <span style={notifBadge}>{notices.length}</span>}
-          </div>
-          
-          {/* PROFILE SECTION: IMAGE + NAME */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', position: 'relative' }}>
-            <img 
-              src={userProfile?.avatar_url || "https://ui-avatars.com/api/?name=" + session?.user?.name} 
-              style={avatarStyle} 
-              onClick={() => setShowProfileMenu(!showProfileMenu)}
-              alt="profile"
-            />
-            <span 
-              onClick={() => setShowProfileMenu(!showProfileMenu)} 
-              style={{ fontWeight: '600', fontSize: '14px', cursor: 'pointer', color: '#444' }}
-            >
-              {userProfile?.student_name || session?.user?.name}
-            </span>
-
-            {showProfileMenu && (
-              <div style={dropdownStyle}>
-                <Link href="/profile" style={dropdownItem}>My Profile</Link>
-                <button onClick={() => signOut()} style={logoutBtn}>Logout</button>
-              </div>
-            )}
-          </div>
+        {/* Banner Card */}
+        <div style={batchBanner}>
+          <p style={{ opacity: 0.6, fontSize: '12px', margin: 0 }}>ACTIVE BATCH</p>
+          <h2 style={{ fontSize: '32px', margin: '5px 0' }}>{batchId.toUpperCase()}</h2>
         </div>
-      </nav>
 
-      {/* BANNER */}
-      <div style={bannerStyle}>
-        <span style={{ fontSize: '12px', fontWeight: 'bold', opacity: 0.6 }}>YOUR BATCH</span>
-        <h1 style={{ margin: '5px 0', fontSize: '32px', fontWeight: '900' }}>{batchId.replace(/-/g, ' ').toUpperCase()}</h1>
-      </div>
+        <div style={dashboardGrid}>
+          {/* Left Column: Offerings & Events */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
+            <section style={glassCard}>
+              <h3 style={cardTitle}>Batch Offerings</h3>
+              <div style={offeringGrid}>
+                {['All Classes', 'All Tests', 'My Doubts', 'Community'].map(item => (
+                  <Link key={item} href={item === 'All Classes' ? `/neet/${batchId}/all-classes` : '#'} style={offeringItem}>
+                    {item} <span>→</span>
+                  </Link>
+                ))}
+              </div>
+            </section>
 
-      <main style={{ padding: '0 5%', maxWidth: '1200px', margin: '0 auto' }}>
-        <section style={{ marginBottom: '40px' }}>
-          <h3 style={sectionTitle}>Batch Offerings</h3>
-          <div style={gridStyle}>
-            {['All Classes', 'All Tests', 'My Doubts', 'Community'].map(item => (
-              <Link key={item} href={item === 'All Classes' ? `/neet/${batchId}/all-classes` : '#'} style={offerCard}>
-                <span style={{ fontWeight: '700' }}>{item}</span>
-                <span>❯</span>
-              </Link>
-            ))}
+            <section style={glassCard}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
+                <h3 style={cardTitle}>Upcoming Events</h3>
+                {isOwner && <button onClick={() => setShowEventModal(true)} style={actionBtn}>+ Create</button>}
+              </div>
+              {events.length === 0 ? <p style={emptyMsg}>No upcoming events scheduled.</p> : (
+                events.map(ev => (
+                  <div key={ev.id} style={itemRow}>
+                    <div>
+                      <div style={{ fontWeight: 'bold' }}>{ev.title}</div>
+                      <div style={{ fontSize: '12px', color: '#6157ff' }}>{new Date(ev.event_time).toLocaleString()}</div>
+                    </div>
+                    {isOwner && <button onClick={() => deleteEvent(ev.id)} style={trashBtn}>🗑️</button>}
+                  </div>
+                ))
+              )}
+            </section>
           </div>
-        </section>
 
-        {/* UPCOMING EVENTS SECTION */}
-        <section style={{ marginBottom: '60px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-            <h3 style={sectionTitle}>Upcoming Events ({events.length})</h3>
-            {isOwner && <button onClick={() => setShowEventModal(true)} style={addEventBtn}>+ Create Event</button>}
-          </div>
-
-          {events.length === 0 ? (
-            <div style={emptyEventCard}>
-               <div style={{ fontSize: '40px' }}>🕒</div>
-               <p style={{ fontWeight: 'bold', margin: '10px 0 0' }}>No upcoming events,</p>
-               <p style={{ color: '#888', fontSize: '14px' }}>Perfect time to catch up on pending work!</p>
-            </div>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '15px' }}>
-              {events.map(ev => (
-                <div key={ev.id} style={eventRow}>
-                   <div style={eventIconBox}>📅</div>
-                   <div style={{ flex: 1 }}>
-                     <div style={{ fontWeight: 'bold', fontSize: '16px' }}>{ev.title}</div>
-                     <div style={eventTimeStyle}>
-                        {new Date(ev.event_time).toLocaleString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                     </div>
-                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
+          {/* Right Column: Mini Leaderboard or Stats */}
+          <section style={glassCard}>
+             <h3 style={cardTitle}>Your Progress</h3>
+             <div style={statBox}>
+                <p>Current XP</p>
+                <h1>{userProfile?.xp_points || 0}</h1>
+             </div>
+          </section>
+        </div>
       </main>
 
-      {/* NOTIFICATIONS DRAWER */}
+      {/* --- NOTIFICATIONS DRAWER --- */}
       {showNotifs && (
         <div style={overlay} onClick={() => setShowNotifs(false)}>
           <div style={drawer} onClick={e => e.stopPropagation()}>
-            <div style={drawerHead}>
-              <h3 style={{margin:0}}>Notifications</h3>
-              <button onClick={() => setShowNotifs(false)} style={closeBtnIcon}>✕</button>
+            <div style={drawerHeader}>
+              <h3>Notifications</h3>
+              <button onClick={() => setShowNotifs(false)} style={closeBtn}>✕</button>
             </div>
-            
             {isOwner && (
-              <div style={adminPanel}>
-                <textarea value={newNotice} onChange={e => setNewNotice(e.target.value)} placeholder="Type an update..." style={textAreaStyle} />
-                <div style={{marginTop: '10px'}}>
-                  <label style={{fontSize: '12px', display: 'block', marginBottom: '5px'}}>Attach Image (Optional):</label>
-                  <input type="file" accept="image/*" onChange={e => setNoticeFile(e.target.files?.[0] || null)} style={{fontSize:'12px'}} />
-                </div>
-                <button onClick={() => handlePostNotice()} disabled={uploading} style={sendBtn}>
-                  {uploading ? 'Sending...' : 'Send Notification'}
+              <div style={adminNotifBox}>
+                <textarea value={newNotice} onChange={e => setNewNotice(e.target.value)} placeholder="Send an update..." style={notifInput} />
+                <input type="file" onChange={e => setNoticeFile(e.target.files?.[0] || null)} style={{fontSize:'12px', marginTop:'10px'}} />
+                <button onClick={() => handlePostNotice()} disabled={uploading} style={submitBtn}>
+                  {uploading ? 'Uploading...' : 'Send Message'}
                 </button>
               </div>
             )}
-
-            <div style={notifListArea}>
-              {notices.length === 0 && <p style={emptyText}>No notifications yet.</p>}
-              {notices.map((n, i) => (
-                <div key={i} style={notifCard}>
-                  {n.image_url && <img src={n.image_url} style={notifImg} alt="notice" />}
-                  <div style={notifContent}>{n.content}</div>
-                  <div style={notifTime}>{new Date(n.created_at).toLocaleString()}</div>
+            <div style={notifList}>
+              {notices.map(n => (
+                <div key={n.id} style={notifCard}>
+                  {n.image_url && <img src={n.image_url} style={notifImg} alt="update" />}
+                  <p style={{ margin: 0, fontSize: '14px' }}>{n.content}</p>
+                  <div style={{ display:'flex', justifyContent:'space-between', marginTop: '10px' }}>
+                    <small style={{ color: '#aaa' }}>{new Date(n.created_at).toLocaleDateString()}</small>
+                    {isOwner && <button onClick={() => deleteNotice(n.id)} style={trashBtn}>🗑️</button>}
+                  </div>
                 </div>
               ))}
             </div>
@@ -243,19 +214,14 @@ export default function BatchDashboard({ params }: PageProps) {
         </div>
       )}
 
-      {/* EVENT CREATOR MODAL */}
+      {/* --- EVENT MODAL --- */}
       {showEventModal && (
-        <div style={{...overlay, justifyContent:'center'}}>
+        <div style={overlay} onClick={() => setShowEventModal(false)}>
           <div style={modal} onClick={e => e.stopPropagation()}>
-            <h3 style={{marginTop:0}}>Schedule Event/Class</h3>
-            <label style={modalLabel}>Event Title</label>
-            <input type="text" placeholder="e.g., Organic Chemistry Live" value={eventTitle} onChange={e => setEventTitle(e.target.value)} style={modalInput} />
-            <label style={{...modalLabel, marginTop:'15px'}}>Date & Time</label>
+            <h3 style={{marginTop: 0}}>New Event</h3>
+            <input placeholder="Event Title" value={eventTitle} onChange={e => setEventTitle(e.target.value)} style={modalInput} />
             <input type="datetime-local" value={eventDate} onChange={e => setEventDate(e.target.value)} style={modalInput} />
-            <div style={{ display: 'flex', gap: '10px', marginTop: '25px' }}>
-              <button onClick={handleCreateEvent} style={sendBtn}>Confirm & Notify</button>
-              <button onClick={() => setShowEventModal(false)} style={cancelBtn}>Cancel</button>
-            </div>
+            <button onClick={handleCreateEvent} style={submitBtn}>Confirm Event</button>
           </div>
         </div>
       )}
@@ -264,37 +230,35 @@ export default function BatchDashboard({ params }: PageProps) {
 }
 
 // --- STYLES ---
-const headerStyle: any = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 5%', background: '#fff', borderBottom: '1px solid #f0f0f0', position: 'sticky', top: 0, zIndex: 1000 };
-const backBtnStyle: any = { textDecoration: 'none', color: '#000', fontSize: '20px', background: '#f5f5f5', width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' };
-const statCapsule: any = { background: '#fff', padding: '6px 14px', borderRadius: '20px', fontSize: '13px', fontWeight: '700', border: '1px solid #eee' };
-const avatarStyle: any = { width: '36px', height: '36px', borderRadius: '50%', border: '2px solid #6157ff', cursor: 'pointer', objectFit: 'cover' };
-const bannerStyle: any = { background: '#1c252e', color: '#fff', margin: '20px 5%', padding: '45px 50px', borderRadius: '24px' };
-const sectionTitle: any = { fontSize: '18px', fontWeight: '800', color: '#222' };
-const gridStyle: any = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' };
-const offerCard: any = { background: '#fff', padding: '22px', borderRadius: '16px', border: '1px solid #f0f0f0', textDecoration: 'none', color: '#333', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' };
-const emptyEventCard: any = { background: '#fff', border: '1px dashed #ddd', borderRadius: '24px', padding: '40px', textAlign: 'center' };
-const eventRow: any = { background: '#fff', padding: '18px', borderRadius: '18px', border: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.02)' };
-const eventIconBox: any = { background: '#e3f2fd', padding: '10px', borderRadius: '12px', marginRight: '15px' };
-const eventTimeStyle: any = { color: '#6157ff', fontSize: '13px', fontWeight: '600' };
+const headerWrapper: any = { position: 'fixed', top: 0, left: 0, width: '100%', background: '#fff', borderBottom: '1px solid #e0e0e0', zIndex: 1000, height: '70px' };
+const headerInner: any = { maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: '100%', padding: '0 20px' };
+const backCircle: any = { textDecoration: 'none', color: '#333', background: '#f0f2f5', width: '35px', height: '35px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' };
+const statChip: any = { background: '#f0f2f5', padding: '6px 15px', borderRadius: '20px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer' };
+const navAvatar: any = { width: '38px', height: '38px', borderRadius: '50%', cursor: 'pointer', border: '2px solid #6157ff' };
+const contentWrapper: any = { paddingTop: '90px', paddingBottom: '40px', maxWidth: '1200px', margin: '0 auto', paddingLeft: '20px', paddingRight: '20px' };
+const batchBanner: any = { background: '#1c252e', color: '#fff', padding: '40px', borderRadius: '24px', marginBottom: '30px', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' };
+const dashboardGrid: any = { display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '30px' };
+const glassCard: any = { background: '#fff', padding: '25px', borderRadius: '24px', border: '1px solid #eef0f2', boxShadow: '0 4px 6px rgba(0,0,0,0.02)' };
+const cardTitle: any = { margin: 0, fontSize: '18px', fontWeight: '700', color: '#333' };
+const offeringGrid: any = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginTop: '20px' };
+const offeringItem: any = { padding: '20px', background: '#f8f9fa', borderRadius: '16px', textDecoration: 'none', color: '#333', fontWeight: 'bold', display: 'flex', justifyContent: 'space-between' };
+const itemRow: any = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', borderBottom: '1px solid #f5f5f5' };
+const trashBtn: any = { background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px' };
+const actionBtn: any = { background: '#6157ff', color: '#fff', border: 'none', padding: '8px 15px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' };
+const emptyMsg: any = { color: '#999', fontSize: '14px', textAlign: 'center', marginTop: '20px' };
+const statBox: any = { textAlign: 'center', padding: '30px', background: '#6157ff10', borderRadius: '20px', marginTop: '20px' };
 const overlay: any = { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.4)', zIndex: 2000, display: 'flex', justifyContent: 'flex-end', alignItems: 'center' };
-const drawer: any = { width: '400px', height: '100%', background: '#fff', boxShadow: '-10px 0 30px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column' };
-const drawerHead: any = { padding: '20px', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' };
-const adminPanel: any = { padding: '20px', background: '#f9f9f9', borderBottom: '1px solid #eee' };
-const textAreaStyle: any = { width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #eee', fontSize: '14px', resize: 'none' };
-const sendBtn: any = { width: '100%', padding: '14px', background: '#6157ff', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' };
-const notifListArea: any = { padding: '10px', overflowY: 'auto', flex: 1 };
-const notifCard: any = { padding: '16px', borderBottom: '1px solid #f9f9f9' };
-const notifImg: any = { width: '100%', borderRadius: '12px', marginBottom: '10px', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' };
-const notifContent: any = { fontWeight: '600', fontSize: '14px', color: '#333', lineHeight: '1.4' };
-const notifTime: any = { fontSize: '10px', color: '#bbb', marginTop: '8px', fontWeight: '600' };
-const emptyText: any = { textAlign: 'center', color: '#999', marginTop: '20px' };
-const notifBadge: any = { position: 'absolute', top: '-6px', right: '-6px', background: '#ff4d4d', color: '#fff', fontSize: '10px', padding: '2px 5px', borderRadius: '10px', border: '2px solid #fff' };
-const dropdownStyle: any = { position: 'absolute', top: '48px', right: 0, background: '#fff', borderRadius: '12px', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', width: '160px', overflow: 'hidden', border: '1px solid #eee' };
-const dropdownItem: any = { display: 'block', padding: '12px 16px', textDecoration: 'none', color: '#444', fontSize: '14px', borderBottom: '1px solid #f9f9f9' };
-const logoutBtn: any = { display: 'block', padding: '12px 16px', color: 'red', border: 'none', background: 'none', width: '100%', textAlign: 'left', cursor: 'pointer', fontSize: '14px' };
-const modal: any = { background: '#fff', padding: '30px', borderRadius: '28px', width: '420px', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' };
-const modalLabel: any = { fontSize: '12px', color: '#666', display: 'block' };
-const modalInput: any = { width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #ddd', marginTop: '6px', fontSize: '14px' };
-const addEventBtn: any = { background: '#6157ff', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' };
-const cancelBtn: any = { ...sendBtn, background: '#eee', color: '#333' };
-const closeBtnIcon: any = { background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' };
+const drawer: any = { width: '400px', height: '100%', background: '#fff', display: 'flex', flexDirection: 'column', boxShadow: '-10px 0 30px rgba(0,0,0,0.1)' };
+const drawerHeader: any = { padding: '20px', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between' };
+const closeBtn: any = { background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' };
+const adminNotifBox: any = { padding: '20px', background: '#f8f9fa', borderBottom: '1px solid #eee' };
+const notifInput: any = { width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #ddd', resize: 'none' };
+const submitBtn: any = { width: '100%', padding: '14px', background: '#6157ff', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 'bold', marginTop: '10px', cursor: 'pointer' };
+const notifList: any = { flex: 1, overflowY: 'auto', padding: '10px' };
+const notifCard: any = { padding: '15px', borderBottom: '1px solid #f9f9f9' };
+const notifImg: any = { width: '100%', borderRadius: '12px', marginBottom: '10px' };
+const dropdownMenu: any = { position: 'absolute', top: '50px', right: 0, background: '#fff', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', width: '150px', overflow: 'hidden' };
+const dropLink: any = { display: 'block', padding: '12px 15px', textDecoration: 'none', color: '#333', fontSize: '14px' };
+const dropLogout: any = { width: '100%', textAlign: 'left', padding: '12px 15px', color: 'red', border: 'none', background: 'none', cursor: 'pointer' };
+const modal: any = { background: '#fff', padding: '30px', borderRadius: '24px', width: '400px', margin: 'auto' };
+const modalInput: any = { width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #ddd', marginTop: '10px' };
