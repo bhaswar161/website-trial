@@ -17,6 +17,7 @@ export default function BatchDashboard({ params }: PageProps) {
   const [showNotifs, setShowNotifs] = useState(false)
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [showEventModal, setShowEventModal] = useState(false)
+  const [editingEvent, setEditingEvent] = useState<any>(null)
 
   // Data States
   const [notices, setNotices] = useState<any[]>([])
@@ -55,7 +56,7 @@ export default function BatchDashboard({ params }: PageProps) {
     }
   };
 
-  // Fixed handlePostNotice: Accepts optional text for automation
+  // Fixed handlePostNotice: Accepts optional text for automation and fixes TS error
   const handlePostNotice = async (textOverride?: string) => {
     const textToSend = textOverride || newNotice;
     if (!textToSend.trim()) return;
@@ -85,22 +86,33 @@ export default function BatchDashboard({ params }: PageProps) {
     if (!error) setNotices(prev => prev.filter(n => n.id !== id));
   };
 
-  const handleCreateEvent = async () => {
+  const handleSaveEvent = async () => {
     if (!eventTitle || !eventDate) return alert("Please fill both Title and Date");
     setUploading(true);
     try {
-      const { data, error } = await supabase.from('events').insert([{ 
-        batch_id: batchId, 
-        title: eventTitle, 
-        event_time: eventDate 
-      }]).select();
+      if (editingEvent) {
+        // UPDATE EXISTING EVENT
+        const { error } = await supabase
+          .from('events')
+          .update({ title: eventTitle, event_time: eventDate })
+          .eq('id', editingEvent.id);
+        
+        if (error) throw error;
+        await handlePostNotice(`✏️ Event Updated: ${eventTitle}`);
+      } else {
+        // CREATE NEW EVENT
+        const { data, error } = await supabase.from('events').insert([{ 
+          batch_id: batchId, 
+          title: eventTitle, 
+          event_time: eventDate 
+        }]).select();
 
-      if (error) throw error;
-      
-      // Fixed: Now calling the updated function with an argument
-      await handlePostNotice(`🗓️ New Event: ${eventTitle} scheduled for ${new Date(eventDate).toLocaleString()}`);
+        if (error) throw error;
+        await handlePostNotice(`🗓️ New Event Scheduled: ${eventTitle}`);
+      }
       
       setShowEventModal(false);
+      setEditingEvent(null);
       setEventTitle("");
       setEventDate("");
       fetchData(); 
@@ -109,6 +121,16 @@ export default function BatchDashboard({ params }: PageProps) {
     } finally {
       setUploading(false);
     }
+  };
+
+  const openEditModal = (ev: any) => {
+    setEditingEvent(ev);
+    setEventTitle(ev.title);
+    // Format date for datetime-local input
+    const date = new Date(ev.event_time);
+    const formattedDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    setEventDate(formattedDate);
+    setShowEventModal(true);
   };
 
   const deleteEvent = async (id: string) => {
@@ -123,12 +145,11 @@ export default function BatchDashboard({ params }: PageProps) {
   return (
     <div style={{ background: '#f8f9fa', minHeight: '100vh', fontFamily: 'sans-serif' }}>
       
-      {/* SEPARATED HEADER */}
       <header style={headerWrapper}>
         <div style={headerInner}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <Link href="/neet" style={backBtnCircle}>←</Link>
-            <h1 style={{ fontSize: '18px', fontWeight: '800', margin: 0 }}>Study</h1>
+            <h1 style={{ fontSize: '18px', fontWeight: '800', margin: 0 }}>Study Hub</h1>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '25px' }}>
             <motion.div whileTap={{ scale: 0.9 }} style={statPill} onClick={() => setShowNotifs(true)}>
@@ -155,7 +176,6 @@ export default function BatchDashboard({ params }: PageProps) {
         </div>
       </header>
 
-      {/* CONTENT AREA */}
       <main style={contentArea}>
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={batchBanner}>
           <small style={{ opacity: 0.7 }}>ACTIVE BATCH</small>
@@ -176,23 +196,27 @@ export default function BatchDashboard({ params }: PageProps) {
           </div>
         </section>
 
-        {/* STATS & EVENTS INTEGRATED (PW STYLE) */}
         <div style={dashboardGrid}>
           <div style={{ flex: 2 }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: '15px' }}>
               <h3 style={sectionTitle}>Upcoming Events</h3>
-              {isOwner && <button onClick={() => setShowEventModal(true)} style={addBtn}>+ Create</button>}
+              {isOwner && <button onClick={() => { setEditingEvent(null); setEventTitle(""); setEventDate(""); setShowEventModal(true); }} style={addBtn}>+ Create</button>}
             </div>
             {events.length === 0 ? <div style={emptyBox}>🕒 No upcoming events scheduled.</div> : (
               events.map(ev => (
                 <motion.div layout key={ev.id} style={dataRow}>
-                  <div>
-                    <div style={{ fontWeight: 'bold' }}>{ev.title}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 'bold', color: '#333' }}>{ev.title}</div>
                     <div style={{ fontSize: '12px', color: '#6157ff', fontWeight: '600' }}>
-                        {new Date(ev.event_time).toLocaleString()}
+                        {new Date(ev.event_time).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
                     </div>
                   </div>
-                  {isOwner && <button onClick={() => deleteEvent(ev.id)} style={trashBtn}>🗑️</button>}
+                  {isOwner && (
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <button onClick={() => openEditModal(ev)} style={editActionBtn}>Edit</button>
+                      <button onClick={() => deleteEvent(ev.id)} style={deleteActionBtn}>Delete</button>
+                    </div>
+                  )}
                 </motion.div>
               ))
             )}
@@ -212,7 +236,6 @@ export default function BatchDashboard({ params }: PageProps) {
         </div>
       </main>
 
-      {/* NOTIFICATIONS DRAWER */}
       <AnimatePresence>
         {showNotifs && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={overlay} onClick={() => setShowNotifs(false)}>
@@ -245,15 +268,18 @@ export default function BatchDashboard({ params }: PageProps) {
         )}
       </AnimatePresence>
 
-      {/* EVENT MODAL */}
       <AnimatePresence>
         {showEventModal && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={overlay} onClick={() => setShowEventModal(false)}>
             <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }} style={modal} onClick={e => e.stopPropagation()}>
-               <h3 style={{marginTop:0}}>Schedule Event</h3>
+               <h3 style={{marginTop:0}}>{editingEvent ? 'Update Event' : 'Schedule Event'}</h3>
+               <label style={{fontSize: '12px', fontWeight: 'bold', color: '#666'}}>Event Title</label>
                <input placeholder="Title" value={eventTitle} onChange={e => setEventTitle(e.target.value)} style={modalInput} />
+               <label style={{fontSize: '12px', fontWeight: 'bold', color: '#666', marginTop: '15px', display: 'block'}}>Date & Time</label>
                <input type="datetime-local" value={eventDate} onChange={e => setEventDate(e.target.value)} style={modalInput} />
-               <button onClick={handleCreateEvent} style={sendBtn}>Create Event</button>
+               <button onClick={handleSaveEvent} disabled={uploading} style={sendBtn}>
+                 {uploading ? "Saving..." : editingEvent ? "Update Event" : "Create Event"}
+               </button>
             </motion.div>
           </motion.div>
         )}
@@ -262,7 +288,7 @@ export default function BatchDashboard({ params }: PageProps) {
   )
 }
 
-// --- UPDATED STYLES ---
+// --- STYLES ---
 const headerWrapper: any = { position:'fixed', top:0, left:0, width:'100%', background:'#fff', borderBottom:'1px solid #f0f0f0', zIndex: 1000, height: '65px' };
 const headerInner: any = { maxWidth:'1200px', margin:'0 auto', display:'flex', justifyContent:'space-between', alignItems:'center', height:'100%', padding:'0 20px' };
 const backBtnCircle: any = { textDecoration:'none', color:'#333', background:'#f5f5f5', width:'35px', height:'35px', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center' };
@@ -288,9 +314,10 @@ const sendBtn: any = { width:'100%', padding:'15px', background:'#6157ff', color
 const notifCard: any = { padding:'20px', borderBottom:'1px solid #f9f9f9', fontSize:'14px' };
 const closeBtn: any = { background:'none', border:'none', fontSize:'24px', cursor:'pointer', color:'#ccc' };
 const delTextBtn: any = { background:'none', border:'none', color:'#ff4d4d', fontSize:'12px', fontWeight:'bold', cursor:'pointer' };
-const trashBtn: any = { background:'none', border:'none', cursor:'pointer', fontSize: '18px' };
 const addBtn: any = { background:'#6157ff', color:'#fff', border:'none', padding:'10px 20px', borderRadius:'12px', fontWeight:'bold', cursor:'pointer' };
 const modal: any = { background:'#fff', padding:'40px', borderRadius:'30px', width:'400px', margin:'auto' };
-const modalInput: any = { width:'100%', padding:'15px', borderRadius:'12px', border:'1px solid #eee', marginTop:'15px' };
-const dropdownMenu: any = { position: 'absolute', top: '45px', right: 0, background: '#fff', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', border: '1px solid #f0f0f0', width: '150px', overflow: 'hidden' };
+const modalInput: any = { width:'100%', padding:'15px', borderRadius:'12px', border:'1px solid #eee', marginTop:'5px' };
+const dropdownMenu: any = { position: 'absolute', top: '45px', right: 0, background: '#fff', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', border: '1px solid #f0f0f0', width: '150px', overflow: 'hidden', zIndex: 100 };
 const dropLogout: any = { padding: '12px 25px', color: 'red', border: 'none', background: 'none', cursor: 'pointer', fontWeight: 'bold', width: '100%', textAlign: 'left' };
+const editActionBtn: any = { background: '#f0f7ff', color: '#0070f3', border: 'none', padding: '6px 14px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px' };
+const deleteActionBtn: any = { background: '#fff1f1', color: '#ff4d4d', border: 'none', padding: '6px 14px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px' };
