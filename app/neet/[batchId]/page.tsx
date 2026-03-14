@@ -1,96 +1,81 @@
 "use client";
-import { useParams } from "next/navigation"
 import { useSession } from "next-auth/react"
-import { useState, useEffect, useCallback } from 'react'
-import { supabase } from '@/app/lib/supabase' // UPDATED: Using central client
-import NoticeBoard from '../../components/NoticeBoard'
-import Leaderboard from '../../components/Leaderboard'
-import Link from 'next/link'
+import { redirect } from "next/navigation"
+import Link from "next/link"
+import { useState, useEffect, useMemo } from 'react'
+import { createClient } from '@supabase/supabase-js'
 
-export default function BatchDetailsPage() {
-  const { batchId } = useParams()
-  const { data: session } = useSession()
+export default function BatchDetailsPage({ params }: { params: { batchId: string } }) {
+  const { data: session, status } = useSession()
+  const [mounted, setMounted] = useState(false)
+  const [subject, setSubject] = useState("Physics")
+  const [title, setTitle] = useState("")
+  const [selectedVideo, setSelectedVideo] = useState<File | null>(null)
+  const [selectedNotes, setSelectedNotes] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
   const [materials, setMaterials] = useState<any[]>([])
-  const [liveStatus, setLiveStatus] = useState(false)
-  
-  const [showUploadModal, setShowUploadModal] = useState(false)
-  const [selectedVideo, setSelectedVideo] = useState<File | null>(null);
-  const [selectedNotes, setSelectedNotes] = useState<File | null>(null);
-  const [uploadProgress, setUploadProgress] = useState(0);
+
+  // 1. Initialize Supabase with Session Headers for RLS
+  const supabase = useMemo(() => {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+    return createClient(url, key, {
+      global: {
+        headers: {
+          Authorization: `Bearer ${session?.user ? 'authenticated' : ''}`,
+        },
+      },
+    });
+  }, [session]);
 
   const isOwner = session?.user?.email === "bhaswarray@gmail.com"
-  const batchName = batchId === "ultimate-2026" ? "Yakeen NEET 2026" : "NEET Crash Course 2026"
-  const themeColor = batchId === "ultimate-2026" ? "#6c63ff" : "#ff4ecd"
-
-  const fetchData = useCallback(async () => {
-    if (!batchId) return;
-
-    // Fetch Materials
-    const { data: mats } = await supabase
-      .from('materials')
-      .select('*')
-      .eq('batch_id', batchId)
-      .order('created_at', { ascending: false });
-    
-    if (mats) setMaterials(mats);
-    
-    // Fetch Live Status
-    const { data: status } = await supabase
-      .from('class_status')
-      .select('is_live')
-      .eq('id', batchId)
-      .single();
-      
-    if (status) setLiveStatus(status.is_live);
-  }, [batchId]);
 
   useEffect(() => {
-    fetchData();
+    setMounted(true)
+    if (supabase) fetchMaterials();
+  }, [params.batchId, supabase])
 
-    const channel = supabase
-      .channel(`batch-${batchId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'materials', filter: `batch_id=eq.${batchId}` }, fetchData)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'class_status', filter: `id=eq.${batchId}` }, fetchData)
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, [batchId, fetchData]);
-
-  const toggleLive = async () => {
-    if (!isOwner) return;
-    const newStatus = !liveStatus;
-    setLiveStatus(newStatus);
-    await supabase.from('class_status').update({ is_live: newStatus }).eq('id', batchId);
+  const fetchMaterials = async () => {
+    const { data, error } = await supabase
+      .from('materials')
+      .select('*')
+      .eq('batch_id', params.batchId)
+      .order('created_at', { ascending: false });
+    if (data) setMaterials(data);
   };
 
-  const handleUpload = async (e: any) => {
+  const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedVideo && !selectedNotes) return alert("Please add a file");
-    setUploadProgress(20);
+    if (!selectedVideo || !title) return alert("Please provide a title and video");
 
-    const formData = new FormData(e.target);
-    const subject = formData.get('subject');
-    const title = formData.get('title');
-
+    setUploading(true);
     try {
-      let videoUrl = null, notesUrl = null;
+      // 1. Upload Video to Storage
+      const vFileName = `${Date.now()}_${selectedVideo.name.replace(/\s+/g, '_')}`;
+      const vPath = `neet/${params.batchId}/${subject}/${vFileName}`;
+      
+      const { error: vError } = await supabase.storage
+        .from('batch-materials')
+        .upload(vPath, selectedVideo);
+      
+      if (vError) throw vError;
 
-      if (selectedVideo) {
-        const vPath = `neet/${batchId}/${subject}/v_${Date.now()}.${selectedVideo.name.split('.').pop()}`;
-        const { error: vErr } = await supabase.storage.from('batch-materials').upload(vPath, selectedVideo);
-        if (vErr) throw vErr;
-        videoUrl = supabase.storage.from('batch-materials').getPublicUrl(vPath).data.publicUrl;
-      }
+      const { data: { publicUrl: videoUrl } } = supabase.storage
+        .from('batch-materials')
+        .getPublicUrl(vPath);
 
+      // 2. Upload Notes (Optional)
+      let notesUrl = "";
       if (selectedNotes) {
-        const nPath = `neet/${batchId}/${subject}/n_${Date.now()}.${selectedNotes.name.split('.').pop()}`;
-        const { error: nErr } = await supabase.storage.from('batch-materials').upload(nPath, selectedNotes);
-        if (nErr) throw nErr;
+        const nFileName = `notes_${Date.now()}_${selectedNotes.name.replace(/\s+/g, '_')}`;
+        const nPath = `neet/${params.batchId}/${subject}/${nFileName}`;
+        await supabase.storage.from('batch-materials').upload(nPath, selectedNotes);
         notesUrl = supabase.storage.from('batch-materials').getPublicUrl(nPath).data.publicUrl;
       }
 
-      const { error } = await supabase.from('materials').insert([{
-        batch_id: batchId,
+      // 3. Save to Database
+      const { error: dbError } = await supabase.from('materials').insert([{
+        batch_id: params.batchId,
         subject,
         title,
         video_url: videoUrl,
@@ -98,135 +83,101 @@ export default function BatchDetailsPage() {
         category: 'neet'
       }]);
 
-      if (error) throw error;
+      if (dbError) throw dbError;
 
       alert("Success! Content is now live.");
-      setShowUploadModal(false);
-      setSelectedVideo(null); setSelectedNotes(null);
-      fetchData(); 
-    } catch (err: any) { 
+      setTitle("");
+      setSelectedVideo(null);
+      setSelectedNotes(null);
+      fetchMaterials();
+    } catch (err: any) {
       console.error(err);
-      alert(`Upload failed: ${err.message || "Check storage permissions"}`); 
-    } finally { setUploadProgress(0); }
+      alert(`Upload failed: ${err.message}`);
+    } finally {
+      setUploading(false);
+    }
   };
 
+  if (status === "loading" || !mounted) return <p style={{textAlign:'center', marginTop:'50px'}}>Loading Batch Content...</p>
+  if (status === "unauthenticated") redirect("/api/auth/signin")
+
   return (
-    <div style={{ minHeight: '100vh', background: '#f5f7fb', fontFamily: 'sans-serif' }}>
-      
-      {showUploadModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <form onSubmit={handleUpload} style={{ background: 'white', padding: '30px', borderRadius: '25px', width: '450px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-            <h3 style={{margin:0}}>Upload to {batchName}</h3>
-            <select name="subject" required style={inputStyle}><option>Physics</option><option>Chemistry</option><option>Biology</option></select>
-            <input name="title" placeholder="Topic Title" required style={inputStyle} />
-            
-            <div onDragOver={(e)=>e.preventDefault()} onDrop={(e)=>{e.preventDefault(); setSelectedVideo(e.dataTransfer.files[0])}} style={dropZoneStyle} onClick={()=>document.getElementById('vIn')?.click()}>
-                <input type="file" id="vIn" hidden accept="video/*" onChange={(e)=>setSelectedVideo(e.target.files![0])} />
-                🎥 {selectedVideo ? selectedVideo.name : "Drop Video Recording"}
-            </div>
-
-            <div onDragOver={(e)=>e.preventDefault()} onDrop={(e)=>{e.preventDefault(); setSelectedNotes(e.dataTransfer.files[0])}} style={{...dropZoneStyle, borderColor:'#ff4ecd'}} onClick={()=>document.getElementById('nIn')?.click()}>
-                <input type="file" id="nIn" hidden accept=".pdf" onChange={(e)=>setSelectedNotes(e.target.files![0])} />
-                📄 {selectedNotes ? selectedNotes.name : "Drop PDF Notes"}
-            </div>
-
-            {uploadProgress > 0 && <div style={{height:'4px', width:'100%', background:'#eee', borderRadius:'2px'}}><div style={{height:'100%', width:`${uploadProgress}%`, background:themeColor, borderRadius:'2px'}} /></div>}
-
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button type="button" onClick={() => setShowUploadModal(false)} style={{ flex: 1, padding: '12px', borderRadius: '10px', border: '1px solid #ddd' }}>Cancel</button>
-              <button type="submit" style={{ flex: 1, padding: '12px', borderRadius: '10px', background: themeColor, color: 'white', border: 'none', fontWeight:'bold' }}>Upload Content</button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      <header style={{ background: themeColor, padding: '40px 5%', color: 'white', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
-        <Link href="/neet" style={{ color: 'rgba(255,255,255,0.8)', textDecoration: 'none', fontSize: '14px', fontWeight: 'bold' }}>← Back to All Batches</Link>
-        <h1 style={{ margin: '10px 0 0 0', fontSize: '2.5rem' }}>{batchName}</h1>
+    <div style={{ padding: '30px 5%', maxWidth: '1200px', margin: '0 auto', fontFamily: 'sans-serif' }}>
+      <header style={{ marginBottom: '40px' }}>
+        <h1 style={{ textTransform: 'capitalize', color: '#333' }}>
+          {params.batchId.replace(/-/g, ' ')}
+        </h1>
+        <Link href="/neet" style={{ color: '#6c63ff', textDecoration: 'none', fontWeight: 'bold' }}>
+          ← Back to NEET Portal
+        </Link>
       </header>
 
-      <div style={{ padding: '40px 5%', display: 'grid', gridTemplateColumns: '1fr 350px', gap: '30px' }}>
-        
-        <div>
-          <h4 style={{ color: '#666', marginBottom: '15px', textTransform: 'uppercase', fontSize: '12px', letterSpacing: '1px' }}>Batch Offerings</h4>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '35px' }}>
-            <div style={tileStyle}>📚 All Classes</div>
-            <div style={tileStyle}>📝 All Tests</div>
-            <div style={tileStyle}>❓ My Doubts</div>
-            <div style={tileStyle}>👥 Community</div>
-          </div>
-
-          <h4 style={{ color: '#666', marginBottom: '15px', textTransform: 'uppercase', fontSize: '12px', letterSpacing: '1px' }}>Study Zone</h4>
-
-          {liveStatus && (
-            <div style={{ 
-                background: '#fff', 
-                padding: '20px', 
-                borderRadius: '15px', 
-                border: `2px solid ${themeColor}`, 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '20px', 
-                marginBottom: '25px',
-                boxShadow: `0 8px 20px ${themeColor}15` 
-            }}>
-                <div style={{ height: '50px', width: '50px', background: themeColor, borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', textAlign: 'center', lineHeight: '50px' }}>🎥</div>
-                <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '11px', color: themeColor, fontWeight: 'bold', textTransform: 'uppercase' }}>● Live Now</div>
-                    <div style={{ fontWeight: 'bold', fontSize: '16px', color: '#333' }}>Class is in Progress</div>
-                </div>
-                <Link href={`/neet/live/${batchId}`} target="_blank">
-                    <button style={{ padding: '10px 25px', background: themeColor, color: 'white', border: 'none', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer' }}>Join Now</button>
-                </Link>
+      {isOwner && (
+        <section style={{ background: '#fff', padding: '25px', borderRadius: '15px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', marginBottom: '40px', border: '1px solid #e0e0e0' }}>
+          <h3 style={{ marginTop: 0, color: '#2e7d32' }}>Faculty: Upload New Material</h3>
+          <form onSubmit={handleUpload} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={labelStyle}>Lecture Title</label>
+              <input type="text" placeholder="e.g. Newton's Laws of Motion" value={title} onChange={e => setTitle(e.target.value)} style={inputStyle} required />
             </div>
-          )}
+            
+            <div>
+              <label style={labelStyle}>Subject</label>
+              <select value={subject} onChange={e => setSubject(e.target.value)} style={inputStyle}>
+                <option>Physics</option>
+                <option>Chemistry</option>
+                <option>Biology</option>
+              </select>
+            </div>
 
-          {['Physics', 'Chemistry', 'Biology'].map(sub => (
-            <details key={sub} open style={folderStyle}>
-              <summary style={{ fontWeight: 'bold', cursor: 'pointer', color: themeColor, outline: 'none' }}>📂 {sub}</summary>
-              <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {materials.filter(m => m.subject?.toLowerCase() === sub.toLowerCase()).map(m => (
-                  <div key={m.id} style={materialItemStyle}>
-                    <span style={{ fontWeight: '500' }}>{m.title}</span>
-                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                        {m.video_url && <a href={m.video_url} target="_blank" style={{ textDecoration: 'none', fontSize: '18px' }}>🎥</a>}
-                        {m.notes_url && <a href={m.notes_url} target="_blank" style={{ textDecoration: 'none', fontSize: '18px' }}>📄</a>}
-                    </div>
-                  </div>
-                ))}
-                {materials.filter(m => m.subject?.toLowerCase() === sub.toLowerCase()).length === 0 && <small style={{ color: '#999', padding: '10px' }}>No materials uploaded yet.</small>}
+            <div>
+              <label style={labelStyle}>Lecture Video</label>
+              <input type="file" accept="video/*" onChange={e => setSelectedVideo(e.target.files?.[0] || null)} required />
+            </div>
+
+            <div>
+              <label style={labelStyle}>Lecture Notes (PDF)</label>
+              <input type="file" accept=".pdf" onChange={e => setSelectedNotes(e.target.files?.[0] || null)} />
+            </div>
+
+            <button type="submit" disabled={uploading} style={uploading ? disabledBtnStyle : btnStyle}>
+              {uploading ? "Uploading to Server..." : "Publish Content"}
+            </button>
+          </form>
+        </section>
+      )}
+
+      <section>
+        <h3 style={{ color: '#444' }}>Batch Lectures</h3>
+        <div style={{ display: 'grid', gap: '15px' }}>
+          {materials.map((m) => (
+            <div key={m.id} style={{ background: '#fff', padding: '20px', borderRadius: '12px', border: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+              <div>
+                <span style={{ fontSize: '11px', color: '#6c63ff', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>{m.subject}</span>
+                <h4 style={{ margin: '5px 0', color: '#333' }}>{m.title}</h4>
+                <small style={{ color: '#999' }}>Uploaded on: {new Date(m.created_at).toLocaleDateString()}</small>
               </div>
-            </details>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <a href={m.video_url} target="_blank" rel="noreferrer" style={actionBtn}>Watch Video</a>
+                {m.notes_url && <a href={m.notes_url} target="_blank" rel="noreferrer" style={notesBtn}>Download PDF</a>}
+              </div>
+            </div>
           ))}
-
-          {isOwner && (
-            <div style={{ display: 'flex', gap: '15px', marginTop: '40px' }}>
-               <button onClick={toggleLive} style={{ flex: 1, padding: '18px', borderRadius: '15px', border: 'none', background: liveStatus ? '#ff4757' : themeColor, color: 'white', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
-                  {liveStatus ? "🔴 End Live Session" : "🟢 Start Live Session"}
-               </button>
-               <button onClick={() => setShowUploadModal(true)} style={{ flex: 1, padding: '18px', borderRadius: '15px', border: `2px dashed ${themeColor}`, background: 'white', color: themeColor, fontWeight: 'bold', cursor: 'pointer' }}>
-                  + Add Subject Content
-               </button>
+          {materials.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '40px', background: '#f9f9f9', borderRadius: '10px', color: '#888' }}>
+              No lectures have been uploaded for this batch yet.
             </div>
           )}
         </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
-          <div style={{ background: '#fff', padding: '20px', borderRadius: '20px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
-            <NoticeBoard category="neet" isOwner={isOwner} />
-          </div>
-          <div style={{ background: '#fff', padding: '20px', borderRadius: '20px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
-            <Leaderboard category="neet" />
-          </div>
-        </div>
-
-      </div>
+      </section>
     </div>
   )
 }
 
-const tileStyle = { background: '#fff', padding: '25px', borderRadius: '18px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '12px', border: '1px solid #f0f0f0', fontSize: '15px' };
-const folderStyle = { background: '#fff', padding: '18px', borderRadius: '15px', marginBottom: '12px', border: '1px solid #eee', transition: '0.3s' };
-const materialItemStyle = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 15px', background: '#f9f9fb', borderRadius: '10px', fontSize: '14px' };
-const inputStyle = { padding: '14px', borderRadius: '12px', border: '1px solid #eee', fontSize: '14px', outline: 'none' };
-const dropZoneStyle = { border: '2px dashed #6c63ff', padding: '30px', borderRadius: '20px', textAlign: 'center' as const, fontSize: '14px', color: '#666', background: '#fcfcfc', cursor: 'pointer' };
+// Inline Styles
+const inputStyle: any = { width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #ddd', fontSize: '15px' };
+const labelStyle: any = { display: 'block', fontSize: '13px', color: '#666', marginBottom: '8px', fontWeight: '600' };
+const btnStyle: any = { gridColumn: '1 / -1', padding: '16px', background: '#6c63ff', color: 'white', border: 'none', borderRadius: '10px', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px', transition: '0.2s' };
+const disabledBtnStyle: any = { ...btnStyle, background: '#aaa', cursor: 'not-allowed' };
+const actionBtn: any = { padding: '10px 20px', background: '#6c63ff', color: 'white', borderRadius: '8px', textDecoration: 'none', fontSize: '14px', fontWeight: '500' };
+const notesBtn: any = { ...actionBtn, background: '#f0f0f0', color: '#333', border: '1px solid #ddd' };

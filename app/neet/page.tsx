@@ -2,13 +2,8 @@
 import { useSession } from "next-auth/react"
 import { redirect } from "next/navigation"
 import Link from "next/link"
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@supabase/supabase-js'
-
-// Sidebars are removed from here and moved to the [batchId] page
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
 
 export default function NeetPage() {
   const { data: session, status } = useSession()
@@ -16,23 +11,44 @@ export default function NeetPage() {
   const [enrolledBatches, setEnrolledBatches] = useState<string[]>([])
   const [searchQuery, setSearchQuery] = useState("");
 
+  // 1. Memoized Supabase Client
+  // This ensures the client is only created when the session changes
+  const supabase = useMemo(() => {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+    return createClient(url, key, {
+      global: {
+        headers: {
+          Authorization: `Bearer ${session?.user ? 'authenticated' : ''}`,
+        },
+      },
+    });
+  }, [session]);
+
   const isOwner = session?.user?.email === "bhaswarray@gmail.com"
 
   useEffect(() => {
     setMounted(true)
-    if (!supabase || !session?.user?.email) return;
+    if (!session?.user?.email) return;
 
     const fetchData = async () => {
-      const { data: enrolls } = await supabase.from('enrollments').select('batch_id').eq('student_email', session.user.email)
-      if (enrolls) setEnrolledBatches(enrolls.map(e => e.batch_id))
-    }
+      const { data: enrolls, error } = await supabase
+        .from('enrollments')
+        .select('batch_id')
+        .eq('student_email', session.user.email);
+      
+      if (enrolls) setEnrolledBatches(enrolls.map(e => e.batch_id));
+    };
 
-    fetchData()
-  }, [session])
+    fetchData();
+  }, [session, supabase]);
 
   const handleEnroll = async (batchId: string) => {
-    if (!supabase || !session?.user?.email) return alert("Please sign in to enroll");
-    const { error } = await supabase.from('enrollments').insert([{ student_email: session.user.email, batch_id: batchId }]);
+    if (!session?.user?.email) return alert("Please sign in to enroll");
+    
+    const { error } = await supabase
+      .from('enrollments')
+      .insert([{ student_email: session.user.email, batch_id: batchId }]);
     
     if (!error || (error as any).code === '23505') {
       setEnrolledBatches(prev => [...prev, batchId]);
@@ -41,6 +57,7 @@ export default function NeetPage() {
     }
   };
 
+  // Auth Protection
   if (status === "unauthenticated") redirect("/api/auth/signin")
   if (status === "loading" || !mounted) return <div style={{textAlign:'center', marginTop:'50px'}}>Loading NEET Portal...</div>
 
@@ -49,7 +66,6 @@ export default function NeetPage() {
     { id: "crash-course", name: "NEET Crash Course 2026", color: "#ff4ecd", originalPrice: "5,500", starts: "15 May, 2026" }
   ]
 
-  // Filter batches based on Search Input
   const filteredBatches = batches.filter(batch => 
     batch.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -63,10 +79,13 @@ export default function NeetPage() {
                 <h1 style={{ margin: 0, fontSize: '32px', color: '#333' }}>NEET Study Portal</h1>
                 <Link href="/" style={{color:'#6c63ff', textDecoration:'none', fontSize: '14px'}}>← Home</Link>
             </div>
-            {isOwner && <div style={{ color: '#2e7d32', fontWeight: 'bold', background: '#e8f5e9', padding: '8px 15px', borderRadius: '10px' }}>Faculty Mode Active</div>}
+            {isOwner && (
+              <div style={{ color: '#2e7d32', fontWeight: 'bold', background: '#e8f5e9', padding: '8px 15px', borderRadius: '10px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}>
+                Faculty Mode Active
+              </div>
+            )}
         </div>
 
-        {/* MODERN SEARCH BAR */}
         <div style={{ position: 'relative', maxWidth: '500px' }}>
           <input 
             type="text" 
@@ -80,15 +99,13 @@ export default function NeetPage() {
               border: '1px solid #ddd', 
               fontSize: '16px',
               boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
-              outline: 'none',
-              transition: 'border 0.3s'
+              outline: 'none'
             }} 
           />
           <span style={{ position: 'absolute', right: '20px', top: '16px', color: '#999' }}>🔍</span>
         </div>
       </header>
 
-      {/* Grid Layout - Clean 1-column layout for the Gallery */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 450px))', gap: '30px' }}>
         {filteredBatches.map((batch) => {
           const isEnrolled = enrolledBatches.includes(batch.id) || isOwner;
@@ -109,20 +126,11 @@ export default function NeetPage() {
                   </div>
 
                   <div style={{ marginTop: '20px' }}>
-                    {(isOwner || enrolledBatches.includes(batch.id)) ? (
+                    {isEnrolled ? (
                       <Link href={`/neet/${batch.id}`} style={{ textDecoration: 'none' }}>
                         <button style={{ 
-                            width: '100%', 
-                            padding: '16px', 
-                            borderRadius: '15px', 
-                            border: `2px solid ${batch.color}`, 
-                            color: batch.color, 
-                            background: 'white', 
-                            fontWeight: 'bold', 
-                            fontSize: '16px', 
-                            cursor: 'pointer', 
-                            textTransform: 'uppercase',
-                            transition: '0.3s'
+                            width: '100%', padding: '16px', borderRadius: '15px', border: `2px solid ${batch.color}`, 
+                            color: batch.color, background: 'white', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer', textTransform: 'uppercase'
                         }}>
                           Explore Batch
                         </button>
@@ -131,17 +139,9 @@ export default function NeetPage() {
                       <button 
                         onClick={() => handleEnroll(batch.id)} 
                         style={{ 
-                            width: '100%', 
-                            padding: '16px', 
-                            borderRadius: '15px', 
-                            border: 'none', 
-                            background: batch.color, 
-                            color: 'white', 
-                            fontWeight: 'bold', 
-                            fontSize: '16px', 
-                            cursor: 'pointer', 
-                            textTransform: 'uppercase',
-                            boxShadow: `0 4px 15px ${batch.color}44`
+                            width: '100%', padding: '16px', borderRadius: '15px', border: 'none', 
+                            background: batch.color, color: 'white', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer', 
+                            textTransform: 'uppercase', boxShadow: `0 4px 15px ${batch.color}44`
                         }}
                       >
                         Enroll Now
@@ -153,12 +153,6 @@ export default function NeetPage() {
             </div>
           )
         })}
-        
-        {filteredBatches.length === 0 && (
-            <p style={{ color: '#666', gridColumn: '1/-1', textAlign: 'center', marginTop: '20px' }}>
-                No batches found matching "{searchQuery}"
-            </p>
-        )}
       </div>
     </div>
   )
