@@ -38,10 +38,8 @@ export default function BatchDashboard({ params }: PageProps) {
   const isOwner = session?.user?.email === "bhaswarray@gmail.com"
 
   useEffect(() => { 
-    // Load unread tracking from browser
     const saved = localStorage.getItem(`last_read_${batchId}`);
     if (saved) setLastReadTime(parseInt(saved));
-
     setMounted(true);
     if (session?.user?.email) fetchData();
   }, [batchId, session]);
@@ -56,10 +54,9 @@ export default function BatchDashboard({ params }: PageProps) {
 
       const { data: eData } = await supabase.from('events').select('*').eq('batch_id', batchId).order('event_time', { ascending: true });
       setEvents(eData || []);
-    } catch (e) { console.error("Fetch error:", e); }
+    } catch (e) { console.error(e); }
   };
 
-  // --- UNREAD LOGIC ---
   const unreadCount = notices.filter(n => new Date(n.created_at).getTime() > lastReadTime).length;
 
   const handleMarkAllRead = () => {
@@ -68,43 +65,48 @@ export default function BatchDashboard({ params }: PageProps) {
     localStorage.setItem(`last_read_${batchId}`, now.toString());
   };
 
-  const handleOpenNotifs = () => {
-    setShowNotifs(true);
-    // Optional: Auto-mark read when opening
-    // handleMarkAllRead(); 
-  };
-
-  // --- LOGIC ---
-  const handlePostNotice = async (textOverride?: any) => {
-    const content = typeof textOverride === 'string' ? textOverride : newNotice;
-    if (!content || !content.trim()) return;
+  // --- NOTIFICATION ACTIONS ---
+  const handlePostNotice = async () => {
+    if (!newNotice.trim()) return;
     setUploading(true);
     try {
-      const { data, error } = await supabase.from('notices').insert([{ 
-          batch_id: batchId, 
-          title: typeof textOverride === 'string' ? "Event Alert" : "Announcement",
-          content: content.trim(),
-          category: typeof textOverride === 'string' ? "Event" : "General"
-      }]).select();
-      if (error) throw error;
-      if (data) setNotices(prev => [data[0], ...prev]);
-      setNewNotice("");
-    } catch (err: any) { alert("Error: " + err.message); } finally { setUploading(false); }
-  };
-
-  const handleSaveEvent = async () => {
-    if (!eventTitle || !eventDate) return alert("Fill fields");
-    setUploading(true);
-    try {
-      const { data, error } = await supabase.from('events').insert([{ batch_id: batchId, title: eventTitle, event_time: eventDate }]).select();
-      if (error) throw error;
-      if (data) {
-        setEvents(prev => [...prev, data[0]].sort((a,b) => new Date(a.event_time).getTime() - new Date(b.event_time).getTime()));
-        const timeStr = new Date(eventDate).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
-        await handlePostNotice(`🗓️ New Event: ${eventTitle} at ${timeStr}`);
+      if (editingNotif) {
+        await supabase.from('notices').update({ content: newNotice.trim() }).eq('id', editingNotif.id);
+      } else {
+        await supabase.from('notices').insert([{ 
+            batch_id: batchId, 
+            title: "Announcement",
+            content: newNotice.trim()
+        }]);
       }
-      setShowEventModal(false); setEventTitle(""); setEventDate("");
-    } catch (err: any) { alert("Error: " + err.message); } finally { setUploading(false); }
+      setNewNotice(""); setEditingNotif(null); fetchData();
+    } catch (err: any) { alert(err.message); } finally { setUploading(false); }
+  };
+
+  const deleteNotice = async (id: string) => {
+    if (!confirm("Delete notice?")) return;
+    await supabase.from('notices').delete().eq('id', id);
+    fetchData();
+  };
+
+  // --- EVENT ACTIONS ---
+  const handleSaveEvent = async () => {
+    if (!eventTitle || !eventDate) return;
+    setUploading(true);
+    try {
+      if (editingEvent) {
+        await supabase.from('events').update({ title: eventTitle, event_time: eventDate }).eq('id', editingEvent.id);
+      } else {
+        await supabase.from('events').insert([{ batch_id: batchId, title: eventTitle, event_time: eventDate }]);
+      }
+      setShowEventModal(false); setEditingEvent(null); setEventTitle(""); setEventDate(""); fetchData();
+    } catch (err: any) { alert(err.message); } finally { setUploading(false); }
+  };
+
+  const deleteEvent = async (id: string) => {
+    if (!confirm("Delete event?")) return;
+    await supabase.from('events').delete().eq('id', id);
+    fetchData();
   };
 
   if (status === "loading" || !mounted) return null;
@@ -116,12 +118,15 @@ export default function BatchDashboard({ params }: PageProps) {
         <div style={headerInner}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <Link href="/neet" style={backBtnCircle}>←</Link>
-            <h1 style={{ fontSize: '18px', fontWeight: '800', margin: 0 }}>Study Hub</h1>
+            <h1 style={{ fontSize: '18px', fontWeight: '800' }}>Study Hub</h1>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '25px' }}>
-            <div style={bellContainer} onClick={handleOpenNotifs}>
-              <span style={{fontSize: '22px'}}>🔔</span>
-              {unreadCount > 0 && <div style={bellBadge}>{unreadCount}</div>}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+            {/* Streak and Bell */}
+            <div style={statPillGroup}>
+                <div style={streakPill}>🔥 0</div>
+                <div style={bellContainer} onClick={() => setShowNotifs(true)}>
+                🔔 {unreadCount > 0 && <span style={bellBadge}>{unreadCount}</span>}
+                </div>
             </div>
             <img src={userProfile?.avatar_url || "https://ui-avatars.com/api/?name=" + session?.user?.name} style={navAvatar} onClick={() => setShowProfileMenu(!showProfileMenu)} />
           </div>
@@ -130,7 +135,7 @@ export default function BatchDashboard({ params }: PageProps) {
 
       <main style={contentArea}>
         <div style={batchBanner}>
-          <h2 style={{ fontSize: '32px', fontWeight: '900', margin: '5px 0' }}>{batchId.toUpperCase()}</h2>
+          <h2 style={{ fontSize: '32px', fontWeight: '900' }}>{batchId.toUpperCase()}</h2>
         </div>
 
         <section style={{ marginBottom: '40px' }}>
@@ -139,36 +144,39 @@ export default function BatchDashboard({ params }: PageProps) {
             {['All Classes', 'All Tests', 'My Doubts', 'Community'].map((item) => (
               <Link key={item} href={item === 'All Classes' ? `/neet/${batchId}/all-classes` : '#'} style={{ textDecoration: 'none' }}>
                 <div style={offeringItem}>
-                  <span style={{ fontWeight: '700', color: '#333' }}>{item}</span>
-                  <span style={{ color: '#6157ff', fontWeight: 'bold' }}>❯</span>
+                  <span style={{ fontWeight: '700' }}>{item}</span>
+                  <span style={{ color: '#6157ff' }}>❯</span>
                 </div>
               </Link>
             ))}
           </div>
         </section>
 
-        {/* Event List Section */}
         <div style={dashboardGrid}>
           <div style={{ flex: 2 }}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: '15px' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', marginBottom: '15px' }}>
               <h3 style={sectionTitle}>Upcoming Events</h3>
-              {isOwner && <button onClick={() => setShowEventModal(true)} style={addBtn}>+ Create</button>}
+              {isOwner && <button onClick={() => {setEditingEvent(null); setShowEventModal(true)}} style={addBtn}>+ Create</button>}
             </div>
             {events.map(ev => (
               <div key={ev.id} style={dataRow}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 'bold', color: '#333' }}>{ev.title}</div>
-                  <div style={{ fontSize: '12px', color: '#6157ff', fontWeight: '600' }}>
-                      {new Date(ev.event_time).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
-                  </div>
+                  <div style={{ fontWeight: 'bold' }}>{ev.title}</div>
+                  <div style={{ fontSize: '12px', color: '#6157ff' }}>{new Date(ev.event_time).toLocaleString()}</div>
                 </div>
-                {isOwner && <button onClick={() => { if(confirm("Delete?")) supabase.from('events').delete().eq('id', ev.id).then(() => fetchData()); }} style={deleteActionBtn}>Delete</button>}
+                {isOwner && (
+                    <div style={{display:'flex', gap:'10px'}}>
+                        <button onClick={() => {setEditingEvent(ev); setEventTitle(ev.title); setEventDate(ev.event_time.slice(0,16)); setShowEventModal(true)}} style={editActionBtn}>Edit</button>
+                        <button onClick={() => deleteEvent(ev.id)} style={deleteActionBtn}>Delete</button>
+                    </div>
+                )}
               </div>
             ))}
           </div>
         </div>
       </main>
 
+      {/* NOTIFICATION DRAWER */}
       <AnimatePresence>
         {showNotifs && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={overlay} onClick={() => setShowNotifs(false)}>
@@ -180,13 +188,11 @@ export default function BatchDashboard({ params }: PageProps) {
 
               <div style={{padding: '0 20px', flex: 1, overflowY: 'auto'}}>
                 <div style={dateLabel}>Today</div>
-                {notices.map(n => {
-                   const isNew = new Date(n.created_at).getTime() > lastReadTime;
-                   return (
+                {notices.map(n => (
                     <div key={n.id} style={notifCardUI}>
                       <div style={iconCircleUI}>
-                         <span style={{fontSize: '18px'}}>{n.content.includes('Class') ? '🎥' : '📢'}</span>
-                         {isNew && <div style={redDotNotif} />}
+                         <span>{n.content.includes('Class') ? '🎥' : '📢'}</span>
+                         {new Date(n.created_at).getTime() > lastReadTime && <div style={redDotNotif} />}
                       </div>
                       <div style={{flex: 1}}>
                          <div style={{display: 'flex', justifyContent: 'space-between'}}>
@@ -194,16 +200,22 @@ export default function BatchDashboard({ params }: PageProps) {
                             <div style={notifTimeUI}>{new Date(n.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
                          </div>
                          <div style={notifBodyUI}>{n.content}</div>
+                         {isOwner && (
+                             <div style={{display:'flex', gap:'15px', marginTop:'8px'}}>
+                                <button onClick={() => {setEditingNotif(n); setNewNotice(n.content)}} style={textActionBtn}>Edit</button>
+                                <button onClick={() => deleteNotice(n.id)} style={textActionBtnRed}>Delete</button>
+                             </div>
+                         )}
                       </div>
                     </div>
-                   )
-                })}
+                ))}
               </div>
 
               {isOwner && (
-                <div style={adminNotifPanel}>
-                   <textarea value={newNotice} onChange={e => setNewNotice(e.target.value)} placeholder="Type new update..." style={notifInputUI} />
-                   <button onClick={() => handlePostNotice()} style={notifSendBtn}>Post Notice</button>
+                <div style={adminPanelNotif}>
+                   <textarea value={newNotice} onChange={e => setNewNotice(e.target.value)} placeholder="Type update..." style={notifInputUI} />
+                   <button onClick={handlePostNotice} style={notifSendBtn}>{editingNotif ? 'Update Notice' : 'Post Notice'}</button>
+                   {editingNotif && <button onClick={() => {setEditingNotif(null); setNewNotice("")}} style={cancelTextBtn}>Cancel Edit</button>}
                 </div>
               )}
             </motion.div>
@@ -211,14 +223,15 @@ export default function BatchDashboard({ params }: PageProps) {
         )}
       </AnimatePresence>
 
+      {/* EVENT MODAL */}
       <AnimatePresence>
         {showEventModal && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={overlay} onClick={() => setShowEventModal(false)}>
             <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }} style={modal} onClick={e => e.stopPropagation()}>
-               <h3 style={{marginTop:0}}>Schedule Event</h3>
-               <input placeholder="Event Title" value={eventTitle} onChange={e => setEventTitle(e.target.value)} style={modalInput} />
+               <h3 style={{marginTop:0}}>{editingEvent ? 'Edit Event' : 'Schedule Event'}</h3>
+               <input placeholder="Title" value={eventTitle} onChange={e => setEventTitle(e.target.value)} style={modalInput} />
                <input type="datetime-local" value={eventDate} onChange={e => setEventDate(e.target.value)} style={{...modalInput, marginTop:'10px'}} />
-               <button onClick={handleSaveEvent} style={notifSendBtn}>Create Event</button>
+               <button onClick={handleSaveEvent} style={notifSendBtn}>Save Event</button>
             </motion.div>
           </motion.div>
         )}
@@ -231,6 +244,8 @@ export default function BatchDashboard({ params }: PageProps) {
 const headerWrapper: any = { position:'fixed', top:0, left:0, width:'100%', background:'#fff', borderBottom:'1px solid #f0f0f0', zIndex: 1000, height: '70px' };
 const headerInner: any = { maxWidth:'1200px', margin:'0 auto', display:'flex', justifyContent:'space-between', alignItems:'center', height:'100%', padding:'0 20px' };
 const backBtnCircle: any = { textDecoration:'none', color:'#333', background:'#f5f5f5', width:'35px', height:'35px', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center' };
+const statPillGroup: any = { display: 'flex', gap: '10px', alignItems: 'center' };
+const streakPill: any = { background: '#fff5f5', border: '1px solid #ffdcdc', padding: '8px 12px', borderRadius: '12px', fontWeight: 'bold', fontSize: '14px' };
 const bellContainer: any = { position: 'relative', background: '#f8f9ff', padding: '8px', borderRadius: '12px', cursor: 'pointer', border: '1px solid #eee' };
 const bellBadge: any = { position: 'absolute', top: '-5px', right: '-5px', background: '#ff4d4d', color: '#fff', fontSize: '10px', fontWeight: 'bold', padding: '2px 6px', borderRadius: '10px', border: '2px solid #fff' };
 const navAvatar: any = { width:'40px', height:'40px', borderRadius:'50%', border:'2px solid #6157ff', cursor:'pointer' };
@@ -244,7 +259,7 @@ const dataRow: any = { background:'#fff', padding:'20px', borderRadius:'18px', m
 
 const overlay: any = { position:'fixed', top:0, left:0, width:'100%', height:'100%', background:'rgba(0,0,0,0.3)', zIndex:2000, display:'flex', justifyContent:'flex-end' };
 const drawer: any = { width:'450px', height:'100%', background:'#fff', display:'flex', flexDirection:'column', boxShadow: '-10px 0 30px rgba(0,0,0,0.05)' };
-const drawerHeader: any = { padding:'25px', display:'flex', justifyContent:'space-between', alignItems: 'center', borderBottom: '1px solid #f8f9fa' };
+const drawerHeader: any = { padding:'25px', display:'flex', justifyContent:'space-between', alignItems: 'center' };
 const batchTag: any = { background: '#f0f3ff', color: '#6157ff', padding: '6px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold' };
 const markReadBtn: any = { background: '#fff', border: '1px solid #eee', padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', color: '#666', cursor: 'pointer' };
 const dateLabel: any = { fontSize: '13px', color: '#aaa', margin: '20px 0 15px', fontWeight: '600' };
@@ -256,11 +271,15 @@ const notifTitleUI: any = { fontWeight: '700', fontSize: '15px', color: '#111' }
 const notifTimeUI: any = { fontSize: '12px', color: '#bbb' };
 const notifBodyUI: any = { fontSize: '14px', color: '#666', marginTop: '4px', lineHeight: '1.4' };
 
-const adminNotifPanel: any = { padding: '20px', borderTop: '1px solid #eee', background: '#fcfdfe' };
+const adminPanelNotif: any = { padding: '20px', borderTop: '1px solid #eee', background: '#fcfdfe' };
 const notifInputUI: any = { width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #eee', fontSize: '14px', minHeight: '60px' };
-const notifSendBtn: any = { width: '100%', padding: '12px', background: '#111', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 'bold', marginTop: '10px', cursor: 'pointer' };
+const notifSendBtn: any = { width: '100%', padding: '12px', background: '#111', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 'bold', marginTop: '10px', cursor:'pointer' };
+const cancelTextBtn: any = { background:'none', border:'none', color:'#888', fontSize:'12px', marginTop:'10px', width:'100%', cursor:'pointer' };
 
 const addBtn: any = { background:'#6157ff', color:'#fff', border:'none', padding:'10px 20px', borderRadius:'12px', fontWeight:'bold', cursor:'pointer' };
+const editActionBtn: any = { background: '#f0f7ff', color: '#0070f3', border: 'none', padding: '6px 14px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px' };
 const deleteActionBtn: any = { background: '#fff1f1', color: '#ff4d4d', border: 'none', padding: '6px 14px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px' };
+const textActionBtn: any = { background:'none', border:'none', color:'#0070f3', fontSize:'12px', fontWeight:'bold', cursor:'pointer', padding:0 };
+const textActionBtnRed: any = { background:'none', border:'none', color:'#ff4d4d', fontSize:'12px', fontWeight:'bold', cursor:'pointer', padding:0 };
 const modal: any = { background:'#fff', padding:'40px', borderRadius:'30px', width:'400px', margin:'auto' };
 const modalInput: any = { width:'100%', padding:'15px', borderRadius:'12px', border:'1px solid #eee' };
