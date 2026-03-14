@@ -91,6 +91,7 @@ export default function BatchDashboard({ params }: PageProps) {
 
   const unreadCount = notices.filter(n => new Date(n.created_at).getTime() > lastReadTime).length;
 
+  // --- ACTIONS ---
   const handlePostNotice = async () => {
     if (!newNotice.trim()) return;
     setUploading(true);
@@ -102,6 +103,12 @@ export default function BatchDashboard({ params }: PageProps) {
       }
       setNewNotice(""); setEditingNotif(null); fetchData();
     } catch (err: any) { alert(err.message); } finally { setUploading(false); }
+  };
+
+  const deleteNotice = async (id: string) => {
+    if (!confirm("Delete notice?")) return;
+    await supabase.from('notices').delete().eq('id', id);
+    fetchData();
   };
 
   const handleSaveEvent = async () => {
@@ -117,8 +124,13 @@ export default function BatchDashboard({ params }: PageProps) {
     } catch (err: any) { alert(err.message); } finally { setUploading(false); }
   };
 
+  const deleteEvent = async (id: string) => {
+    if (!confirm("Delete event?")) return;
+    await supabase.from('events').delete().eq('id', id);
+    fetchData();
+  };
+
   if (status === "loading" || !mounted) return null;
-  if (status === "unauthenticated") redirect("/api/auth/signin")
 
   return (
     <div style={{ background: '#f8f9fa', minHeight: '100vh', fontFamily: 'sans-serif' }}>
@@ -128,7 +140,7 @@ export default function BatchDashboard({ params }: PageProps) {
             <Link href="/neet" style={{ textDecoration: 'none' }}>
               <motion.div whileHover={{ scale: 1.1, backgroundColor: '#eee' }} whileTap={{ scale: 0.9 }} style={backBtnCircle}>←</motion.div>
             </Link>
-            <h1 style={{ fontSize: '18px', fontWeight: '800', margin: 0 }}>Study Hub</h1>
+            <h1 style={{ fontSize: '18px', fontWeight: '800' }}>Study Hub</h1>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <div style={statPillGroup}>
@@ -139,12 +151,7 @@ export default function BatchDashboard({ params }: PageProps) {
                     🔔 {unreadCount > 0 && <span style={bellBadge}>{unreadCount}</span>}
                 </motion.div>
             </div>
-            <motion.img 
-              whileHover={{ scale: 1.1 }}
-              src={userProfile?.avatar_url || "https://ui-avatars.com/api/?name=" + session?.user?.name} 
-              style={navAvatar} 
-              onClick={() => setShowProfileMenu(!showProfileMenu)} 
-            />
+            <img src={userProfile?.avatar_url || "https://ui-avatars.com/api/?name=" + session?.user?.name} style={navAvatar} onClick={() => setShowProfileMenu(!showProfileMenu)} />
           </div>
         </div>
       </header>
@@ -161,7 +168,7 @@ export default function BatchDashboard({ params }: PageProps) {
             {['All Classes', 'All Tests', 'My Doubts', 'Community'].map((item) => (
               <Link key={item} href={item === 'All Classes' ? `/neet/${batchId}/all-classes` : '#'} style={{ textDecoration: 'none' }}>
                 <motion.div 
-                  whileHover={{ y: -8, scale: 1.02, boxShadow: '0 12px 24px rgba(0,0,0,0.05)' }} 
+                  whileHover={{ y: -8, scale: 1.02, boxShadow: '0 12px 24px rgba(0,0,0,0.08)' }} 
                   whileTap={{ scale: 0.98 }} 
                   style={offeringItem}
                 >
@@ -174,35 +181,45 @@ export default function BatchDashboard({ params }: PageProps) {
         </section>
 
         <div style={dashboardGrid}>
-          <div style={{ flex: 2 }}>
+          <div style={{ flex: 1 }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: '15px' }}>
               <h3 style={sectionTitle}>Upcoming Events</h3>
               {isOwner && (
                 <motion.button 
                   whileHover={{ scale: 1.05, backgroundColor: '#5145e5' }} 
                   whileTap={{ scale: 0.95 }} 
-                  onClick={() => {setEditingEvent(null); setShowEventModal(true)}} 
+                  onClick={() => {setEditingEvent(null); setEventTitle(""); setEventDate(""); setShowEventModal(true)}} 
                   style={addBtn}
                 >
                   + Create
                 </motion.button>
               )}
             </div>
-            {events.map(ev => (
+            {events.length === 0 ? <div style={emptyBox}>🕒 No upcoming events.</div> : events.map(ev => (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} key={ev.id} style={dataRow}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: '700', color: '#111' }}>{ev.title}</div>
                   <div style={{ fontSize: '12px', color: '#6157ff', fontWeight: '600' }}>{new Date(ev.event_time).toLocaleString()}</div>
                 </div>
                 {isOwner && (
-                    <motion.button 
-                      whileHover={{ scale: 1.1, backgroundColor: '#f0f7ff' }} 
-                      whileTap={{ scale: 0.9 }} 
-                      onClick={() => {setEditingEvent(ev); setEventTitle(ev.title); setEventDate(ev.event_time.slice(0,16)); setShowEventModal(true)}} 
-                      style={editActionBtn}
-                    >
-                      Edit
-                    </motion.button>
+                    <div style={{display:'flex', gap:'10px'}}>
+                        <motion.button 
+                          whileHover={{ scale: 1.05, backgroundColor: '#f0f7ff' }} 
+                          whileTap={{ scale: 0.9 }} 
+                          onClick={() => {setEditingEvent(ev); setEventTitle(ev.title); setEventDate(ev.event_time.slice(0,16)); setShowEventModal(true)}} 
+                          style={editActionBtn}
+                        >
+                          Edit
+                        </motion.button>
+                        <motion.button 
+                          whileHover={{ scale: 1.05, backgroundColor: '#fff1f1' }} 
+                          whileTap={{ scale: 0.9 }} 
+                          onClick={() => deleteEvent(ev.id)} 
+                          style={deleteActionBtn}
+                        >
+                          Delete
+                        </motion.button>
+                    </div>
                 )}
               </motion.div>
             ))}
@@ -210,7 +227,7 @@ export default function BatchDashboard({ params }: PageProps) {
         </div>
       </main>
 
-      {/* STREAK MODAL */}
+      {/* STREAK MODAL (Downloadable) */}
       <AnimatePresence>
         {showStreakModal && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={modalOverlay} onClick={() => setShowStreakModal(false)}>
@@ -239,7 +256,7 @@ export default function BatchDashboard({ params }: PageProps) {
         )}
       </AnimatePresence>
 
-      {/* NOTIFICATION DRAWER */}
+      {/* NOTIFICATION DRAWER (Mission 100 Style) */}
       <AnimatePresence>
         {showNotifs && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={modalOverlay} onClick={() => setShowNotifs(false)}>
@@ -269,10 +286,39 @@ export default function BatchDashboard({ params }: PageProps) {
                             <div style={notifTimeUI}>{new Date(n.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
                          </div>
                          <div style={notifBodyUI}>{n.content}</div>
+                         {isOwner && (
+                             <div style={{display:'flex', gap:'15px', marginTop:'8px'}}>
+                                <button onClick={() => {setEditingNotif(n); setNewNotice(n.content)}} style={textActionBtn}>Edit</button>
+                                <button onClick={() => deleteNotice(n.id)} style={textActionBtnRed}>Delete</button>
+                             </div>
+                         )}
                       </div>
                     </div>
                 ))}
               </div>
+              {isOwner && (
+                <div style={adminPanelNotifUI}>
+                   <textarea value={newNotice} onChange={e => setNewNotice(e.target.value)} placeholder="Type update..." style={notifInputUI} />
+                   <div style={{display:'flex', gap:'10px', marginTop:'10px'}}>
+                        <motion.button whileTap={{scale:0.95}} onClick={handlePostNotice} style={notifSendBtn}>{editingNotif ? 'Update Notice' : 'Post Notice'}</motion.button>
+                        {editingNotif && <motion.button whileTap={{scale:0.95}} onClick={() => {setEditingNotif(null); setNewNotice("")}} style={cancelTextBtn}>Cancel</motion.button>}
+                   </div>
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* EVENT MODAL */}
+      <AnimatePresence>
+        {showEventModal && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={modalOverlay} onClick={() => setShowEventModal(false)}>
+            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }} style={modal} onClick={e => e.stopPropagation()}>
+               <h3 style={{marginTop:0}}>{editingEvent ? 'Edit Event' : 'Schedule Event'}</h3>
+               <input placeholder="Title" value={eventTitle} onChange={e => setEventTitle(e.target.value)} style={modalInput} />
+               <input type="datetime-local" value={eventDate} onChange={e => setEventDate(e.target.value)} style={{...modalInput, marginTop:'10px'}} />
+               <motion.button whileHover={{scale:1.02}} whileTap={{scale:0.98}} onClick={handleSaveEvent} style={notifSendBtn}>Save Event</motion.button>
             </motion.div>
           </motion.div>
         )}
@@ -288,17 +334,18 @@ const backBtnCircle: any = { color:'#333', background:'#f5f5f5', width:'35px', h
 const statPillGroup: any = { display: 'flex', gap: '10px', alignItems: 'center' };
 const streakPill: any = { background: '#fff5f5', border: '1px solid #ffdcdc', padding: '8px 15px', borderRadius: '12px', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer' };
 const bellContainer: any = { position: 'relative', background: '#f8f9ff', padding: '10px', borderRadius: '12px', cursor: 'pointer', border: '1px solid #eee' };
-const bellBadge: any = { position: 'absolute', top: '-5px', right: '-5px', background: '#ff4d4d', color: '#fff', fontSize: '10px', fontWeight: 'bold', padding: '2px 6px', borderRadius: '10px', border: '2px solid #fff' };
+const bellBadge: any = { position: 'absolute', top: '-5px', right: '-5px', background: '#ef4444', color: '#fff', fontSize: '10px', fontWeight: 'bold', padding: '2px 6px', borderRadius: '10px', border: '2px solid #fff' };
 const navAvatar: any = { width:'40px', height:'40px', borderRadius:'50%', border:'2px solid #6157ff', cursor:'pointer' };
 const contentArea: any = { paddingTop:'110px', maxWidth:'1100px', margin:'0 auto', padding:'20px' };
-const batchBanner: any = { background:'#1c252e', color:'#fff', padding:'50px', borderRadius:'30px', marginBottom:'40px', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' };
-const sectionTitle: any = { fontSize:'18px', fontWeight:'800', margin:'0 0 20px', color: '#111' };
-const offeringGrid: any = { display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:'15px' };
+const batchBanner: any = { background:'#1c252e', color:'#fff', padding:'60px 50px', borderRadius:'30px', marginBottom:'40px', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' };
+const sectionTitle: any = { fontSize:'20px', fontWeight:'800', margin:'0 0 25px', color: '#111' };
+const offeringGrid: any = { display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:'20px' };
 const offeringItem: any = { padding:'25px', background:'#fff', borderRadius:'20px', border:'1px solid #f0f0f0', display:'flex', justifyContent:'space-between', alignItems:'center', cursor: 'pointer' };
 const dashboardGrid: any = { display:'flex', gap:'40px', marginTop: '20px' };
-const dataRow: any = { background:'#fff', padding:'20px', borderRadius:'18px', marginBottom:'12px', border:'1px solid #f0f0f0', display:'flex', justifyContent:'space-between', alignItems:'center' };
+const dataRow: any = { background:'#fff', padding:'25px', borderRadius:'20px', marginBottom:'15px', border:'1px solid #f0f0f0', display:'flex', justifyContent:'space-between', alignItems:'center' };
+
 const modalOverlay: any = { position:'fixed', top:0, left:0, width:'100%', height:'100%', background:'rgba(0,0,0,0.4)', zIndex:3000, display:'flex', alignItems:'center', justifyContent:'center' };
-const streakCard: any = { width:'380px', background:'#fff', borderRadius:'24px', overflow:'hidden', position:'relative', textAlign:'center' };
+const streakCard: any = { width:'380px', background:'#fff', borderRadius:'24px', overflow:'hidden', position:'relative', textAlign:'center', boxShadow:'0 20px 40px rgba(0,0,0,0.2)' };
 const streakHeaderBg: any = { background: 'linear-gradient(180deg, #ff9d42 0%, #ff7a00 100%)', height:'160px', display:'flex', alignItems:'center', justifyContent:'center', position:'relative' };
 const streakCircle: any = { width:'110px', height:'110px', background:'#fff', borderRadius:'50%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', border:'5px solid #f3e5d8', position:'relative', top:'45px' };
 const streakNumber: any = { fontSize: '48px', fontWeight: '900', color: '#ff7a00' };
@@ -308,20 +355,31 @@ const streakSub: any = { fontSize:'14px', color:'#666', margin:'5px 0' };
 const closeX: any = { position:'absolute', top:'15px', right:'15px', border:'none', background:'none', fontSize:'20px', cursor:'pointer', color:'#fff', zIndex: 10 };
 const shareSectionUI: any = { padding: '20px 20px 30px', background: '#fcfdfe', borderTop: '1px solid #eee' };
 const downloadBtnUI: any = { width: '100%', background: '#6157ff', color: '#fff', border: 'none', padding: '14px', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' };
+
 const drawerUI: any = { width:'460px', height:'100%', background:'#fff', display:'flex', flexDirection:'column', boxShadow: '-10px 0 30px rgba(0,0,0,0.05)', position: 'absolute', right: 0 };
 const drawerHeaderUI: any = { padding:'30px 25px 20px', display:'flex', justifyContent:'space-between', alignItems: 'center' };
 const batchTagUI: any = { background: '#f0f3ff', color: '#6157ff', padding: '8px 14px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold' };
 const markReadBtnUI: any = { background: '#fff', border: '1px solid #e2e8f0', padding: '10px 18px', borderRadius: '12px', fontSize: '13px', fontWeight: '700', color: '#4a5568', cursor: 'pointer' };
 const markReadBtnActive: any = { background: '#6157ff', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: '12px', fontSize: '13px', fontWeight: '700', cursor: 'pointer' };
+
 const dateLabelUI: any = { fontSize: '14px', color: '#94a3b8', margin: '20px 0 15px', fontWeight: '700' };
 const notifCardUI: any = { display: 'flex', gap: '15px', padding: '18px', borderRadius: '20px', background: '#f8fafc', border: '1px solid #f1f5f9', marginBottom: '12px' };
 const iconCircleUI: any = { position: 'relative', width: '50px', height: '50px', borderRadius: '14px', background: '#fff', display: 'flex', alignItems: 'center', justifyContent:'center', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' };
 const redDotNotif: any = { position: 'absolute', top: '0', right: '0', width: '9px', height: '9px', background: '#ff4d4d', borderRadius: '50%', border: '2px solid #fff' };
+
 const notifTitleUI: any = { fontWeight: '800', fontSize: '15px', color: '#111' };
 const notifTimeUI: any = { fontSize: '12px', color: '#bbb' };
 const notifBodyUI: any = { fontSize: '14px', color: '#666', marginTop: '4px', lineHeight: '1.4' };
-const addBtn: any = { background:'#6157ff', color:'#fff', border:'none', padding:'10px 25px', borderRadius:'14px', fontWeight:'bold', cursor:'pointer' };
+const adminPanelNotifUI: any = { padding: '20px', borderTop: '1px solid #eee', background: '#fcfdfe' };
+const notifInputUI: any = { width: '100%', padding: '12px', borderRadius: '10px', border: '1px solid #eee', fontSize: '14px', minHeight: '60px' };
+const notifSendBtn: any = { flex: 1, padding: '12px', background: '#111', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 'bold', cursor:'pointer' };
+const cancelTextBtn: any = { padding: '12px 20px', background: '#eee', color: '#666', border: 'none', borderRadius: '10px', cursor:'pointer' };
+
+const addBtn: any = { background:'#6157ff', color:'#fff', border:'none', padding:'12px 25px', borderRadius:'14px', fontWeight:'bold', cursor:'pointer' };
 const editActionBtn: any = { background: '#fff', color: '#6157ff', border: '1px solid #e0e0e0', padding: '8px 18px', borderRadius: '10px', fontWeight: '700', cursor: 'pointer', fontSize: '13px' };
+const deleteActionBtn: any = { background: '#fff', color: '#ff4d4d', border: '1px solid #ffcccc', padding: '8px 18px', borderRadius: '10px', fontWeight: '700', cursor: 'pointer', fontSize: '13px' };
+const textActionBtn: any = { background:'none', border:'none', color:'#0070f3', fontSize:'12px', fontWeight:'bold', cursor:'pointer', padding:0 };
+const textActionBtnRed: any = { background:'none', border:'none', color:'#ff4d4d', fontSize:'12px', fontWeight:'bold', cursor:'pointer', padding:0 };
+const emptyBox: any = { padding: '40px', textAlign: 'center', color: '#aaa', fontSize: '14px' };
 const modal: any = { background:'#fff', padding:'40px', borderRadius:'30px', width:'400px', margin:'auto' };
 const modalInput: any = { width:'100%', padding:'15px', borderRadius:'12px', border:'1px solid #eee' };
-const notifSendBtn: any = { width: '100%', padding: '12px', background: '#111', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 'bold', marginTop: '10px', cursor:'pointer' };
