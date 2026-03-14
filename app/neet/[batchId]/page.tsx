@@ -55,7 +55,7 @@ export default function BatchDashboard({ params }: PageProps) {
 
   const fetchData = async () => {
     try {
-      // Syncing with student_stats for profile pic and name
+      // Syncing with student_stats to get the pic and name from your profile database
       const { data: sData } = await supabase.from('student_stats').select('*').eq('email', session?.user?.email).single();
       if (sData) setUserProfile(sData);
 
@@ -73,8 +73,6 @@ export default function BatchDashboard({ params }: PageProps) {
   };
 
   // --- ACTIONS ---
-  const handleLogout = () => signOut({ callbackUrl: '/' });
-
   const handleDownloadBadge = async () => {
     if (badgeRef.current) {
       const canvas = await html2canvas(badgeRef.current, { scale: 2, backgroundColor: '#ffffff' });
@@ -135,17 +133,19 @@ export default function BatchDashboard({ params }: PageProps) {
   const unreadCount = notices.filter(n => new Date(n.created_at).getTime() > lastReadTime).length;
 
   if (status === "loading" || !mounted) return null;
-  if (status === "unauthenticated") redirect("/api/auth/signin");
+  if (status === "unauthenticated") redirect("/api/auth/signin")
 
   return (
     <div style={{ background: '#f8f9fa', minHeight: '100vh', fontFamily: 'sans-serif' }}>
+      
+      {/* HEADER: SYNCED WITH HOMEPAGE */}
       <header style={headerWrapper}>
         <div style={headerInner}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <Link href="/neet" style={{ textDecoration: 'none' }}>
               <motion.div whileHover={{ scale: 1.1, backgroundColor: '#eee' }} whileTap={{ scale: 0.9 }} style={backBtnCircle}>←</motion.div>
             </Link>
-            <h1 style={{ fontSize: '20px', fontWeight: '800', color: '#5b6cfd' }}>StudyHub</h1>
+            <h1 style={{ fontSize: '22px', fontWeight: '800', color: '#5b6cfd', margin: 0 }}>StudyHub</h1>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
@@ -159,7 +159,7 @@ export default function BatchDashboard({ params }: PageProps) {
                 </motion.div>
             </div>
 
-            {/* SYNCED PROFILE SECTION */}
+            {/* SYNCED PROFILE TRIGGER */}
             <div style={{ position: 'relative' }}>
               <motion.div whileHover={{ backgroundColor: '#f0f3ff' }} style={profileTrigger} onClick={() => setShowProfileMenu(!showProfileMenu)}>
                 <img 
@@ -177,7 +177,7 @@ export default function BatchDashboard({ params }: PageProps) {
                   <motion.div initial={{ opacity: 0, y: 10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.95 }} style={dropdownMenu}>
                     <Link href="/profile" style={dropdownItem}>👤 My Profile</Link>
                     <hr style={{ border: '0', borderTop: '1px solid #f0f0f0', margin: '4px 0' }} />
-                    <button onClick={handleLogout} style={dropdownLogoutBtn}>🚪 Logout</button>
+                    <button onClick={() => signOut({ callbackUrl: '/' })} style={dropdownLogoutBtn}>🚪 Logout</button>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -207,7 +207,7 @@ export default function BatchDashboard({ params }: PageProps) {
         </section>
 
         <div style={dashboardGrid}>
-          <div style={{ flex: 2 }}>
+          <div style={{ flex: 1 }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: '15px' }}>
               <h3 style={sectionTitle}>Upcoming Events</h3>
               {isOwner && (
@@ -232,13 +232,13 @@ export default function BatchDashboard({ params }: PageProps) {
         </div>
       </main>
 
-      {/* STREAK MODAL */}
+      {/* STREAK MODAL (DOWNLOADABLE) */}
       <AnimatePresence>
         {showStreakModal && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={modalOverlay} onClick={() => setShowStreakModal(false)}>
             <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }} style={streakCard} onClick={e => e.stopPropagation()}>
               <button style={closeX} onClick={() => setShowStreakModal(false)}>✕</button>
-              <div ref={badgeRef} style={{background:'#fff'}}>
+              <div ref={badgeRef} style={{background:'#fff', paddingBottom: '20px'}}>
                 <div style={streakHeaderBg}>
                     <div style={streakCircle}>
                         <span style={streakNumber}>{streakData.current_streak}</span>
@@ -247,7 +247,6 @@ export default function BatchDashboard({ params }: PageProps) {
                 </div>
                 <div style={streakContent}>
                     <h2 style={{margin:'10px 0', fontSize: '24px', fontWeight: '800'}}>Days Streak!!</h2>
-                    <p style={streakSub}>Your streak starts now!</p>
                     <p style={streakSub}>Let's make learning a daily habit</p>
                 </div>
               </div>
@@ -261,7 +260,7 @@ export default function BatchDashboard({ params }: PageProps) {
         )}
       </AnimatePresence>
 
-      {/* NOTIFICATION DRAWER */}
+      {/* NOTIFICATION DRAWER (ANIMATED MARK READ) */}
       <AnimatePresence>
         {showNotifs && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={modalOverlay} onClick={() => setShowNotifs(false)}>
@@ -276,15 +275,9 @@ export default function BatchDashboard({ params }: PageProps) {
                 <div style={dateLabelUI}>Today</div>
                 {notices.map(n => (
                     <div key={n.id} style={notifCardUI}>
-                      <div style={iconCircleUI}>
-                         <span style={{fontSize: '18px'}}>{n.content.includes('Class') ? '🎥' : '📢'}</span>
-                         {new Date(n.created_at).getTime() > lastReadTime && <div style={redDotNotif} />}
-                      </div>
+                      <div style={iconCircleUI}><span style={{fontSize: '18px'}}>{n.content.includes('Class') ? '🎥' : '📢'}</span>{new Date(n.created_at).getTime() > lastReadTime && <div style={redDotNotif} />}</div>
                       <div style={{flex: 1}}>
-                         <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                            <div style={notifTitleUI}>{n.title || "Update"}</div>
-                            <div style={notifTimeUI}>{new Date(n.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
-                         </div>
+                         <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}><div style={notifTitleUI}>{n.title || "Update"}</div><div style={notifTimeUI}>{new Date(n.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div></div>
                          <div style={notifBodyUI}>{n.content}</div>
                          {isOwner && (
                              <div style={{display:'flex', gap:'15px', marginTop:'8px'}}>
@@ -300,24 +293,11 @@ export default function BatchDashboard({ params }: PageProps) {
                 <div style={adminPanelNotifUI}>
                    <textarea value={newNotice} onChange={e => setNewNotice(e.target.value)} placeholder="Type update..." style={notifInputUI} />
                    <div style={{display:'flex', gap:'10px', marginTop:'10px'}}>
-                        <motion.button whileTap={{scale:0.95}} onClick={handlePostNotice} style={notifSendBtn}>{editingNotif ? 'Update Notice' : 'Post Notice'}</motion.button>
+                        <motion.button whileTap={{scale:0.95}} onClick={handlePostNotice} style={notifSendBtn}>{editingNotif ? 'Update' : 'Post Notice'}</motion.button>
                         {editingNotif && <motion.button whileTap={{scale:0.95}} onClick={() => {setEditingNotif(null); setNewNotice("")}} style={cancelTextBtn}>Cancel</motion.button>}
                    </div>
                 </div>
               )}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {showEventModal && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={modalOverlay} onClick={() => setShowEventModal(false)}>
-            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }} style={modal} onClick={e => e.stopPropagation()}>
-               <h3 style={{marginTop:0}}>{editingEvent ? 'Edit Event' : 'Schedule Event'}</h3>
-               <input placeholder="Title" value={eventTitle} onChange={e => setEventTitle(e.target.value)} style={modalInput} />
-               <input type="datetime-local" value={eventDate} onChange={e => setEventDate(e.target.value)} style={{...modalInput, marginTop:'10px'}} />
-               <motion.button whileHover={{scale:1.02}} whileTap={{scale:0.98}} onClick={handleSaveEvent} style={notifSendBtn}>Save Event</motion.button>
             </motion.div>
           </motion.div>
         )}
@@ -330,7 +310,7 @@ export default function BatchDashboard({ params }: PageProps) {
 const headerWrapper: any = { position:'fixed', top:0, left:0, width:'100%', background:'#fff', borderBottom:'1px solid #f0f0f0', zIndex: 1000, height: '75px' };
 const headerInner: any = { maxWidth:'1200px', margin:'0 auto', display:'flex', justifyContent:'space-between', alignItems:'center', height:'100%', padding:'0 20px' };
 const profileTrigger: any = { display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', padding: '6px 12px', borderRadius: '15px' };
-const navAvatar: any = { width: '42px', height: '42px', borderRadius: '50%', border: '2px solid #5b6cfd', objectFit: 'cover' };
+const navAvatar: any = { width: '45px', height: '45px', borderRadius: '50%', border: '2px solid #5b6cfd', objectFit: 'cover' };
 const nameWrapper: any = { display: 'flex', flexDirection: 'column' };
 const navNameText: any = { fontSize: '14px', fontWeight: '800', color: '#5b6cfd', lineHeight: '1.2' };
 const navRoleText: any = { fontSize: '10px', fontWeight: '700', color: '#888', letterSpacing: '0.5px' };
@@ -339,17 +319,17 @@ const dropdownMenu: any = { position: 'absolute', top: '65px', right: '0', backg
 const dropdownItem: any = { padding: '12px 15px', color: '#333', fontSize: '14px', fontWeight: '700', borderRadius: '10px', textDecoration: 'none' };
 const dropdownLogoutBtn: any = { padding: '12px 15px', background: 'none', border: 'none', color: '#ff4d4d', fontSize: '14px', fontWeight: '800', borderRadius: '10px', textAlign: 'left', cursor: 'pointer' };
 
+const statPillGroup: any = { display: 'flex', gap: '10px', alignItems: 'center' };
 const streakPill: any = { background: '#fff5f5', border: '1px solid #ffdcdc', padding: '8px 15px', borderRadius: '12px', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer' };
 const bellContainer: any = { position: 'relative', background: '#f8f9ff', padding: '10px', borderRadius: '12px', cursor: 'pointer', border: '1px solid #eee' };
 const bellBadge: any = { position: 'absolute', top: '-5px', right: '-5px', background: '#ef4444', color: '#fff', fontSize: '10px', fontWeight: 'bold', padding: '2px 6px', borderRadius: '10px', border: '2px solid #fff' };
 const contentArea: any = { paddingTop:'115px', maxWidth:'1100px', margin:'0 auto', padding:'20px' };
-const batchBanner: any = { background:'#1c252e', color:'#fff', padding:'50px', borderRadius:'30px', marginBottom:'40px' };
+const batchBanner: any = { background:'#1c252e', color:'#fff', padding:'50px', borderRadius:'30px', marginBottom:'40px', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' };
 const sectionTitle: any = { fontSize:'18px', fontWeight:'800', margin:'0 0 20px', color: '#111' };
 const offeringGrid: any = { display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:'20px' };
 const offeringItem: any = { padding:'25px', background:'#fff', borderRadius:'20px', border:'1px solid #f0f0f0', display:'flex', justifyContent:'space-between', alignItems:'center', cursor: 'pointer' };
 const dashboardGrid: any = { display:'flex', gap:'40px' };
-const dataRow: any = { background:'#fff', padding:'20px', borderRadius:'18px', marginBottom:'12px', border:'1px solid #f0f0f0', display:'flex', justifyContent:'space-between', alignItems:'center' };
-const statPillGroup: any = { display: 'flex', gap: '10px', alignItems: 'center' };
+const dataRow: any = { background:'#fff', padding:'25px', borderRadius:'20px', marginBottom:'12px', border:'1px solid #f0f0f0', display:'flex', justifyContent:'space-between', alignItems:'center' };
 const modalOverlay: any = { position:'fixed', top:0, left:0, width:'100%', height:'100%', background:'rgba(0,0,0,0.4)', zIndex:3000, display:'flex', alignItems:'center', justifyContent:'center' };
 const backBtnCircle: any = { color:'#333', background:'#f5f5f5', width:'35px', height:'35px', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', cursor: 'pointer' };
 const streakCard: any = { width:'380px', background:'#fff', borderRadius:'24px', overflow:'hidden', position:'relative', textAlign:'center', boxShadow:'0 20px 40px rgba(0,0,0,0.2)' };
@@ -357,7 +337,7 @@ const streakHeaderBg: any = { background: 'linear-gradient(180deg, #ff9d42 0%, #
 const streakCircle: any = { width:'110px', height:'110px', background:'#fff', borderRadius:'50%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', border:'5px solid #f3e5d8', position:'relative', top:'45px' };
 const streakNumber: any = { fontSize: '48px', fontWeight: '900', color: '#ff7a00' };
 const fireSmall: any = { position:'absolute', bottom:'-5px', fontSize:'22px' };
-const streakContent: any = { padding:'70px 20px 30px', background:'#fff' };
+const streakContent: any = { padding:'70px 20px 10px', background:'#fff' };
 const streakSub: any = { fontSize:'14px', color:'#666', margin:'5px 0' };
 const closeX: any = { position:'absolute', top:'15px', right:'15px', border:'none', background:'none', fontSize:'20px', cursor:'pointer', color:'#fff', zIndex: 10 };
 const shareSectionUI: any = { padding: '20px 20px 30px', background: '#fcfdfe', borderTop: '1px solid #eee' };
