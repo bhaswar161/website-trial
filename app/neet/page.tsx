@@ -108,8 +108,8 @@ export default function NeetPage() {
   if (status === "loading" || !mounted) return <div style={{textAlign:'center', marginTop:'50px'}}>Loading NEET Portal...</div>
 
   const batches = [
-    { id: "ultimate-2026", name: "Yakeen NEET 2026", color: "#6c63ff", price: "4,800", originalPrice: "6,000", discount: "20%" },
-    { id: "crash-course", name: "NEET Crash Course 2026", color: "#ff4ecd", price: "3,499", originalPrice: "5,500", discount: "36%" }
+    { id: "ultimate-2026", name: "Yakeen NEET 2026", color: "#6c63ff", price: "4,800", originalPrice: "6,000", discount: "20%", starts: "14 Apr, 2026" },
+    { id: "crash-course", name: "NEET Crash Course 2026", color: "#ff4ecd", price: "3,499", originalPrice: "5,500", discount: "36%", starts: "15 May, 2026" }
   ]
 
   const isAnyBatchUnlocked = enrolledBatches.length > 0 || isOwner;
@@ -119,11 +119,11 @@ export default function NeetPage() {
   return (
     <div style={{ padding: '40px 5%', background: '#f5f7fb', minHeight: '100vh', fontFamily: 'sans-serif' }}>
       
-      {/* SEPARATE DUAL UPLOAD MODAL */}
+      {/* DUAL UPLOAD MODAL */}
       {showUploadModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <form onSubmit={handleUpload} style={{ background: 'white', padding: '30px', borderRadius: '25px', width: '480px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-            <h3>Add to {batches.find(b => b.id === showUploadModal)?.name}</h3>
+            <h3 style={{margin:0}}>Add to {batches.find(b => b.id === showUploadModal)?.name}</h3>
             <div style={{ display: 'flex', gap: '10px' }}>
               <select name="subject" required style={{...inputStyle, flex: 1}}><option>Physics</option><option>Chemistry</option><option>Biology</option></select>
               <input name="title" placeholder="Topic Name" required style={{...inputStyle, flex: 2}} />
@@ -143,8 +143,10 @@ export default function NeetPage() {
               <div>📄 {selectedNotes ? selectedNotes.name : "Drop PDF Notes"}</div>
             </div>
 
+            {uploadProgress > 0 && <div style={{height:'4px', width:`${uploadProgress}%`, background:'#6c63ff', borderRadius:'2px'}} />}
+
             <div style={{ display: 'flex', gap: '10px' }}>
-              <button type="button" onClick={() => setShowUploadModal(null)} style={{ flex: 1, padding: '12px', borderRadius: '10px', border: '1px solid #ddd' }}>Cancel</button>
+              <button type="button" onClick={() => {setShowUploadModal(null); setSelectedVideo(null); setSelectedNotes(null);}} style={{ flex: 1, padding: '12px', borderRadius: '10px', border: '1px solid #ddd' }}>Cancel</button>
               <button type="submit" style={{ flex: 1, padding: '12px', borderRadius: '10px', background: '#6c63ff', color: 'white', border: 'none', fontWeight:'bold' }}>Upload Both</button>
             </div>
           </form>
@@ -153,7 +155,7 @@ export default function NeetPage() {
 
       <header style={{ marginBottom: '40px', display: 'flex', justifyContent: 'space-between' }}>
         <div><h1>NEET Study Portal</h1><Link href="/" style={{color:'#6c63ff', textDecoration:'none'}}>← Home</Link></div>
-        {isOwner && <div style={{ color: '#2e7d32', fontWeight: 'bold' }}>Faculty Mode</div>}
+        {isOwner && <div style={{ color: '#2e7d32', fontWeight: 'bold' }}>Faculty Mode Active</div>}
       </header>
 
       <div style={{ display: 'grid', gridTemplateColumns: isAnyBatchUnlocked ? '1fr 320px 320px' : '1fr', gap: '30px' }}>
@@ -163,16 +165,26 @@ export default function NeetPage() {
             const isEnrolled = enrolledBatches.includes(batch.id) || isOwner;
             return (
               <div key={batch.id} style={{ background: '#fff', borderRadius: '20px', overflow: 'hidden', boxShadow: '0 10px 30px rgba(0,0,0,0.05)', border: '1px solid #eee' }}>
-                <div style={{ height: '80px', background: batch.color, padding: '20px', color: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                {/* Header Ribbon */}
+                <div style={{ height: '80px', background: batch.color, padding: '0 25px', color: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <h2 style={{ margin: 0 }}>{batch.name}</h2>
-                  {isEnrolled && liveStatuses[batch.id] && <span style={{fontWeight:'bold'}}>● LIVE NOW</span>}
+                  {isEnrolled && liveStatuses[batch.id] && <span style={{fontWeight:'bold', background:'rgba(0,0,0,0.2)', padding:'5px 12px', borderRadius:'20px', fontSize:'12px'}}>● LIVE NOW</span>}
                 </div>
 
                 <div style={{ padding: '24px' }}>
                   {!isEnrolled ? (
-                    <div style={{ textAlign: 'center' }}>
-                      <div style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '10px' }}>₹{batch.price} <span style={{textDecoration:'line-through', fontSize:'14px', color:'#999'}}>₹{batch.originalPrice}</span></div>
-                      <button style={{ width: '100%', padding: '15px', borderRadius: '12px', background: batch.color, color: 'white', border: 'none', fontWeight: 'bold', cursor: 'pointer' }}>BUY NOW</button>
+                    /* MARKETPLACE VIEW */
+                    <div style={{ textAlign: 'left' }}>
+                      <div style={{ color: '#666', fontSize: '14px', marginBottom: '10px' }}>🎓 For NEET Aspirants | 📅 Starts: {batch.starts}</div>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginBottom: '20px' }}>
+                        <span style={{ fontSize: '28px', fontWeight: 'bold', color: '#333' }}>₹{batch.price}</span>
+                        <span style={{ textDecoration: 'line-through', color: '#999' }}>₹{batch.originalPrice}</span>
+                        <span style={{ color: '#2e7d32', fontWeight: 'bold', fontSize: '14px' }}>{batch.discount} OFF</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        <button style={{ flex: 1, padding: '12px', borderRadius: '10px', border: `1.5px solid ${batch.color}`, color: batch.color, background: 'white', fontWeight: 'bold' }}>EXPLORE</button>
+                        <button style={{ flex: 1, padding: '12px', borderRadius: '10px', border: 'none', background: batch.color, color: 'white', fontWeight: 'bold' }}>BUY NOW</button>
+                      </div>
                     </div>
                   ) : (
                     /* DASHBOARD INSIDE VIEW */
@@ -187,34 +199,42 @@ export default function NeetPage() {
 
                       {liveStatuses[batch.id] && (
                         <div style={{ background: '#f8f9ff', padding: '15px', borderRadius: '15px', border: '1px solid #eee', display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '25px' }}>
-                          <div style={{ flex: 1 }}><div style={{ fontSize: '12px', color: '#6c63ff', fontWeight: 'bold' }}>🕒 LIVE NOW</div><div style={{ fontWeight: 'bold' }}>Lecture • Organic Chemistry</div></div>
-                          <button style={{ padding: '8px 20px', background: '#6c63ff', color: 'white', border: 'none', borderRadius: '8px', fontWeight:'bold' }}>Join</button>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: '11px', color: '#6c63ff', fontWeight: 'bold' }}>🕒 UPCOMING EVENTS (1)</div>
+                            <div style={{ fontWeight: 'bold', fontSize: '14px' }}>Lecture • Subject Wise Study</div>
+                          </div>
+                          <button style={{ padding: '8px 20px', background: '#6c63ff', color: 'white', border: 'none', borderRadius: '8px', fontWeight:'bold', cursor:'pointer' }}>Join</button>
                         </div>
                       )}
 
                       <h4 style={{ color: '#666', fontSize: '13px', marginBottom: '15px' }}>Study Zone</h4>
                       {['Physics', 'Chemistry', 'Biology'].map(sub => (
                         <details key={sub} open style={{ border: '1px solid #f0f0f0', borderRadius: '12px', padding: '12px', marginBottom: '10px' }}>
-                          <summary style={{ fontWeight: 'bold', color: batch.color, cursor: 'pointer' }}>📂 {sub}</summary>
+                          <summary style={{ fontWeight: 'bold', color: batch.color, cursor: 'pointer', outline: 'none' }}>📂 {sub}</summary>
                           <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                             {materials.filter(m => m.batch_id === batch.id && m.subject === sub).map(m => (
                               <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', background: '#f9f9fb', padding: '10px', borderRadius: '8px', fontSize: '13px' }}>
                                 <span>{m.title}</span>
-                                <div style={{display:'flex', gap:'10px'}}>
-                                  {m.video_url && <a href={m.video_url} target="_blank">🎥</a>}
-                                  {m.notes_url && <a href={m.notes_url} target="_blank">📄</a>}
-                                  {isOwner && <button onClick={() => handleDeleteMaterial(m.id)} style={{border:'none', background:'none', cursor:'pointer'}}>🗑️</button>}
+                                <div style={{display:'flex', gap:'10px', alignItems:'center'}}>
+                                  {m.video_url && <a href={m.video_url} target="_blank" style={{textDecoration:'none'}}>🎥</a>}
+                                  {m.notes_url && <a href={m.notes_url} target="_blank" style={{textDecoration:'none'}}>📄</a>}
+                                  {isOwner && <button onClick={() => handleDeleteMaterial(m.id)} style={{border:'none', background:'none', cursor:'pointer', fontSize:'12px'}}>🗑️</button>}
                                 </div>
                               </div>
                             ))}
+                            {materials.filter(m => m.batch_id === batch.id && m.subject === sub).length === 0 && <span style={{fontSize: '11px', color: '#999'}}>No materials uploaded.</span>}
                           </div>
                         </details>
                       ))}
 
                       {isOwner && (
                         <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
-                          <button onClick={() => toggleClassStatus(batch.id, liveStatuses[batch.id])} style={{ flex: 1, padding: '12px', borderRadius: '12px', background: liveStatuses[batch.id] ? '#ff4757' : batch.color, color: 'white', border: 'none', fontWeight: 'bold' }}>{liveStatuses[batch.id] ? "End Session" : "Go Live"}</button>
-                          <button onClick={() => setShowUploadModal(batch.id)} style={{ flex: 1, padding: '12px', borderRadius: '12px', border: '1px dashed #6c63ff', color: '#6c63ff', background: 'none', fontWeight:'bold' }}>+ Upload Content</button>
+                          <button onClick={() => toggleClassStatus(batch.id, liveStatuses[batch.id])} style={{ flex: 1, padding: '12px', borderRadius: '12px', background: liveStatuses[batch.id] ? '#ff4757' : batch.color, color: 'white', border: 'none', fontWeight: 'bold', cursor:'pointer' }}>
+                            {liveStatuses[batch.id] ? "End Session" : "Go Live"}
+                          </button>
+                          <button onClick={() => setShowUploadModal(batch.id)} style={{ flex: 1, padding: '12px', borderRadius: '12px', border: '1px dashed #6c63ff', color: '#6c63ff', background: 'none', fontWeight:'bold', cursor:'pointer' }}>
+                            + Upload Content
+                          </button>
                         </div>
                       )}
                     </div>
@@ -226,10 +246,10 @@ export default function NeetPage() {
         </div>
 
         {isAnyBatchUnlocked && (
-          <>
+          <div style={{display:'flex', flexDirection:'column', gap:'25px'}}>
             <NoticeBoard category="neet" isOwner={isOwner} />
             <Leaderboard category="neet" />
-          </>
+          </div>
         )}
       </div>
     </div>
