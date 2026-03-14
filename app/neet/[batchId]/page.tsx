@@ -60,14 +60,14 @@ export default function BatchDashboard({ params }: PageProps) {
     }
   };
 
-  // --- STORAGE UPLOAD LOGIC (MATCHING 'NOTICES' BUCKET) ---
+  // --- STORAGE UPLOAD LOGIC ---
   const uploadImage = async (file: File) => {
     const fileExt = file.name.split('.').pop();
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
     const filePath = `uploads/${fileName}`;
 
     const { error: uploadError } = await supabase.storage
-      .from('NOTICES') // Matches your uppercase bucket name
+      .from('NOTICES') // Matches your Uppercase bucket name
       .upload(filePath, file);
 
     if (uploadError) throw uploadError;
@@ -85,6 +85,7 @@ export default function BatchDashboard({ params }: PageProps) {
     try {
       let finalImageUrl = editingNotif?.image_url || "";
 
+      // Only attempt upload if a local file is selected
       if (selectedFile) {
         finalImageUrl = await uploadImage(selectedFile);
       }
@@ -110,6 +111,7 @@ export default function BatchDashboard({ params }: PageProps) {
         if (error) throw error;
       }
 
+      // Reset States
       setNewNotice("");
       setSelectedFile(null);
       setEditingNotif(null);
@@ -124,7 +126,7 @@ export default function BatchDashboard({ params }: PageProps) {
   const startEditNotif = (notif: any) => {
     setEditingNotif(notif);
     setNewNotice(notif.content);
-    setShowNotifs(true); // Ensure drawer is open
+    setShowNotifs(true);
   };
 
   const deleteNotice = async (id: string) => {
