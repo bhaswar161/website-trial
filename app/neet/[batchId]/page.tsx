@@ -76,7 +76,7 @@ export default function BatchDashboard({ params }: PageProps) {
     if (!content || !content.trim()) return;
     setUploading(true);
     try {
-      let finalImageUrl = editingNotif?.image_url || "";
+      let finalImageUrl = editingNotif?.image_url || null; 
       if (selectedFile) finalImageUrl = await uploadImage(selectedFile);
 
       if (editingNotif) {
@@ -104,7 +104,7 @@ export default function BatchDashboard({ params }: PageProps) {
     } finally { setUploading(false); }
   };
 
-  // --- REFACTORED EVENT LOGIC (INSTANT UI UPDATE) ---
+  // --- REFACTORED EVENT LOGIC ---
   const handleSaveEvent = async () => {
     if (!eventTitle || !eventDate) return alert("Please fill both Title and Date");
     setUploading(true);
