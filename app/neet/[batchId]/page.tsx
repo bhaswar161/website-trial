@@ -27,7 +27,7 @@ export default function BatchDashboard({ params }: PageProps) {
   
   // Announcement/Notice Form States
   const [newNotice, setNewNotice] = useState("")
-  const [notifImage, setNotifImage] = useState("") // Image support
+  const [selectedFile, setSelectedFile] = useState<File | null>(null) // Local File support
   
   // Event Form States
   const [eventTitle, setEventTitle] = useState("")
@@ -60,42 +60,62 @@ export default function BatchDashboard({ params }: PageProps) {
     }
   };
 
-  // --- IMPROVED NOTIFICATION LOGIC (CREATE, EDIT, IMAGE) ---
+  // --- STORAGE UPLOAD LOGIC ---
+  const uploadImage = async (file: File) => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Math.random()}.${fileExt}`;
+    const filePath = `notices/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('notices') // Ensure bucket 'notices' is Public in Supabase
+      .upload(filePath, file);
+
+    if (uploadError) throw uploadError;
+
+    const { data } = supabase.storage.from('notices').getPublicUrl(filePath);
+    return data.publicUrl;
+  };
+
+  // --- NOTIFICATION LOGIC (CREATE, EDIT, STORAGE) ---
   const handlePostNotice = async (textOverride?: any) => {
     const content = typeof textOverride === 'string' ? textOverride : newNotice;
     if (!content || !content.trim()) return;
     
     setUploading(true);
     try {
+      let finalImageUrl = editingNotif?.image_url || "";
+
+      if (selectedFile) {
+        finalImageUrl = await uploadImage(selectedFile);
+      }
+
       if (editingNotif) {
-        // UPDATE
         const { error } = await supabase
           .from('notices')
           .update({ 
             content: content.trim(), 
-            image_url: notifImage,
+            image_url: finalImageUrl,
             title: "Update" 
           })
           .eq('id', editingNotif.id);
         if (error) throw error;
       } else {
-        // CREATE
         const { error } = await supabase.from('notices').insert([{ 
             batch_id: batchId, 
             title: typeof textOverride === 'string' ? "Event Alert" : "Announcement",
             content: content.trim(),
-            image_url: notifImage,
+            image_url: finalImageUrl,
             category: typeof textOverride === 'string' ? "Event" : "General"
         }]);
         if (error) throw error;
       }
 
       setNewNotice("");
-      setNotifImage("");
+      setSelectedFile(null);
       setEditingNotif(null);
       fetchData(); 
     } catch (err: any) {
-      alert("Notice Error: " + err.message);
+      alert("Error: " + err.message);
     } finally {
       setUploading(false);
     }
@@ -104,7 +124,6 @@ export default function BatchDashboard({ params }: PageProps) {
   const startEditNotif = (notif: any) => {
     setEditingNotif(notif);
     setNewNotice(notif.content);
-    setNotifImage(notif.image_url || "");
   };
 
   const deleteNotice = async (id: string) => {
@@ -118,19 +137,20 @@ export default function BatchDashboard({ params }: PageProps) {
     if (!eventTitle || !eventDate) return alert("Please fill both Title and Date");
     setUploading(true);
     try {
+      const displayTime = new Date(eventDate).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
       if (editingEvent) {
         const { error } = await supabase
           .from('events')
           .update({ title: eventTitle, event_time: eventDate })
           .eq('id', editingEvent.id);
         if (error) throw error;
-        await handlePostNotice(`✏️ Event Updated: ${eventTitle}`);
+        await handlePostNotice(`✏️ Event Updated: ${eventTitle} (${displayTime})`);
       } else {
         const { error } = await supabase
           .from('events')
           .insert([{ batch_id: batchId, title: eventTitle, event_time: eventDate }]);
         if (error) throw error;
-        await handlePostNotice(`🗓️ New Event Scheduled: ${eventTitle}`);
+        await handlePostNotice(`🗓️ New Event Scheduled: ${eventTitle} at ${displayTime}`);
       }
       
       setShowEventModal(false);
@@ -273,18 +293,21 @@ export default function BatchDashboard({ params }: PageProps) {
                     placeholder="Message content..." 
                     style={notifInput} 
                   />
-                  <input 
-                    value={notifImage} 
-                    onChange={e => setNotifImage(e.target.value)} 
-                    placeholder="Image URL (optional)" 
-                    style={{...notifInput, marginTop: '8px', height: '40px'}} 
-                  />
+                  <label style={fileLabel}>
+                    {selectedFile ? `📎 ${selectedFile.name}` : "📁 Add Image from Local"}
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} 
+                      style={{ display: 'none' }} 
+                    />
+                  </label>
                   <div style={{display:'flex', gap:'10px', marginTop:'10px'}}>
                     <button onClick={() => handlePostNotice()} disabled={uploading} style={sendBtn}>
-                      {uploading ? "..." : editingNotif ? "Update Notice" : "Post Notice"}
+                      {uploading ? "Uploading..." : editingNotif ? "Update Notice" : "Post Notice"}
                     </button>
                     {editingNotif && (
-                       <button onClick={() => {setEditingNotif(null); setNewNotice(""); setNotifImage("");}} style={cancelBtn}>Cancel</button>
+                       <button onClick={() => {setEditingNotif(null); setNewNotice(""); setSelectedFile(null);}} style={cancelBtn}>Cancel</button>
                     )}
                   </div>
                 </div>
@@ -293,9 +316,11 @@ export default function BatchDashboard({ params }: PageProps) {
                 {notices.map(n => (
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} key={n.id} style={notifCard}>
                     {n.image_url && <img src={n.image_url} alt="notice" style={notifImgDisplay} />}
-                    <div style={{lineHeight: '1.5', fontWeight: '500'}}>{n.content}</div>
+                    <div style={{lineHeight: '1.5', fontWeight: '500', color: '#1c252e'}}>{n.content}</div>
                     <div style={{display:'flex', justifyContent:'space-between', marginTop:'10px', alignItems: 'center'}}>
-                      <small style={{color:'#bbb'}}>{new Date(n.created_at).toLocaleDateString()}</small>
+                      <small style={{color:'#6157ff', fontWeight:'700'}}>
+                        🕒 {new Date(n.created_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
+                      </small>
                       {isOwner && (
                         <div style={{display: 'flex', gap: '12px'}}>
                           <button onClick={() => startEditNotif(n)} style={editLinkBtn}>Edit</button>
@@ -353,10 +378,11 @@ const drawer: any = { width:'420px', height:'100%', background:'#fff', display:'
 const drawerHeader: any = { padding:'25px', borderBottom:'1px solid #f0f0f0', display:'flex', justifyContent:'space-between', alignItems: 'center' };
 const adminPanel: any = { padding:'20px', background:'#f9fafc', borderBottom:'1px solid #eee' };
 const notifInput: any = { width:'100%', padding:'12px', borderRadius:'12px', border:'1px solid #eee', resize:'none', fontSize:'14px' };
+const fileLabel: any = { display: 'block', background: '#fff', border: '1px dashed #ccc', padding: '10px', borderRadius: '12px', textAlign: 'center', cursor: 'pointer', fontSize: '13px', color: '#666', marginTop:'10px' };
 const sendBtn: any = { width:'100%', padding:'15px', background:'#6157ff', color:'#fff', border:'none', borderRadius:'12px', fontWeight:'bold', marginTop:'10px', cursor:'pointer' };
 const cancelBtn: any = { padding:'10px 15px', background:'#eee', color:'#666', border:'none', borderRadius:'12px', fontWeight:'bold', cursor:'pointer', marginTop:'10px' };
 const notifCard: any = { padding:'20px', borderBottom:'1px solid #f9f9f9', fontSize:'14px' };
-const notifImgDisplay: any = { width: '100%', borderRadius: '12px', marginBottom: '12px', objectFit: 'cover', maxHeight: '200px', border: '1px solid #eee' };
+const notifImgDisplay: any = { width: '100%', borderRadius: '12px', marginBottom: '12px', objectFit: 'cover', maxHeight: '250px', border: '1px solid #eee' };
 const closeBtn: any = { background:'none', border:'none', fontSize:'24px', cursor:'pointer', color:'#ccc' };
 const editLinkBtn: any = { background:'none', border:'none', color:'#0070f3', fontSize:'12px', fontWeight:'bold', cursor:'pointer' };
 const delLinkBtn: any = { background:'none', border:'none', color:'#ff4d4d', fontSize:'12px', fontWeight:'bold', cursor:'pointer' };
