@@ -14,13 +14,8 @@ export default function BatchDashboard({ params }: PageProps) {
   const { data: session, status } = useSession()
   const [mounted, setMounted] = useState(false)
   
-  // Form States
-  const [subject, setSubject] = useState("Physics")
-  const [title, setTitle] = useState("")
-  const [selectedVideo, setSelectedVideo] = useState<File | null>(null)
-  const [selectedNotes, setSelectedNotes] = useState<File | null>(null)
-  const [uploading, setUploading] = useState(false)
-  const [progress, setProgress] = useState(0)
+  const [notices, setNotices] = useState<any[]>([])
+  const [xp, setXp] = useState(0)
 
   const supabase = useMemo(() => {
     return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
@@ -28,149 +23,140 @@ export default function BatchDashboard({ params }: PageProps) {
 
   const isOwner = session?.user?.email === "bhaswarray@gmail.com"
 
-  useEffect(() => { setMounted(true) }, []);
+  useEffect(() => { 
+    setMounted(true);
+    fetchData();
+  }, [batchId]);
 
-  const handleUpload = async (e: React.FormEvent) => {
-    e.preventDefault();
-    // Feature: Allow either video OR notes
-    if (!title) return alert("Please enter a title");
-    if (!selectedVideo && !selectedNotes) return alert("Please select at least a Video or a PDF Note");
-
-    setUploading(true);
-    setProgress(5);
-
-    try {
-      let videoUrl = "";
-      let notesUrl = "";
-
-      // 1. Upload Video if selected
-      if (selectedVideo) {
-        const vPath = `neet/${batchId}/${subject}/vid_${Date.now()}_${selectedVideo.name.replace(/\s+/g, '_')}`;
-        const { error: vError } = await supabase.storage.from('batch-materials').upload(vPath, selectedVideo);
-        if (vError) throw vError;
-        videoUrl = supabase.storage.from('batch-materials').getPublicUrl(vPath).data.publicUrl;
-        setProgress(50);
-      }
-
-      // 2. Upload Notes if selected
-      if (selectedNotes) {
-        const nPath = `neet/${batchId}/${subject}/notes_${Date.now()}_${selectedNotes.name.replace(/\s+/g, '_')}`;
-        const { error: nError } = await supabase.storage.from('batch-materials').upload(nPath, selectedNotes);
-        if (nError) throw nError;
-        notesUrl = supabase.storage.from('batch-materials').getPublicUrl(nPath).data.publicUrl;
-        setProgress(80);
-      }
-
-      // 3. Save Record
-      const { error: dbError } = await supabase.from('materials').insert([{
-        batch_id: batchId,
-        subject,
-        title,
-        video_url: videoUrl, // Can be empty if only notes posted
-        notes_url: notesUrl, // Can be empty if only video posted
-        category: 'neet'
-      }]);
-
-      if (dbError) throw dbError;
-
-      setProgress(100);
-      alert("Success! Material Published.");
-      setTitle(""); setSelectedVideo(null); setSelectedNotes(null); setProgress(0);
-    } catch (err: any) {
-      alert(`Upload failed: ${err.message}`);
-      setProgress(0);
-    } finally {
-      setUploading(false);
-    }
+  const fetchData = async () => {
+    const { data: nData } = await supabase.from('notices').select('*').eq('batch_id', batchId);
+    if (nData) setNotices(nData);
+    
+    const { data: sData } = await supabase.from('student_stats').select('xp_points').eq('email', session?.user?.email).single();
+    if (sData) setXp(sData.xp_points);
   };
 
   if (status === "loading" || !mounted) return <p style={{textAlign:'center', marginTop:'50px'}}>Loading...</p>
   if (status === "unauthenticated") redirect("/api/auth/signin")
 
-  const offerings = [
-    { title: "All Classes", icon: "📘", color: "#6c63ff", link: `/neet/${batchId}/all-classes` },
-    { title: "All Tests", icon: "📝", color: "#4caf50", link: "#" },
-    { title: "My Doubts", icon: "❓", color: "#ff9800", link: "#" },
-    { title: "Community", icon: "👥", color: "#2196f3", link: "#" },
-    { title: "Preparation Meter", icon: "⏲️", color: "#f44336", link: "#" },
-    { title: "Infinite Practice", icon: "♾️", color: "#9c27b0", link: "#" },
-  ];
-
   return (
-    <div style={{ background: '#f5f7fb', minHeight: '100vh', fontFamily: 'sans-serif' }}>
-      <header style={{ background: 'linear-gradient(135deg, #2c3e50, #000)', color: '#fff', padding: '60px 8%' }}>
-        <h1 style={{ margin: 0, fontSize: '36px' }}>{batchId.toUpperCase()} DASHBOARD</h1>
-      </header>
-
-      <main style={{ padding: '40px 8%', maxWidth: '1200px', margin: '0 auto' }}>
+    <div style={{ background: '#fff', minHeight: '100vh', fontFamily: 'sans-serif' }}>
+      
+      {/* TOP ACTION BAR (AS PER YOUR PIC) */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px 5%', borderBottom: '1px solid #f0f0f0' }}>
+        <h2 style={{ fontSize: '18px', margin: 0, color: '#333' }}>Study</h2>
         
-        <section style={{ marginBottom: '50px' }}>
-          <h3 style={{ marginBottom: '25px' }}>Batch Offerings</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
-            {offerings.map((item) => (
-              <Link key={item.title} href={item.link} style={{ textDecoration: 'none' }}>
-                <div style={cardStyle}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                    <div style={{ fontSize: '24px', background: `${item.color}15`, padding: '12px', borderRadius: '12px' }}>{item.icon}</div>
-                    <span style={{ fontWeight: '600', color: '#444' }}>{item.title}</span>
-                  </div>
-                  <span>❯</span>
-                </div>
-              </Link>
-            ))}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '25px' }}>
+          <span style={{ cursor: 'pointer', fontSize: '20px' }}>🎁</span>
+          
+          <div style={iconStatStyle}>
+             <span>🔥</span> <span style={{ fontWeight: 'bold' }}>0</span>
           </div>
-        </section>
 
-        {isOwner && (
-          <section style={{ background: '#fff', padding: '30px', borderRadius: '25px', border: '1px solid #eee' }}>
-            <h3 style={{ marginTop: 0, color: '#2e7d32' }}>Faculty Mode: Post Content</h3>
-            <form onSubmit={handleUpload} style={{ display: 'grid', gap: '20px' }}>
-              <input type="text" placeholder="Lecture Title (e.g. Physics Chapter 1)" value={title} onChange={e => setTitle(e.target.value)} style={inputStyle} />
-              
-              <select value={subject} onChange={e => setSubject(e.target.value)} style={inputStyle}>
-                <option>Physics</option><option>Chemistry</option><option>Biology</option>
-              </select>
+          <div style={iconStatStyle}>
+             <span style={{ background: '#e3f2fd', color: '#1976d2', padding: '2px 6px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold' }}>XP</span> 
+             <span style={{ fontWeight: 'bold' }}>{xp}</span>
+          </div>
 
-              {/* DRAG & DROP ZONE FOR VIDEO */}
-              <div 
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => { e.preventDefault(); setSelectedVideo(e.dataTransfer.files[0]); }}
-                style={dropZoneStyle}
-              >
-                {selectedVideo ? `✅ Video: ${selectedVideo.name}` : "🎥 Drag & Drop Video here or click to select"}
-                <input type="file" accept="video/*" onChange={e => setSelectedVideo(e.target.files?.[0] || null)} style={fileInputHidden} />
-              </div>
+          {/* NOTIFICATION BELL WITH BADGE */}
+          <div style={{ position: 'relative', cursor: 'pointer', fontSize: '22px' }}>
+            🔔
+            {notices.length > 0 && (
+              <span style={badgeStyle}>{notices.length}</span>
+            )}
+          </div>
 
-              {/* DRAG & DROP ZONE FOR NOTES */}
-              <div 
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => { e.preventDefault(); setSelectedNotes(e.dataTransfer.files[0]); }}
-                style={{...dropZoneStyle, borderStyle: 'dotted'}}
-              >
-                {selectedNotes ? `✅ PDF: ${selectedNotes.name}` : "📄 Drag & Drop PDF Notes here or click to select"}
-                <input type="file" accept=".pdf" onChange={e => setSelectedNotes(e.target.files?.[0] || null)} style={fileInputHidden} />
-              </div>
+          <img src={session?.user?.image || ""} style={{ width: '35px', height: '35px', borderRadius: '50%', border: '2px solid #6c63ff' }} alt="profile" />
+        </div>
+      </div>
 
-              {uploading && (
-                <div style={{ height: '8px', background: '#eee', borderRadius: '10px', overflow: 'hidden' }}>
-                  <div style={{ width: `${progress}%`, height: '100%', background: '#6c63ff', transition: '0.3s' }} />
-                </div>
-              )}
+      {/* BANNER SECTION */}
+      <div style={{ background: 'linear-gradient(135deg, #2c3e50, #000)', color: '#fff', margin: '20px 5%', borderRadius: '20px', padding: '50px' }}>
+        <span style={{ fontSize: '12px', opacity: 0.7 }}>YOUR BATCH</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h1 style={{ margin: '10px 0', fontSize: '32px' }}>{batchId.replace(/-/g, ' ').toUpperCase()} ▾</h1>
+          <button style={{ padding: '12px 25px', borderRadius: '25px', background: '#fff', color: '#000', border: 'none', fontWeight: 'bold', cursor: 'pointer' }}>
+            UPGRADE <span style={{ color: '#fbc02d' }}>PLAN</span>
+          </button>
+        </div>
+      </div>
 
-              <button type="submit" disabled={uploading} style={btnStyle}>
-                {uploading ? `Uploading ${progress}%...` : "Publish to All Classes"}
-              </button>
-            </form>
-          </section>
-        )}
+      {/* OFFERINGS SECTION */}
+      <main style={{ padding: '0 5%' }}>
+        <h3>Batch Offerings</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+          <Link href={`/neet/${batchId}/all-classes`} style={offerCardStyle}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+              <span style={{ fontSize: '24px', color: '#6c63ff' }}>📘</span>
+              <span style={{ fontWeight: '600', color: '#444' }}>All Classes</span>
+            </div>
+            <span style={{ color: '#ccc' }}>❯</span>
+          </Link>
+          
+          <Link href="#" style={offerCardStyle}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+              <span style={{ fontSize: '24px', color: '#1976d2' }}>📝</span>
+              <span style={{ fontWeight: '600', color: '#444' }}>All Tests</span>
+            </div>
+            <span style={{ color: '#ccc' }}>❯</span>
+          </Link>
+
+          <Link href="#" style={offerCardStyle}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+              <span style={{ fontSize: '24px', color: '#ff9800' }}>❓</span>
+              <span style={{ fontWeight: '600', color: '#444' }}>My Doubts</span>
+            </div>
+            <span style={{ color: '#ccc' }}>❯</span>
+          </Link>
+
+          <Link href="#" style={offerCardStyle}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+              <span style={{ fontSize: '24px', color: '#4caf50' }}>👥</span>
+              <span style={{ fontWeight: '600', color: '#444' }}>Community</span>
+            </div>
+            <span style={{ color: '#ccc' }}>❯</span>
+          </Link>
+        </div>
       </main>
+
     </div>
   )
 }
 
-// Styles
-const cardStyle: any = { background: '#fff', padding: '20px', borderRadius: '18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '1px solid #eee', color: '#444' };
-const inputStyle: any = { padding: '15px', borderRadius: '12px', border: '1px solid #ddd', fontSize: '16px' };
-const dropZoneStyle: any = { border: '2px dashed #ccc', borderRadius: '15px', padding: '30px', textAlign: 'center', color: '#888', cursor: 'pointer', position: 'relative' };
-const fileInputHidden: any = { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' };
-const btnStyle: any = { padding: '18px', background: '#6c63ff', color: 'white', border: 'none', borderRadius: '15px', fontWeight: 'bold', fontSize: '16px', cursor: 'pointer' };
+// STYLES
+const iconStatStyle: any = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '8px',
+  color: '#444',
+  fontSize: '18px'
+};
+
+const badgeStyle: any = {
+  position: 'absolute',
+  top: '-5px',
+  right: '-5px',
+  background: '#d32f2f',
+  color: '#fff',
+  fontSize: '10px',
+  borderRadius: '50%',
+  width: '18px',
+  height: '18px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  fontWeight: 'bold',
+  border: '2px solid #fff'
+};
+
+const offerCardStyle: any = {
+  background: '#fff',
+  padding: '25px',
+  borderRadius: '15px',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  border: '1px solid #f0f0f0',
+  textDecoration: 'none',
+  boxShadow: '0 2px 10px rgba(0,0,0,0.03)'
+};
