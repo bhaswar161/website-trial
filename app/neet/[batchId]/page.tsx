@@ -16,7 +16,7 @@ export default function BatchDashboard({ params }: PageProps) {
   const [mounted, setMounted] = useState(false)
   const badgeRef = useRef<HTMLDivElement>(null);
   
-  // Profile & Streak States
+  // States
   const [localName, setLocalName] = useState("");
   const [localPic, setLocalPic] = useState("");
   const [studySeconds, setStudySeconds] = useState(0);
@@ -28,8 +28,6 @@ export default function BatchDashboard({ params }: PageProps) {
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [showEventModal, setShowEventModal] = useState(false)
   const [showStreakModal, setShowStreakModal] = useState(false)
-  
-  // Data States
   const [notices, setNotices] = useState<any[]>([])
   const [events, setEvents] = useState<any[]>([])
   const [userProfile, setUserProfile] = useState<any>(null)
@@ -56,13 +54,16 @@ export default function BatchDashboard({ params }: PageProps) {
 
     const interval = setInterval(() => {
       setStudySeconds(s => {
-        if (s < 600) return s + 1; // Cap at 10 mins (600s)
-        if (s >= 600 && !isStreakAchieved) {
-            const ns = streak + 1;
-            setStreak(ns);
-            setIsStreakAchieved(true);
-            localStorage.setItem("userStreak", ns.toString());
-            localStorage.setItem("lastStudyDate", new Date().toDateString());
+        if (s < 600) {
+            const nextSec = s + 1;
+            if (nextSec >= 600 && !isStreakAchieved) {
+                const ns = streak + 1;
+                setStreak(ns);
+                setIsStreakAchieved(true);
+                localStorage.setItem("userStreak", ns.toString());
+                localStorage.setItem("lastStudyDate", new Date().toDateString());
+            }
+            return nextSec;
         }
         return s;
       });
@@ -74,7 +75,7 @@ export default function BatchDashboard({ params }: PageProps) {
       supabase.from('events').select('*').eq('batch_id', batchId).order('event_time', { ascending: true }).then(({data}) => setEvents(data || []));
     }
     return () => clearInterval(interval);
-  }, [batchId, session, isStreakAchieved]);
+  }, [batchId, session, isStreakAchieved, streak]);
 
   const fetchData = async () => {
     supabase.from('notices').select('*').eq('batch_id', batchId).order('created_at', { ascending: false }).then(({data}) => setNotices(data || []));
@@ -87,6 +88,12 @@ export default function BatchDashboard({ params }: PageProps) {
     setNewNotice(""); fetchData();
   };
 
+  const handleSaveEvent = async () => {
+    if (!eventTitle || !eventDate) return;
+    await supabase.from('events').insert([{ batch_id: batchId, title: eventTitle, event_time: eventDate }]);
+    setShowEventModal(false); setEventTitle(""); setEventDate(""); fetchData();
+  };
+
   const handleDownloadBadge = async () => {
     if (badgeRef.current) {
       const canvas = await html2canvas(badgeRef.current, { scale: 2, backgroundColor: '#ffffff' });
@@ -97,12 +104,13 @@ export default function BatchDashboard({ params }: PageProps) {
   const finalDisplayName = localName || session?.user?.name?.split(' ')[0] || "User";
   const finalDisplayPic = localPic || userProfile?.avatar_url || session?.user?.image || `https://ui-avatars.com/api/?name=${finalDisplayName}`;
   const unreadCount = notices.filter(n => new Date(n.created_at).getTime() > lastReadTime).length;
-  const rainbowColors = ["#FF0000", "#FF7F00", "#FFFF00", "#00FF00", "#0000FF", "#4B0082", "#9400D3"];
 
   if (status === "loading" || !mounted) return null;
 
   return (
     <div style={{ background: '#fcfdfe', minHeight: '100vh', fontFamily: 'sans-serif' }}>
+      
+      {/* HEADER */}
       <header style={headerWrapper}>
         <div style={headerInner}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
@@ -138,13 +146,13 @@ export default function BatchDashboard({ params }: PageProps) {
       </header>
 
       <main style={contentArea}>
-        {/* GAP FIXED: LARGE PADDING TOP */}
+        {/* GAP FIXED: LARGE TOP PADDING */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={batchBanner}>
           <div style={bannerDots} />
           <div style={{ position: 'relative', zIndex: 1 }}>
             <small style={{ opacity: 0.8, letterSpacing: '1px', fontWeight: '700' }}>YOUR BATCH</small>
             <h2 style={{ fontSize: '42px', fontWeight: '900', margin: '15px 0' }}>{batchId.toUpperCase()} MISSION...</h2>
-            <div style={studyGoalText}>Study 10 mins to grow streak: <b>{Math.floor(studySeconds/60)}/10m</b></div>
+            <div style={studyGoalText}>Daily Session: <b>{Math.floor(studySeconds/60)} / 10 mins</b></div>
           </div>
         </motion.div>
 
@@ -161,57 +169,49 @@ export default function BatchDashboard({ params }: PageProps) {
         </section>
       </main>
 
+      {/* CLEAN MAGIC STREAK MODAL (NO STARS) */}
       <AnimatePresence>
         {showStreakModal && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={modalOverlay} onClick={() => setShowStreakModal(false)}>
             <motion.div initial={{ scale: 0.8, y: 20 }} animate={{ scale: 1, y: 0 }} style={streakCardPremium} onClick={e => e.stopPropagation()}>
               <button style={closeX} onClick={() => setShowStreakModal(false)}>✕</button>
-              <div ref={badgeRef} style={{background:'#fff', borderRadius:'30px', overflow:'hidden'}}>
-                
-                {/* STARS ONLY ON GRADIENT SECTION */}
+              
+              <div ref={badgeRef} style={{background:'#fff', borderRadius:'35px', overflow:'hidden'}}>
+                {/* ANIMATED GRADIENT HEADER */}
                 <motion.div 
                     animate={{ background: ['linear-gradient(135deg, #5b6cfd, #9c42f5)', 'linear-gradient(135deg, #9c42f5, #ff5b84)', 'linear-gradient(135deg, #5b6cfd, #9c42f5)'] }}
                     transition={{ duration: 6, repeat: Infinity }}
                     style={streakCircleHeader}
                 >
-                    {[...Array(12)].map((_, i) => (
-                        <motion.div
-                          key={i}
-                          animate={{ opacity: [0.2, 1, 0.2], scale: [0.5, 1.2, 0.5], y: [0, (Math.random()-0.5)*150], x: [(Math.random()-0.5)*150], color: rainbowColors }}
-                          transition={{ duration: 3, repeat: Infinity, delay: i * 0.2 }}
-                          style={{ position: 'absolute', top: '50%', left: '50%', fontSize: '18px', zIndex: 1, filter:'drop-shadow(0 0 5px currentColor)' }}
-                        >✨</motion.div>
-                    ))}
                     <div style={streakMainVal}>
                         {streak} <small style={{fontSize:'12px', display:'block', color:'#888'}}>DAYS</small>
                     </div>
                 </motion.div>
 
                 <div style={streakInfoBody}>
-                    <h2 style={{margin:'0', fontWeight:'900', color: '#111'}}>Magic Streak!</h2>
-                    <p style={{color:'#666', fontSize:'14px', marginTop: '10px'}}>Study for 10 minutes daily to keep the magic.</p>
+                    <h2 style={{margin:'0', fontWeight:'900', color: '#111'}}>Daily Streak!</h2>
+                    <p style={{color:'#666', fontSize:'14px', marginTop: '10px'}}>Complete 10 mins of study daily to grow your habit.</p>
                     
-                    {/* PROGRESS BAR SHOWING MINUTES LEFT */}
+                    {/* NEW PROGRESS BAR LOGIC */}
                     <div style={progressBarContainer}>
-                        <div style={{display:'flex', justifyContent:'space-between', fontSize:'11px', color:'#888', marginBottom:'5px'}}>
-                            <span>Progress</span>
-                            <span>{Math.floor(studySeconds/60)} / 10 mins</span>
+                        <div style={{display:'flex', justifyContent:'space-between', fontSize:'11px', color:'#888', marginBottom:'6px'}}>
+                            <span>Study Progress</span>
+                            <span>{Math.floor(studySeconds/60)} / 10m</span>
                         </div>
                         <div style={progressBarBg}>
                             <motion.div 
                                 initial={{ width: 0 }}
                                 animate={{ width: `${(studySeconds / 600) * 100}%` }}
-                                style={progressBarFill}
+                                style={progressBarFill} 
                             />
                         </div>
-                        <small style={{fontSize:'10px', color:'#aaa', display:'block', marginTop:'5px'}}>
-                            {600 - studySeconds > 0 ? `${Math.ceil((600 - studySeconds)/60)} mins left to go!` : "Goal Achieved! 🔥"}
+                        <small style={{display:'block', marginTop:'6px', color:'#5b6cfd', fontWeight:'600', fontSize:'10px'}}>
+                            {studySeconds < 600 ? `${10 - Math.floor(studySeconds/60)} mins left until streak up!` : "Goal Achieved today! 🔥"}
                         </small>
                     </div>
                 </div>
               </div>
 
-              {/* CLEAN DOWNLOAD SECTION - NO STARS */}
               <div style={shareSectionUI}>
                 <motion.button whileHover={{ scale: 1.02 }} onClick={handleDownloadBadge} style={downloadBtnUI}>
                     Download Badge
@@ -225,10 +225,10 @@ export default function BatchDashboard({ params }: PageProps) {
   )
 }
 
-// --- FULL STYLES & ERROR FIXES ---
+// --- ALL REQUIRED STYLES & ERROR FIXES ---
 const headerWrapper: any = { position:'fixed', top:0, left:0, width:'100%', background:'#fff', borderBottom:'1px solid #f0f0f0', zIndex: 1000, height: '80px' };
 const headerInner: any = { maxWidth:'1300px', margin:'0 auto', display:'flex', justifyContent:'space-between', alignItems:'center', height:'100%', padding:'0 25px' };
-const contentArea: any = { paddingTop:'180px', maxWidth:'1200px', margin:'0 auto', paddingBottom:'60px' };
+const contentArea: any = { paddingTop:'170px', maxWidth:'1200px', margin:'0 auto', paddingBottom:'60px' };
 
 const batchBanner: any = { background:'#1c252e', color:'#fff', padding:'80px 60px', borderRadius:'30px 30px 100px 30px', marginBottom:'50px', position: 'relative', overflow: 'hidden', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' };
 const bannerDots: any = { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.05) 1px, transparent 0)', backgroundSize: '24px 24px' };
@@ -247,24 +247,26 @@ const nameWrapper: any = { display: 'flex', flexDirection: 'column' };
 const backBtnCircle: any = { color:'#333', background:'#f5f5f5', width:'35px', height:'35px', borderRadius:'10px', display:'flex', alignItems:'center', justifyContent:'center', cursor: 'pointer' };
 
 const offeringGrid: any = { display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(260px, 1fr))', gap:'20px' };
-const offeringItem: any = { padding:'30px', background:'#fff', borderRadius:'30px', border:'1px solid #f0f0f0', display:'flex', justifyContent:'space-between', alignItems:'center', cursor:'pointer' };
+const offeringItem: any = { padding:'30px', background:'#fff', borderRadius:'30px', border:'1px solid #f0f0f0', display:'flex', justifyContent:'space-between', alignItems:'center' };
 const sectionTitle: any = { fontSize:'22px', fontWeight:'900', margin:'0 0 25px' };
 const arrowCircle: any = { width: '32px', height: '32px', borderRadius: '50%', background: '#f5f7ff', color: '#5b6cfd', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' };
-
-const dropdownMenu: any = { position: 'absolute', top: '65px', right: '0', background: '#fff', boxShadow: '0 15px 35px rgba(0,0,0,0.15)', borderRadius: '20px', padding: '10px', zIndex: 100, minWidth: '180px', border: '1px solid #f0f0f0', display:'flex', flexDirection:'column' };
-const dropdownItem: any = { padding: '12px 15px', color: '#333', fontSize: '14px', fontWeight: '700', borderRadius: '12px', textDecoration: 'none', display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer' };
-const dropdownLogoutBtn: any = { width:'100%', textAlign:'left', padding: '12px 15px', background: 'none', border: 'none', color: '#ef4444', fontSize: '14px', fontWeight: '800', borderRadius: '12px', cursor: 'pointer' };
 
 const modalOverlay: any = { position:'fixed', top:0, left:0, width:'100%', height:'100%', background:'rgba(0,0,0,0.6)', zIndex:3000, display:'flex', alignItems:'center', justifyContent:'center', backdropFilter: 'blur(4px)' };
 const streakCardPremium: any = { width:'400px', background:'#fff', borderRadius:'40px', overflow:'hidden', position:'relative', textAlign:'center', boxShadow:'0 30px 60px rgba(0,0,0,0.3)' };
 const streakCircleHeader: any = { height: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' };
-const streakMainVal: any = { width: '120px', height: '120px', background: '#fff', borderRadius: '50%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontSize: '40px', fontWeight: '900', color: '#5b6cfd', zIndex: 2, position:'relative' };
+const streakMainVal: any = { width: '120px', height: '120px', background: '#fff', borderRadius: '50%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontSize: '40px', fontWeight: '900', color: '#5b6cfd' };
 const streakInfoBody: any = { padding: '30px 25px 35px', background: '#fff' };
+
+// PROGRESS BAR STYLES
+const progressBarContainer: any = { marginTop: '25px', textAlign: 'left' };
+const progressBarBg: any = { width: '100%', height: '8px', background: '#f0f0f0', borderRadius: '10px', overflow: 'hidden' };
+const progressBarFill: any = { height: '100%', background: 'linear-gradient(90deg, #5b6cfd, #a44ed1)', borderRadius: '10px' };
+
 const shareSectionUI: any = { padding: '20px 20px 30px', background: '#fcfdfe', borderTop: '1px solid #eee' };
 const downloadBtnUI: any = { width: '100%', padding: '14px', background: '#111', color: '#fff', border: 'none', borderRadius: '16px', fontWeight: 'bold', cursor: 'pointer' };
 const closeX: any = { position:'absolute', top:'20px', right:'20px', border:'none', background:'none', fontSize:'22px', cursor:'pointer', color:'#fff', zIndex: 10 };
 
-// NEW PROGRESS BAR STYLES
-const progressBarContainer: any = { marginTop: '25px', textAlign: 'left' };
-const progressBarBg: any = { width: '100%', height: '8px', background: '#f0f0f0', borderRadius: '10px', overflow: 'hidden' };
-const progressBarFill: any = { height: '100%', background: 'linear-gradient(90deg, #5b6cfd, #a44ed1)', borderRadius: '10px' };
+// Terminal Error Fix Definitions
+const dropdownMenu: any = { position: 'absolute', top: '65px', right: '0', background: '#fff', boxShadow: '0 15px 35px rgba(0,0,0,0.15)', borderRadius: '20px', padding: '10px', zIndex: 100, minWidth: '180px', border: '1px solid #f0f0f0', display:'flex', flexDirection:'column' };
+const dropdownItem: any = { padding: '12px 15px', color: '#333', fontSize: '14px', fontWeight: '700', borderRadius: '12px', textDecoration: 'none', display: 'block' };
+const dropdownLogoutBtn: any = { width:'100%', textAlign:'left', padding: '12px 15px', background: 'none', border: 'none', color: '#ef4444', fontSize: '14px', fontWeight: '800', borderRadius: '12px', cursor: 'pointer' };
