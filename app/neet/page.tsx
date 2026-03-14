@@ -51,7 +51,7 @@ export default function NeetPage() {
   const handleEnroll = async (batchId: string) => {
     if (!supabase || !session?.user?.email) return alert("Please sign in to enroll");
     const { error } = await supabase.from('enrollments').insert([{ student_email: session.user.email, batch_id: batchId }]);
-    if (error) alert("Enrollment failed.");
+    if (error) alert("Enrollment failed. You might already be enrolled.");
     else setEnrolledBatches(prev => [...prev, batchId]);
   };
 
@@ -226,6 +226,7 @@ export default function NeetPage() {
                                 </div>
                               </div>
                             ))}
+                            {materials.filter(m => m.batch_id === batch.id && m.subject === sub).length === 0 && <span style={{fontSize: '11px', color: '#999'}}>No materials uploaded yet.</span>}
                           </div>
                         </details>
                       ))}
