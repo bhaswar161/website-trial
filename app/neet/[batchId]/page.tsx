@@ -56,25 +56,27 @@ export default function BatchDashboard({ params }: PageProps) {
     }
   };
 
-  // Fixed handlePostNotice: Accepts optional text for automation and fixes TS error
-  const handlePostNotice = async (textOverride?: string) => {
-    const textToSend = textOverride || newNotice;
-    if (!textToSend.trim()) return;
+  // --- FIXED NOTIFICATION LOGIC ---
+  const handlePostNotice = async (textOverride?: any) => {
+    // If textOverride is a string (from events), use it. Otherwise, use state (manual typing).
+    const content = typeof textOverride === 'string' ? textOverride : newNotice;
+
+    if (!content || !content.trim()) return;
     
     setUploading(true);
     try {
       const { data, error } = await supabase.from('notices').insert([{ 
           batch_id: batchId, 
-          content: textToSend 
+          content: content.trim() 
       }]).select();
 
       if (error) throw error;
       if (data) {
         setNotices(prev => [data[0], ...prev]);
-        setNewNotice("");
+        setNewNotice(""); // Clear manual text box
       }
     } catch (err: any) {
-      alert("Database Sync Error: " + err.message);
+      alert("Notice Error: " + err.message);
     } finally {
       setUploading(false);
     }
@@ -86,28 +88,25 @@ export default function BatchDashboard({ params }: PageProps) {
     if (!error) setNotices(prev => prev.filter(n => n.id !== id));
   };
 
+  // --- FIXED EVENT LOGIC ---
   const handleSaveEvent = async () => {
     if (!eventTitle || !eventDate) return alert("Please fill both Title and Date");
     setUploading(true);
     try {
       if (editingEvent) {
-        // UPDATE EXISTING EVENT
         const { error } = await supabase
           .from('events')
           .update({ title: eventTitle, event_time: eventDate })
           .eq('id', editingEvent.id);
-        
         if (error) throw error;
+        // Automated Notice for Edit
         await handlePostNotice(`✏️ Event Updated: ${eventTitle}`);
       } else {
-        // CREATE NEW EVENT
-        const { data, error } = await supabase.from('events').insert([{ 
-          batch_id: batchId, 
-          title: eventTitle, 
-          event_time: eventDate 
-        }]).select();
-
+        const { error } = await supabase
+          .from('events')
+          .insert([{ batch_id: batchId, title: eventTitle, event_time: eventDate }]);
         if (error) throw error;
+        // Automated Notice for Create
         await handlePostNotice(`🗓️ New Event Scheduled: ${eventTitle}`);
       }
       
@@ -126,7 +125,6 @@ export default function BatchDashboard({ params }: PageProps) {
   const openEditModal = (ev: any) => {
     setEditingEvent(ev);
     setEventTitle(ev.title);
-    // Format date for datetime-local input
     const date = new Date(ev.event_time);
     const formattedDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
     setEventDate(formattedDate);
@@ -246,8 +244,17 @@ export default function BatchDashboard({ params }: PageProps) {
               </div>
               {isOwner && (
                 <div style={adminPanel}>
-                  <textarea value={newNotice} onChange={e => setNewNotice(e.target.value)} placeholder="Send an update..." style={notifInput} />
-                  <button onClick={() => handlePostNotice()} disabled={uploading} style={sendBtn}>
+                  <textarea 
+                    value={newNotice} 
+                    onChange={e => setNewNotice(e.target.value)} 
+                    placeholder="Send an update..." 
+                    style={notifInput} 
+                  />
+                  <button 
+                    onClick={() => handlePostNotice()} // Button click passes no string, uses state
+                    disabled={uploading} 
+                    style={sendBtn}
+                  >
                     {uploading ? "Posting..." : "Post Announcement"}
                   </button>
                 </div>
