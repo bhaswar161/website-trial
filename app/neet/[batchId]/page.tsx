@@ -15,24 +15,24 @@ export default function BatchDashboard({ params }: any) {
   const [mounted, setMounted] = useState(false)
   const badgeRef = useRef<HTMLDivElement>(null);
   
-  // States
+  // Logic & Profile Sync States
   const [localName, setLocalName] = useState("");
   const [localPic, setLocalPic] = useState("");
   const [studySeconds, setStudySeconds] = useState(0);
   const [streak, setStreak] = useState(0);
   const [isStreakAchieved, setIsStreakAchieved] = useState(false);
+
+  // UI States
+  const [showNotifs, setShowNotifs] = useState(false)
+  const [showProfileMenu, setShowProfileMenu] = useState(false)
+  const [showEventModal, setShowEventModal] = useState(false)
+  const [showStreakModal, setShowStreakModal] = useState(false)
   const [notices, setNotices] = useState<any[]>([])
   const [events, setEvents] = useState<any[]>([])
   const [userProfile, setUserProfile] = useState<any>(null)
   const [lastReadTime, setLastReadTime] = useState<number>(0)
   
-  // UI Logic
-  const [showNotifs, setShowNotifs] = useState(false)
-  const [showProfileMenu, setShowProfileMenu] = useState(false)
-  const [showEventModal, setShowEventModal] = useState(false)
-  const [showStreakModal, setShowStreakModal] = useState(false)
-
-  // Admin Inputs
+  // Admin Input States
   const [newNotice, setNewNotice] = useState("")
   const [noticeSubject, setNoticeSubject] = useState("")
   const [eventTitle, setEventTitle] = useState("")
@@ -75,15 +75,11 @@ export default function BatchDashboard({ params }: any) {
   }, [batchId, session, isStreakAchieved, streak]);
 
   const fetchData = async () => {
-    // Sync Profile Data
     supabase.from('student_stats').select('*').eq('email', session?.user?.email).single().then(({data}) => setUserProfile(data));
-    
-    // Fetch Notifications
     supabase.from('notices').select('*').eq('batch_id', batchId).order('created_at', { ascending: false }).then(({data}) => setNotices(data || []));
     
-    // Fetch Events (Safe fetch - handles both old and new table schemas)
+    // Fetch Events and show them immediately on the page
     const { data: evData } = await supabase.from('events').select('*').eq('batch_id', batchId).order('event_time', { ascending: true });
-    // Client-side filter to ensure we show things that aren't marked done
     setEvents(evData?.filter((ev: any) => ev.is_done !== true) || []);
   };
 
@@ -103,15 +99,13 @@ export default function BatchDashboard({ params }: any) {
     // 1. Create Event
     await supabase.from('events').insert([{ batch_id: batchId, title: eventTitle, event_time: eventDate, is_done: false }]);
     // 2. Auto-Post Notice
-    await supabase.from('notices').insert([{ batch_id: batchId, title: "New Event", content: `New event "${eventTitle}" scheduled for ${new Date(eventDate).toLocaleString()}.` }]);
+    await supabase.from('notices').insert([{ batch_id: batchId, title: "📅 New Event Scheduled", content: `${eventTitle} - ${new Date(eventDate).toLocaleString()}` }]);
     setShowEventModal(false); setEventTitle(""); setEventDate(""); fetchData();
   };
 
   const handleDismissDone = async (ev: any) => {
-    // 1. Mark as done in DB
     await supabase.from('events').update({ is_done: true }).eq('id', ev.id);
-    // 2. Auto-post Mission Accomplished Notice
-    await supabase.from('notices').insert([{ batch_id: batchId, title: "Event Completed ✅", content: `The event "${ev.title}" has been successfully completed.` }]);
+    await supabase.from('notices').insert([{ batch_id: batchId, title: "Event Completed ✅", content: `The event "${ev.title}" is finished.` }]);
     fetchData();
   };
 
@@ -131,7 +125,7 @@ export default function BatchDashboard({ params }: any) {
   return (
     <div style={{ background: '#fcfdfe', minHeight: '100vh', fontFamily: 'sans-serif' }}>
       
-      {/* HEADER */}
+      {/* HEADER WITH SHADES & ANIMATIONS */}
       <header style={headerWrapper}>
         <div style={headerInner}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
@@ -143,9 +137,9 @@ export default function BatchDashboard({ params }: any) {
                 <motion.div whileHover={{ scale: 1.05 }} style={streakPill} onClick={() => setShowStreakModal(true)}>
                     <motion.span animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 2 }} style={{display:'inline-block'}}>🔥</motion.span> {streak}
                 </motion.div>
-                <div style={bellContainer} onClick={() => setShowNotifs(true)}>
+                <motion.div whileHover={{ rotate: [0,-10,10,0] }} style={bellContainer} onClick={() => setShowNotifs(true)}>
                     <span>🔔</span>{unreadCount > 0 && <span style={bellBadge}>{unreadCount}</span>}
-                </div>
+                </motion.div>
             </div>
             
             <div style={{ position: 'relative' }}>
@@ -170,8 +164,8 @@ export default function BatchDashboard({ params }: any) {
       </header>
 
       <main style={contentArea}>
-        {/* BANNER WITH GAP */}
-        <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} style={batchBanner}>
+        {/* BANNER */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={batchBanner}>
           <div style={bannerDots} />
           <div style={{ position: 'relative', zIndex: 1 }}>
             <small style={{ opacity: 0.8, fontWeight: '700' }}>YOUR BATCH</small>
@@ -196,7 +190,7 @@ export default function BatchDashboard({ params }: any) {
           </div>
         </section>
 
-        {/* EVENTS SECTION */}
+        {/* EVENTS SECTION - FIXED SHOWING LOGIC */}
         <div style={dashboardGrid}>
           <div style={{ flex: 1 }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: '15px' }}>
@@ -221,7 +215,7 @@ export default function BatchDashboard({ params }: any) {
         </div>
       </main>
 
-      {/* NOTIFICATION DRAWER (EDIT ENABLED) */}
+      {/* NOTIFICATION DRAWER */}
       <AnimatePresence>
         {showNotifs && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={modalOverlay} onClick={() => setShowNotifs(false)}>
@@ -256,7 +250,7 @@ export default function BatchDashboard({ params }: any) {
                 <div style={adminPanelNotifUI}>
                    <input value={noticeSubject} onChange={(e)=>setNoticeSubject(e.target.value)} placeholder="Subject..." style={subjectInputUI} />
                    <textarea value={newNotice} onChange={e => setNewNotice(e.target.value)} placeholder="Message..." style={notifInputUI} />
-                   <button onClick={handlePostNotice} style={notifSendBtn}>{editingNotif ? 'Update' : 'Post'}</button>
+                   <button onClick={handlePostNotice} style={notifSendBtn}>Post Notice</button>
                 </div>
               )}
             </motion.div>
@@ -279,7 +273,7 @@ export default function BatchDashboard({ params }: any) {
                 <div style={streakInfoBody}>
                     <h2 style={{margin:0, fontWeight:'900'}}>Daily Streak!</h2>
                     <div style={{display:'flex', justifyContent:'space-between', fontSize:'11px', color:'#888', marginTop:'15px'}}>
-                        <span>{Math.floor(studySeconds/60)}m done</span>
+                        <span>Goal: 10 mins</span>
                         <span style={{color:'#5b6cfd', fontWeight:'700'}}>{studySeconds < 600 ? `${10 - Math.floor(studySeconds/60)}m left` : 'Goal Met!'}</span>
                     </div>
                     <div style={progressBarBg}><motion.div animate={{width: `${(studySeconds/600)*100}%`}} style={progressBarFill} /></div>
@@ -308,7 +302,7 @@ export default function BatchDashboard({ params }: any) {
   )
 }
 
-// --- ALL REQUIRED STYLES (Fixes Visual Errors) ---
+// --- ALL STYLE DEFINITIONS (Fixes Terminal Errors) ---
 const headerWrapper: any = { position:'fixed', top:0, left:0, width:'100%', background:'#fff', borderBottom:'1px solid #f0f0f0', zIndex: 1000, height: '80px', boxShadow:'0 2px 15px rgba(0,0,0,0.03)' };
 const headerInner: any = { maxWidth:'1300px', margin:'0 auto', display:'flex', justifyContent:'space-between', alignItems:'center', height:'100%', padding:'0 25px' };
 const contentArea: any = { paddingTop:'180px', maxWidth:'1200px', margin:'0 auto', paddingBottom:'60px' };
@@ -322,7 +316,7 @@ const nameWrapper: any = { display: 'flex', flexDirection: 'column' };
 const navNameText: any = { fontSize: '15px', fontWeight: '800', color: '#5b6cfd' };
 const navRoleText: any = { fontSize: '10px', fontWeight: '700', color: '#888' };
 const backBtnCircle: any = { color:'#333', background:'#f5f5f5', width:'35px', height:'35px', borderRadius:'10px', display:'flex', alignItems:'center', justifyContent:'center', cursor: 'pointer' };
-const batchBanner: any = { background:'#1c252e', color:'#fff', padding:'80px 60px', borderRadius:'30px 30px 100px 30px', marginBottom:'50px', position: 'relative', overflow: 'hidden', boxShadow: '0 15px 30px rgba(0,0,0,0.1)' };
+const batchBanner: any = { background:'#1c252e', color:'#fff', padding:'80px 60px', borderRadius:'30px 30px 100px 30px', marginBottom:'50px', position: 'relative', overflow: 'hidden', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' };
 const bannerDots: any = { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.05) 1px, transparent 0)', backgroundSize: '24px 24px' };
 const studyGoalText: any = { marginTop:'20px', background:'rgba(255,255,255,0.1)', padding:'8px 16px', borderRadius:'10px', display:'inline-block', fontSize:'13px' };
 const offeringGrid: any = { display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(260px, 1fr))', gap:'20px' };
