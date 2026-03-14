@@ -60,114 +60,79 @@ export default function BatchDashboard({ params }: PageProps) {
     }
   };
 
-  // --- STORAGE UPLOAD LOGIC ---
   const uploadImage = async (file: File) => {
     const fileExt = file.name.split('.').pop();
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
     const filePath = `uploads/${fileName}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from('NOTICES') 
-      .upload(filePath, file);
-
+    const { error: uploadError } = await supabase.storage.from('NOTICES').upload(filePath, file);
     if (uploadError) throw uploadError;
-
     const { data } = supabase.storage.from('NOTICES').getPublicUrl(filePath);
     return data.publicUrl;
   };
 
-  // --- NOTIFICATION LOGIC ---
+  // --- REFACTORED NOTIFICATION LOGIC ---
   const handlePostNotice = async (textOverride?: any) => {
     const content = typeof textOverride === 'string' ? textOverride : newNotice;
     if (!content || !content.trim()) return;
-    
     setUploading(true);
     try {
       let finalImageUrl = editingNotif?.image_url || "";
-
-      if (selectedFile) {
-        finalImageUrl = await uploadImage(selectedFile);
-      }
+      if (selectedFile) finalImageUrl = await uploadImage(selectedFile);
 
       if (editingNotif) {
-        const { error } = await supabase
-          .from('notices')
-          .update({ 
+        const { error } = await supabase.from('notices').update({ 
             content: content.trim(), 
             image_url: finalImageUrl,
             title: "Update" 
-          })
-          .eq('id', editingNotif.id);
+        }).eq('id', editingNotif.id);
         if (error) throw error;
+        setNotices(prev => prev.map(n => n.id === editingNotif.id ? { ...n, content: content.trim(), image_url: finalImageUrl } : n));
       } else {
-        const { error } = await supabase.from('notices').insert([{ 
+        const { data, error } = await supabase.from('notices').insert([{ 
             batch_id: batchId, 
             title: typeof textOverride === 'string' ? "Event Alert" : "Announcement",
             content: content.trim(),
             image_url: finalImageUrl,
             category: typeof textOverride === 'string' ? "Event" : "General"
-        }]);
+        }]).select();
         if (error) throw error;
+        if (data) setNotices(prev => [data[0], ...prev]);
       }
-
-      setNewNotice("");
-      setSelectedFile(null);
-      setEditingNotif(null);
-      fetchData(); 
+      setNewNotice(""); setSelectedFile(null); setEditingNotif(null);
     } catch (err: any) {
       alert("Notice Error: " + err.message);
-    } finally {
-      setUploading(false);
-    }
+    } finally { setUploading(false); }
   };
 
-  const startEditNotif = (notif: any) => {
-    setEditingNotif(notif);
-    setNewNotice(notif.content);
-    setShowNotifs(true);
-  };
-
-  const deleteNotice = async (id: string) => {
-    if (!confirm("Delete this notification?")) return;
-    const { error } = await supabase.from('notices').delete().eq('id', id);
-    if (!error) setNotices(prev => prev.filter(n => n.id !== id));
-  };
-
-  // --- EVENT LOGIC (FIXED DELETE & EDIT) ---
+  // --- REFACTORED EVENT LOGIC (INSTANT UI UPDATE) ---
   const handleSaveEvent = async () => {
     if (!eventTitle || !eventDate) return alert("Please fill both Title and Date");
     setUploading(true);
     try {
       const displayTime = new Date(eventDate).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+      
       if (editingEvent) {
         const { error } = await supabase.from('events').update({ title: eventTitle, event_time: eventDate }).eq('id', editingEvent.id);
         if (error) throw error;
+        setEvents(prev => prev.map(ev => ev.id === editingEvent.id ? { ...ev, title: eventTitle, event_time: eventDate } : ev));
         await handlePostNotice(`✏️ Event Updated: ${eventTitle} (${displayTime})`);
       } else {
-        const { error } = await supabase.from('events').insert([{ batch_id: batchId, title: eventTitle, event_time: eventDate }]);
+        const { data, error } = await supabase.from('events').insert([{ batch_id: batchId, title: eventTitle, event_time: eventDate }]).select();
         if (error) throw error;
+        if (data) setEvents(prev => [...prev, data[0]].sort((a,b) => new Date(a.event_time).getTime() - new Date(b.event_time).getTime()));
         await handlePostNotice(`🗓️ New Event Scheduled: ${eventTitle} at ${displayTime}`);
       }
-      setShowEventModal(false);
-      setEditingEvent(null);
-      setEventTitle("");
-      setEventDate("");
-      fetchData(); 
+      setShowEventModal(false); setEditingEvent(null); setEventTitle(""); setEventDate("");
     } catch (err: any) {
       alert("Event Error: " + err.message);
-    } finally {
-      setUploading(false);
-    }
+    } finally { setUploading(false); }
   };
 
   const deleteEvent = async (id: string) => {
     if (!confirm("Delete this event?")) return;
     const { error } = await supabase.from('events').delete().eq('id', id);
-    if (error) {
-        alert("Error deleting event: " + error.message);
-    } else {
-        fetchData();
-    }
+    if (error) alert("Error deleting: " + error.message);
+    else setEvents(prev => prev.filter(ev => ev.id !== id));
   };
 
   const openEditModal = (ev: any) => {
@@ -184,7 +149,6 @@ export default function BatchDashboard({ params }: PageProps) {
 
   return (
     <div style={{ background: '#f8f9fa', minHeight: '100vh', fontFamily: 'sans-serif' }}>
-      
       <header style={headerWrapper}>
         <div style={headerInner}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
@@ -196,14 +160,8 @@ export default function BatchDashboard({ params }: PageProps) {
               🔔 {notices.length}
             </motion.div>
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <img 
-                src={userProfile?.avatar_url || "https://ui-avatars.com/api/?name=" + session?.user?.name} 
-                style={navAvatar} 
-                onClick={() => setShowProfileMenu(!showProfileMenu)}
-              />
-              <span style={navName} onClick={() => setShowProfileMenu(!showProfileMenu)}>
-                {userProfile?.student_name || session?.user?.name?.split(' ')[0]}
-              </span>
+              <img src={userProfile?.avatar_url || "https://ui-avatars.com/api/?name=" + session?.user?.name} style={navAvatar} onClick={() => setShowProfileMenu(!showProfileMenu)} />
+              <span style={navName} onClick={() => setShowProfileMenu(!showProfileMenu)}>{userProfile?.student_name || session?.user?.name?.split(' ')[0]}</span>
               <AnimatePresence>
                 {showProfileMenu && (
                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} style={dropdownMenu}>
@@ -286,7 +244,7 @@ export default function BatchDashboard({ params }: PageProps) {
                   </label>
                   <div style={{display:'flex', gap:'10px', marginTop:'10px'}}>
                     <button onClick={() => handlePostNotice()} disabled={uploading} style={sendBtn}>
-                      {uploading ? "Uploading..." : editingNotif ? "Update Notice" : "Post Notice"}
+                      {uploading ? "Uploading..." : editingNotif ? "Update" : "Post"}
                     </button>
                     {editingNotif && <button onClick={() => {setEditingNotif(null); setNewNotice(""); setSelectedFile(null);}} style={cancelBtn}>Cancel</button>}
                   </div>
@@ -303,8 +261,8 @@ export default function BatchDashboard({ params }: PageProps) {
                       </small>
                       {isOwner && (
                         <div style={{display: 'flex', gap: '12px'}}>
-                          <button onClick={() => startEditNotif(n)} style={editLinkBtn}>Edit</button>
-                          <button onClick={() => deleteNotice(n.id)} style={delLinkBtn}>Delete</button>
+                          <button onClick={() => { setEditingNotif(n); setNewNotice(n.content); }} style={editLinkBtn}>Edit</button>
+                          <button onClick={() => { if(confirm("Delete?")) supabase.from('notices').delete().eq('id', n.id).then(() => setNotices(prev => prev.filter(i => i.id !== n.id))) }} style={delLinkBtn}>Delete</button>
                         </div>
                       )}
                     </div>
@@ -334,7 +292,7 @@ export default function BatchDashboard({ params }: PageProps) {
   )
 }
 
-// Styles remain identical to your previous code to maintain the look
+// --- STYLES ---
 const headerWrapper: any = { position:'fixed', top:0, left:0, width:'100%', background:'#fff', borderBottom:'1px solid #f0f0f0', zIndex: 1000, height: '65px' };
 const headerInner: any = { maxWidth:'1200px', margin:'0 auto', display:'flex', justifyContent:'space-between', alignItems:'center', height:'100%', padding:'0 20px' };
 const backBtnCircle: any = { textDecoration:'none', color:'#333', background:'#f5f5f5', width:'35px', height:'35px', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center' };
