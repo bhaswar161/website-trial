@@ -16,18 +16,17 @@ export default function BatchDashboard({ params }: PageProps) {
   const [mounted, setMounted] = useState(false)
   const badgeRef = useRef<HTMLDivElement>(null);
   
-  // States
   const [localName, setLocalName] = useState("");
   const [localPic, setLocalPic] = useState("");
   const [studySeconds, setStudySeconds] = useState(0);
   const [streak, setStreak] = useState(0);
   const [isStreakAchieved, setIsStreakAchieved] = useState(false);
 
-  // UI States
   const [showNotifs, setShowNotifs] = useState(false)
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [showEventModal, setShowEventModal] = useState(false)
   const [showStreakModal, setShowStreakModal] = useState(false)
+  
   const [notices, setNotices] = useState<any[]>([])
   const [events, setEvents] = useState<any[]>([])
   const [userProfile, setUserProfile] = useState<any>(null)
@@ -54,7 +53,7 @@ export default function BatchDashboard({ params }: PageProps) {
 
     const interval = setInterval(() => {
       setStudySeconds(s => {
-        if (s >= 600 && !isStreakAchieved) { // 10 minutes logic
+        if (s >= 600 && !isStreakAchieved) {
             const ns = streak + 1;
             setStreak(ns);
             setIsStreakAchieved(true);
@@ -65,20 +64,37 @@ export default function BatchDashboard({ params }: PageProps) {
       });
     }, 1000);
 
-    if (session?.user?.email) fetchData();
+    if (session?.user?.email) {
+      supabase.from('student_stats').select('*').eq('email', session.user.email).single().then(({data}) => setUserProfile(data));
+      supabase.from('notices').select('*').eq('batch_id', batchId).order('created_at', { ascending: false }).then(({data}) => setNotices(data || []));
+      supabase.from('events').select('*').eq('batch_id', batchId).order('event_time', { ascending: true }).then(({data}) => setEvents(data || []));
+    }
     return () => clearInterval(interval);
   }, [batchId, session, isStreakAchieved]);
 
   const fetchData = async () => {
-    supabase.from('student_stats').select('*').eq('email', session?.user?.email).single().then(({data}) => setUserProfile(data));
     supabase.from('notices').select('*').eq('batch_id', batchId).order('created_at', { ascending: false }).then(({data}) => setNotices(data || []));
     supabase.from('events').select('*').eq('batch_id', batchId).order('event_time', { ascending: true }).then(({data}) => setEvents(data || []));
   };
 
   const handlePostNotice = async () => {
     if (!newNotice.trim()) return;
-    await supabase.from('notices').insert([{ batch_id: batchId, title: "Announcement", content: newNotice.trim() }]);
-    setNewNotice(""); fetchData();
+    if (editingNotif) {
+      await supabase.from('notices').update({ content: newNotice.trim() }).eq('id', editingNotif.id);
+    } else {
+      await supabase.from('notices').insert([{ batch_id: batchId, title: "Announcement", content: newNotice.trim() }]);
+    }
+    setNewNotice(""); setEditingNotif(null); fetchData();
+  };
+
+  const handleSaveEvent = async () => {
+    if (!eventTitle || !eventDate) return;
+    if (editingEvent) {
+      await supabase.from('events').update({ title: eventTitle, event_time: eventDate }).eq('id', editingEvent.id);
+    } else {
+      await supabase.from('events').insert([{ batch_id: batchId, title: eventTitle, event_time: eventDate }]);
+    }
+    setShowEventModal(false); setEditingEvent(null); setEventTitle(""); setEventDate(""); fetchData();
   };
 
   const handleDownloadBadge = async () => {
@@ -97,8 +113,6 @@ export default function BatchDashboard({ params }: PageProps) {
 
   return (
     <div style={{ background: '#fcfdfe', minHeight: '100vh', fontFamily: 'sans-serif' }}>
-      
-      {/* HEADER */}
       <header style={headerWrapper}>
         <div style={headerInner}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
@@ -124,7 +138,6 @@ export default function BatchDashboard({ params }: PageProps) {
                 {showProfileMenu && (
                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={dropdownMenu}>
                     <Link href="/profile" style={dropdownItem}>👤 My Profile</Link>
-                    <hr style={{ border: '0', borderTop: '1px solid #f0f0f0', margin: '4px 0' }} />
                     <button onClick={() => signOut({ callbackUrl: '/' })} style={dropdownLogoutBtn}>🚪 Logout</button>
                   </motion.div>
                 )}
@@ -135,20 +148,13 @@ export default function BatchDashboard({ params }: PageProps) {
       </header>
 
       <main style={contentArea}>
-        {/* GAP FIXED: Content area has 180px PaddingTop */}
+        {/* LARGE 170PX GAP FROM HEADER */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={batchBanner}>
           <div style={bannerDots} />
           <div style={{ position: 'relative', zIndex: 1 }}>
             <small style={{ opacity: 0.8, letterSpacing: '1px', fontWeight: '700' }}>YOUR BATCH</small>
             <h2 style={{ fontSize: '42px', fontWeight: '900', margin: '15px 0' }}>{batchId.toUpperCase()} MISSION...</h2>
-            
-            {/* Banner Progress Bar */}
-            <div style={{marginTop: '20px'}}>
-               <div style={{fontSize:'13px', marginBottom:'8px', opacity:0.9}}>Daily Study Progress: <b>{Math.floor(studySeconds/60)} / 10 mins</b></div>
-               <div style={{width:'200px', height:'6px', background:'rgba(255,255,255,0.2)', borderRadius:'10px', overflow:'hidden'}}>
-                  <motion.div initial={{width:0}} animate={{width: `${(studySeconds/600)*100}%`}} style={{height:'100%', background:'#fff', boxShadow:'0 0 10px #fff'}} />
-               </div>
-            </div>
+            <div style={studyGoalText}>Study 10 mins to grow streak: <b>{Math.floor(studySeconds/60)}/10m</b></div>
           </div>
         </motion.div>
 
@@ -158,22 +164,38 @@ export default function BatchDashboard({ params }: PageProps) {
             {['All Classes', 'All Tests', 'My Doubts', 'Community'].map((item) => (
               <div key={item} style={offeringItem}>
                 <span style={{ fontWeight: '800', color: '#000', fontSize: '16px' }}>{item}</span>
-                <span style={{ color: '#5b6cfd', fontWeight: 'bold' }}>❯</span>
+                <div style={arrowCircle}>❯</div>
               </div>
             ))}
           </div>
         </section>
+
+        <div style={dashboardGrid}>
+          <div style={{ flex: 1 }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: '15px' }}>
+              <h3 style={sectionTitle}>Upcoming Events</h3>
+              {isOwner && <motion.button whileHover={{ scale: 1.05 }} onClick={() => {setEditingEvent(null); setShowEventModal(true)}} style={addBtn}>+ Create Event</motion.button>}
+            </div>
+            {events.length === 0 ? <div style={emptyBox}>🕒 No upcoming events.</div> : events.map(ev => (
+              <div key={ev.id} style={dataRow}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: '800', color: '#111' }}>{ev.title}</div>
+                  <div style={{ fontSize: '12px', color: '#5b6cfd' }}>{new Date(ev.event_time).toLocaleString()}</div>
+                </div>
+                {isOwner && <button onClick={() => {if(confirm("Delete?")) supabase.from('events').delete().eq('id', ev.id).then(() => fetchData())}} style={textActionBtnRed}>Delete</button>}
+              </div>
+            ))}
+          </div>
+        </div>
       </main>
 
-      {/* MAGIC RAINBOW STREAK CARD MODAL */}
       <AnimatePresence>
         {showStreakModal && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={modalOverlay} onClick={() => setShowStreakModal(false)}>
             <motion.div initial={{ scale: 0.8, y: 20 }} animate={{ scale: 1, y: 0 }} style={streakCardPremium} onClick={e => e.stopPropagation()}>
               <button style={closeX} onClick={() => setShowStreakModal(false)}>✕</button>
-              
-              <div ref={badgeRef} style={{background:'#fff', borderRadius:'35px', overflow:'hidden'}}>
-                {/* MAGIC GRADIENT WITH BACKGROUND STARS */}
+              <div ref={badgeRef} style={{background:'#fff', borderRadius:'30px', overflow:'hidden'}}>
+                {/* STARS ONLY ON GRADIENT BEHIND CIRCLE */}
                 <motion.div 
                     animate={{ background: ['linear-gradient(135deg, #5b6cfd, #9c42f5)', 'linear-gradient(135deg, #9c42f5, #ff5b84)', 'linear-gradient(135deg, #5b6cfd, #9c42f5)'] }}
                     transition={{ duration: 6, repeat: Infinity }}
@@ -182,44 +204,51 @@ export default function BatchDashboard({ params }: PageProps) {
                     {[...Array(12)].map((_, i) => (
                         <motion.div
                           key={i}
-                          animate={{ 
-                            opacity: [0.2, 1, 0.2], 
-                            scale: [0.5, 1.2, 0.5], 
-                            y: [0, (Math.random()-0.5)*140], 
-                            x: [(Math.random()-0.5)*140],
-                            color: rainbowColors 
-                          }}
+                          animate={{ opacity: [0, 1, 0], scale: [0.5, 1.2, 0.5], y: [0, (Math.random()-0.5)*150], x: [(Math.random()-0.5)*150], color: rainbowColors }}
                           transition={{ duration: 3, repeat: Infinity, delay: i * 0.2 }}
-                          style={{ position: 'absolute', top: '45%', left: '45%', fontSize: '18px', zIndex: 1, filter:'drop-shadow(0 0 5px currentColor)' }}
+                          style={{ position: 'absolute', top: '50%', left: '50%', fontSize: '18px', zIndex: 1, filter:'drop-shadow(0 0 5px currentColor)' }}
                         >✨</motion.div>
                     ))}
                     <div style={streakMainVal}>
                         {streak} <small style={{fontSize:'12px', display:'block', color:'#888'}}>DAYS</small>
                     </div>
                 </motion.div>
-
                 <div style={streakInfoBody}>
-                    <h2 style={{margin:'0', fontWeight:'900', color: '#111'}}>Study Streak</h2>
-                    <p style={{color:'#666', fontSize:'14px', marginTop: '10px'}}>Complete 10 mins daily to keep the magic.</p>
-                    
-                    {/* VISIBLE PROGRESS BAR IN CARD */}
-                    <div style={{marginTop: '25px'}}>
-                      <div style={{display:'flex', justifyContent:'space-between', fontSize:'12px', color:'#888', marginBottom:'6px'}}>
-                        <span>{Math.floor(studySeconds/60)}m done</span>
-                        <span>10m goal</span>
-                      </div>
-                      <div style={{width:'100%', height:'10px', background:'#f0f0f0', borderRadius:'10px', overflow:'hidden'}}>
-                         <motion.div initial={{width:0}} animate={{width: `${(studySeconds/600)*100}%`}} style={{height:'100%', background:'linear-gradient(90deg, #5b6cfd, #a44ed1)', borderRadius:'10px'}} />
-                      </div>
-                    </div>
+                    <h2 style={{margin:'0', fontWeight:'900'}}>Daily Streak!</h2>
+                    <p style={{color:'#666', fontSize:'14px', marginTop:'10px'}}>Stay for 10 mins daily to grow your streak.</p>
                 </div>
               </div>
-
               <div style={shareSectionUI}>
-                <motion.button whileHover={{ scale: 1.02 }} onClick={handleDownloadBadge} style={downloadBtnUI}>
-                    Download Badge
-                </motion.button>
+                <motion.button whileHover={{ scale: 1.02 }} onClick={handleDownloadBadge} style={downloadBtnUI}>Download Badge</motion.button>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showNotifs && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={modalOverlay} onClick={() => setShowNotifs(false)}>
+            <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} style={drawerUI} onClick={e => e.stopPropagation()}>
+              <div style={drawerHeaderUI}>
+                 <div style={batchTagUI}>{batchId.toUpperCase()}...</div>
+                 <button onClick={() => {setLastReadTime(Date.now()); localStorage.setItem(`last_read_${batchId}`, Date.now().toString())}} style={markReadBtnUI}>Mark All Read</button>
+              </div>
+              <div style={{padding: '0 20px', flex: 1, overflowY: 'auto'}}>
+                {notices.map(n => (
+                    <div key={n.id} style={notifCardUI}>
+                        <div style={{flex:1}}><div style={{fontWeight:'800'}}>{n.title}</div><div>{n.content}</div>
+                        {isOwner && <button onClick={() => {if(confirm("Delete?")) supabase.from('notices').delete().eq('id', n.id).then(() => fetchData())}} style={textActionBtnRed}>Delete</button>}
+                        </div>
+                    </div>
+                ))}
+              </div>
+              {isOwner && (
+                <div style={adminPanelNotifUI}>
+                   <textarea value={newNotice} onChange={e => setNewNotice(e.target.value)} placeholder="Type notice..." style={notifInputUI} />
+                   <button onClick={handlePostNotice} style={notifSendBtn}>Post Notice</button>
+                </div>
+              )}
             </motion.div>
           </motion.div>
         )}
@@ -228,13 +257,14 @@ export default function BatchDashboard({ params }: PageProps) {
   )
 }
 
-// --- ALL REQUIRED STYLES ---
+// --- FIXED STYLES & ERRORS ---
 const headerWrapper: any = { position:'fixed', top:0, left:0, width:'100%', background:'#fff', borderBottom:'1px solid #f0f0f0', zIndex: 1000, height: '80px' };
 const headerInner: any = { maxWidth:'1300px', margin:'0 auto', display:'flex', justifyContent:'space-between', alignItems:'center', height:'100%', padding:'0 25px' };
-const contentArea: any = { paddingTop:'180px', maxWidth:'1200px', margin:'0 auto', paddingBottom:'60px' }; // INCREASED GAP
+const contentArea: any = { paddingTop:'170px', maxWidth:'1200px', margin:'0 auto', paddingBottom:'60px' };
 
-const batchBanner: any = { background:'#1c252e', color:'#fff', padding:'80px 60px', borderRadius:'30px 30px 100px 30px', marginBottom:'50px', position: 'relative', overflow: 'hidden', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' };
+const batchBanner: any = { background:'#1c252e', color:'#fff', padding:'80px 60px', borderRadius:'30px 30px 100px 30px', marginTop: '20px', position: 'relative', overflow: 'hidden', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' };
 const bannerDots: any = { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.05) 1px, transparent 0)', backgroundSize: '24px 24px' };
+const studyGoalText: any = { marginTop:'20px', background:'rgba(255,255,255,0.1)', padding:'8px 16px', borderRadius:'10px', display:'inline-block', fontSize:'13px' };
 
 const statPillGroup: any = { display: 'flex', gap: '12px', alignItems: 'center' };
 const streakPill: any = { background: '#fff5f5', border: '1px solid #ffdcdc', padding: '10px 18px', borderRadius: '14px', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer' };
@@ -248,21 +278,38 @@ const navRoleText: any = { fontSize: '10px', fontWeight: '700', color: '#888' };
 const nameWrapper: any = { display: 'flex', flexDirection: 'column' };
 const backBtnCircle: any = { color:'#333', background:'#f5f5f5', width:'35px', height:'35px', borderRadius:'10px', display:'flex', alignItems:'center', justifyContent:'center', cursor: 'pointer' };
 
-// DROPDOWN STYLES (Fixed Terminal Error)
+// ERROR FIXES: Style names defined below
 const dropdownMenu: any = { position: 'absolute', top: '65px', right: '0', background: '#fff', boxShadow: '0 15px 35px rgba(0,0,0,0.15)', borderRadius: '20px', padding: '10px', zIndex: 100, minWidth: '180px', border: '1px solid #f0f0f0', display:'flex', flexDirection:'column' };
-const dropdownItem: any = { padding: '12px 15px', color: '#333', fontSize: '14px', fontWeight: '700', borderRadius: '12px', textDecoration: 'none', display: 'block' };
-const dropdownLogoutBtn: any = { width:'100%', textAlign:'left', padding: '12px 15px', background: 'none', border: 'none', color: '#ef4444', fontSize: '14px', fontWeight: '800', borderRadius: '12px', cursor: 'pointer' };
+const dropdownItem: any = { padding: '12px 15px', color: '#333', fontSize: '14px', fontWeight: '700', borderRadius: '12px', textDecoration: 'none', display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer' };
+const dropdownLogoutBtn: any = { padding: '12px 15px', color: '#ef4444', fontSize: '14px', fontWeight: '800', borderRadius: '12px', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer' };
 
-const offeringGrid: any = { display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(260px, 1fr))', gap:'20px' };
-const offeringItem: any = { padding:'30px', background:'#fff', borderRadius:'30px', border:'1px solid #f0f0f0', display:'flex', justifyContent:'space-between', alignItems:'center', cursor:'pointer' };
+const offeringGrid: any = { display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:'20px' };
+const offeringItem: any = { padding:'30px', background:'#fff', borderRadius:'30px', border:'1px solid #f0f0f0', display:'flex', justifyContent:'space-between', alignItems:'center' };
 const sectionTitle: any = { fontSize:'22px', fontWeight:'900', margin:'0 0 25px' };
 const arrowCircle: any = { width: '32px', height: '32px', borderRadius: '50%', background: '#f5f7ff', color: '#5b6cfd', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' };
+const dashboardGrid: any = { display:'flex', gap:'40px' };
+const dataRow: any = { background:'#fff', padding:'25px', borderRadius:'30px', marginBottom:'12px', border:'1px solid #f0f0f0', display:'flex', justifyContent:'space-between', alignItems:'center' };
 
 const modalOverlay: any = { position:'fixed', top:0, left:0, width:'100%', height:'100%', background:'rgba(0,0,0,0.6)', zIndex:3000, display:'flex', alignItems:'center', justifyContent:'center', backdropFilter: 'blur(4px)' };
 const streakCardPremium: any = { width:'400px', background:'#fff', borderRadius:'40px', overflow:'hidden', position:'relative', textAlign:'center', boxShadow:'0 30px 60px rgba(0,0,0,0.3)' };
-const streakCircleHeader: any = { height: '190px', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' };
-const streakMainVal: any = { width: '120px', height: '120px', background: '#fff', borderRadius: '50%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontSize: '40px', fontWeight: '900', color: '#5b6cfd', zIndex: 2, position: 'relative' };
-const streakInfoBody: any = { padding: '30px 25px 35px', background: '#fff' };
+const streakCircleHeader: any = { height: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' };
+const streakMainVal: any = { width: '120px', height: '120px', background: '#fff', borderRadius: '50%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontSize: '40px', fontWeight: '900', color: '#5b6cfd', zIndex: 2 };
+const streakInfoBody: any = { padding: '30px 20px', background: '#fff' };
 const shareSectionUI: any = { padding: '20px 20px 30px', background: '#fcfdfe', borderTop: '1px solid #eee' };
 const downloadBtnUI: any = { width: '100%', padding: '14px', background: '#111', color: '#fff', border: 'none', borderRadius: '16px', fontWeight: 'bold', cursor: 'pointer' };
 const closeX: any = { position:'absolute', top:'20px', right:'20px', border:'none', background:'none', fontSize:'22px', cursor:'pointer', color:'#fff', zIndex: 10 };
+
+const drawerUI: any = { width:'460px', height:'100%', background:'#fff', display:'flex', flexDirection:'column', boxShadow: '-10px 0 30px rgba(0,0,0,0.05)', position: 'absolute', right: 0 };
+const drawerHeaderUI: any = { padding:'30px 25px 20px', display:'flex', justifyContent:'space-between', alignItems: 'center' };
+const batchTagUI: any = { background: '#f0f3ff', color: '#6157ff', padding: '8px 14px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold' };
+const markReadBtnUI: any = { background: '#fff', border: '1px solid #e2e8f0', padding: '10px 18px', borderRadius: '12px', fontSize: '13px', fontWeight: '700', color: '#4a5568', cursor: 'pointer' };
+const notifCardUI: any = { padding: '20px', borderRadius: '25px', background: '#f8fafc', border: '1px solid #f1f5f9', marginBottom: '12px', display:'flex' };
+const adminPanelNotifUI: any = { padding: '20px', borderTop: '1px solid #eee', background: '#fcfdfe' };
+const notifInputUI: any = { width: '100%', padding: '15px', borderRadius: '15px', border: '1px solid #eee', fontSize: '14px', minHeight: '80px' };
+const notifSendBtn: any = { width: '100%', padding: '12px', background: '#111', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 'bold', marginTop: '10px', cursor:'pointer' };
+
+const addBtn: any = { background:'#6157ff', color:'#fff', border:'none', padding:'10px 20px', borderRadius:'12px', fontWeight:'bold', cursor:'pointer' };
+const textActionBtnRed: any = { background:'none', border:'none', color:'#ff4d4d', fontSize:'12px', fontWeight:'bold', cursor:'pointer', padding:0 };
+const modal: any = { background:'#fff', padding:'40px', borderRadius:'30px', width:'400px', margin:'auto' };
+const modalInput: any = { width:'100%', padding:'15px', borderRadius:'12px', border:'1px solid #eee' };
+const emptyBox: any = { padding: '40px', textAlign: 'center', color: '#aaa', fontSize: '14px' };
