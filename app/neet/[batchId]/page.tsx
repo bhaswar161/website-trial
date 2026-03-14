@@ -18,14 +18,18 @@ export default function BatchDashboard({ params }: PageProps) {
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [showEventModal, setShowEventModal] = useState(false)
   const [editingEvent, setEditingEvent] = useState<any>(null)
+  const [editingNotif, setEditingNotif] = useState<any>(null)
 
   // Data States
   const [notices, setNotices] = useState<any[]>([])
   const [events, setEvents] = useState<any[]>([])
   const [userProfile, setUserProfile] = useState<any>(null)
   
-  // Admin Form States
+  // Announcement/Notice Form States
   const [newNotice, setNewNotice] = useState("")
+  const [notifImage, setNotifImage] = useState("") // Image support
+  
+  // Event Form States
   const [eventTitle, setEventTitle] = useState("")
   const [eventDate, setEventDate] = useState("")
   const [uploading, setUploading] = useState(false)
@@ -56,31 +60,51 @@ export default function BatchDashboard({ params }: PageProps) {
     }
   };
 
-  // --- FIXED NOTIFICATION LOGIC ---
+  // --- IMPROVED NOTIFICATION LOGIC (CREATE, EDIT, IMAGE) ---
   const handlePostNotice = async (textOverride?: any) => {
     const content = typeof textOverride === 'string' ? textOverride : newNotice;
-
     if (!content || !content.trim()) return;
     
     setUploading(true);
     try {
-      // Adding 'title' to satisfy database constraints if present
-      const { data, error } = await supabase.from('notices').insert([{ 
-          batch_id: batchId, 
-          title: typeof textOverride === 'string' ? "Event Alert" : "Announcement",
-          content: content.trim() 
-      }]).select();
-
-      if (error) throw error;
-      if (data) {
-        setNotices(prev => [data[0], ...prev]);
-        setNewNotice(""); 
+      if (editingNotif) {
+        // UPDATE
+        const { error } = await supabase
+          .from('notices')
+          .update({ 
+            content: content.trim(), 
+            image_url: notifImage,
+            title: "Update" 
+          })
+          .eq('id', editingNotif.id);
+        if (error) throw error;
+      } else {
+        // CREATE
+        const { error } = await supabase.from('notices').insert([{ 
+            batch_id: batchId, 
+            title: typeof textOverride === 'string' ? "Event Alert" : "Announcement",
+            content: content.trim(),
+            image_url: notifImage,
+            category: typeof textOverride === 'string' ? "Event" : "General"
+        }]);
+        if (error) throw error;
       }
+
+      setNewNotice("");
+      setNotifImage("");
+      setEditingNotif(null);
+      fetchData(); 
     } catch (err: any) {
       alert("Notice Error: " + err.message);
     } finally {
       setUploading(false);
     }
+  };
+
+  const startEditNotif = (notif: any) => {
+    setEditingNotif(notif);
+    setNewNotice(notif.content);
+    setNotifImage(notif.image_url || "");
   };
 
   const deleteNotice = async (id: string) => {
@@ -89,7 +113,7 @@ export default function BatchDashboard({ params }: PageProps) {
     if (!error) setNotices(prev => prev.filter(n => n.id !== id));
   };
 
-  // --- FIXED EVENT LOGIC ---
+  // --- EVENT LOGIC ---
   const handleSaveEvent = async () => {
     if (!eventTitle || !eventDate) return alert("Please fill both Title and Date");
     setUploading(true);
@@ -239,32 +263,45 @@ export default function BatchDashboard({ params }: PageProps) {
             <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type:'spring', damping:25 }} style={drawer} onClick={e => e.stopPropagation()}>
               <div style={drawerHeader}>
                 <h3 style={{margin:0}}>Notifications</h3>
-                <button onClick={() => setShowNotifs(false)} style={closeBtn}>✕</button>
+                <button onClick={() => { setShowNotifs(false); setEditingNotif(null); }} style={closeBtn}>✕</button>
               </div>
               {isOwner && (
                 <div style={adminPanel}>
                   <textarea 
                     value={newNotice} 
                     onChange={e => setNewNotice(e.target.value)} 
-                    placeholder="Send an update..." 
+                    placeholder="Message content..." 
                     style={notifInput} 
                   />
-                  <button 
-                    onClick={() => handlePostNotice()} 
-                    disabled={uploading} 
-                    style={sendBtn}
-                  >
-                    {uploading ? "Posting..." : "Post Announcement"}
-                  </button>
+                  <input 
+                    value={notifImage} 
+                    onChange={e => setNotifImage(e.target.value)} 
+                    placeholder="Image URL (optional)" 
+                    style={{...notifInput, marginTop: '8px', height: '40px'}} 
+                  />
+                  <div style={{display:'flex', gap:'10px', marginTop:'10px'}}>
+                    <button onClick={() => handlePostNotice()} disabled={uploading} style={sendBtn}>
+                      {uploading ? "..." : editingNotif ? "Update Notice" : "Post Notice"}
+                    </button>
+                    {editingNotif && (
+                       <button onClick={() => {setEditingNotif(null); setNewNotice(""); setNotifImage("");}} style={cancelBtn}>Cancel</button>
+                    )}
+                  </div>
                 </div>
               )}
               <div style={{padding:'10px', overflowY:'auto', flex: 1}}>
                 {notices.map(n => (
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} key={n.id} style={notifCard}>
-                    <div style={{lineHeight: '1.5'}}>{n.content}</div>
-                    <div style={{display:'flex', justifyContent:'space-between', marginTop:'10px'}}>
+                    {n.image_url && <img src={n.image_url} alt="notice" style={notifImgDisplay} />}
+                    <div style={{lineHeight: '1.5', fontWeight: '500'}}>{n.content}</div>
+                    <div style={{display:'flex', justifyContent:'space-between', marginTop:'10px', alignItems: 'center'}}>
                       <small style={{color:'#bbb'}}>{new Date(n.created_at).toLocaleDateString()}</small>
-                      {isOwner && <button onClick={() => deleteNotice(n.id)} style={delTextBtn}>Delete</button>}
+                      {isOwner && (
+                        <div style={{display: 'flex', gap: '12px'}}>
+                          <button onClick={() => startEditNotif(n)} style={editLinkBtn}>Edit</button>
+                          <button onClick={() => deleteNotice(n.id)} style={delLinkBtn}>Delete</button>
+                        </div>
+                      )}
                     </div>
                   </motion.div>
                 ))}
@@ -317,9 +354,12 @@ const drawerHeader: any = { padding:'25px', borderBottom:'1px solid #f0f0f0', di
 const adminPanel: any = { padding:'20px', background:'#f9fafc', borderBottom:'1px solid #eee' };
 const notifInput: any = { width:'100%', padding:'12px', borderRadius:'12px', border:'1px solid #eee', resize:'none', fontSize:'14px' };
 const sendBtn: any = { width:'100%', padding:'15px', background:'#6157ff', color:'#fff', border:'none', borderRadius:'12px', fontWeight:'bold', marginTop:'10px', cursor:'pointer' };
+const cancelBtn: any = { padding:'10px 15px', background:'#eee', color:'#666', border:'none', borderRadius:'12px', fontWeight:'bold', cursor:'pointer', marginTop:'10px' };
 const notifCard: any = { padding:'20px', borderBottom:'1px solid #f9f9f9', fontSize:'14px' };
+const notifImgDisplay: any = { width: '100%', borderRadius: '12px', marginBottom: '12px', objectFit: 'cover', maxHeight: '200px', border: '1px solid #eee' };
 const closeBtn: any = { background:'none', border:'none', fontSize:'24px', cursor:'pointer', color:'#ccc' };
-const delTextBtn: any = { background:'none', border:'none', color:'#ff4d4d', fontSize:'12px', fontWeight:'bold', cursor:'pointer' };
+const editLinkBtn: any = { background:'none', border:'none', color:'#0070f3', fontSize:'12px', fontWeight:'bold', cursor:'pointer' };
+const delLinkBtn: any = { background:'none', border:'none', color:'#ff4d4d', fontSize:'12px', fontWeight:'bold', cursor:'pointer' };
 const addBtn: any = { background:'#6157ff', color:'#fff', border:'none', padding:'10px 20px', borderRadius:'12px', fontWeight:'bold', cursor:'pointer' };
 const modal: any = { background:'#fff', padding:'40px', borderRadius:'30px', width:'400px', margin:'auto' };
 const modalInput: any = { width:'100%', padding:'15px', borderRadius:'12px', border:'1px solid #eee', marginTop:'5px' };
