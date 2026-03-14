@@ -16,7 +16,7 @@ export default function BatchDashboard({ params }: PageProps) {
   const [mounted, setMounted] = useState(false)
   const badgeRef = useRef<HTMLDivElement>(null);
   
-  // Profile Sync
+  // Profile Sync States
   const [localName, setLocalName] = useState("");
   const [localPic, setLocalPic] = useState("");
 
@@ -39,6 +39,7 @@ export default function BatchDashboard({ params }: PageProps) {
   const [newNotice, setNewNotice] = useState("")
   const [eventTitle, setEventTitle] = useState("")
   const [eventDate, setEventDate] = useState("")
+  const [uploading, setUploading] = useState(false)
 
   const supabase = useMemo(() => {
     return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
@@ -53,9 +54,15 @@ export default function BatchDashboard({ params }: PageProps) {
     };
     const savedReadTime = localStorage.getItem(`last_read_${batchId}`);
     if (savedReadTime) setLastReadTime(parseInt(savedReadTime));
+
     updateFromLocal();
     setMounted(true);
-    if (session?.user?.email) { fetchData(); syncStreak(); }
+    if (session?.user?.email) {
+        fetchData();
+        syncStreak();
+    }
+    window.addEventListener('storage', updateFromLocal);
+    return () => window.removeEventListener('storage', updateFromLocal);
   }, [batchId, session]);
 
   const fetchData = async () => {
@@ -75,13 +82,27 @@ export default function BatchDashboard({ params }: PageProps) {
     if (data) setStreakData(data);
   };
 
-  const unreadCount = notices.filter(n => new Date(n.created_at).getTime() > lastReadTime).length;
-  const finalDisplayName = localName || userProfile?.student_name?.split(' ')[0] || session?.user?.name?.split(' ')[0] || "User";
-  const finalDisplayPic = localPic || userProfile?.avatar_url || session?.user?.image || `https://ui-avatars.com/api/?name=${finalDisplayName}`;
+  // --- LOGIC FUNCTIONS ---
+  const handleDownloadBadge = async () => {
+    if (badgeRef.current) {
+      const canvas = await html2canvas(badgeRef.current, { scale: 2, backgroundColor: '#ffffff' });
+      canvas.toBlob((blob) => { if (blob) saveAs(blob, `streak_${streakData.current_streak}.png`); });
+    }
+  };
 
-  // --- ACTIONS ---
+  const handleMarkAllRead = async () => {
+    setIsMarkingRead(true);
+    const now = Date.now();
+    setTimeout(() => {
+        setLastReadTime(now);
+        localStorage.setItem(`last_read_${batchId}`, now.toString());
+        setIsMarkingRead(false);
+    }, 600);
+  };
+
   const handlePostNotice = async () => {
     if (!newNotice.trim()) return;
+    setUploading(true);
     try {
       if (editingNotif) {
         await supabase.from('notices').update({ content: newNotice.trim() }).eq('id', editingNotif.id);
@@ -89,20 +110,12 @@ export default function BatchDashboard({ params }: PageProps) {
         await supabase.from('notices').insert([{ batch_id: batchId, title: "Announcement", content: newNotice.trim() }]);
       }
       setNewNotice(""); setEditingNotif(null); fetchData();
-    } catch (err: any) { alert(err.message); }
+    } catch (err: any) { alert(err.message); } finally { setUploading(false); }
   };
 
-  const handleSaveEvent = async () => {
-    if (!eventTitle || !eventDate) return;
-    try {
-      if (editingEvent) {
-        await supabase.from('events').update({ title: eventTitle, event_time: eventDate }).eq('id', editingEvent.id);
-      } else {
-        await supabase.from('events').insert([{ batch_id: batchId, title: eventTitle, event_time: eventDate }]);
-      }
-      setShowEventModal(false); setEditingEvent(null); setEventTitle(""); setEventDate(""); fetchData();
-    } catch (e) { console.error(e); }
-  };
+  const unreadCount = notices.filter(n => new Date(n.created_at).getTime() > lastReadTime).length;
+  const finalDisplayName = localName || userProfile?.student_name?.split(' ')[0] || session?.user?.name?.split(' ')[0] || "User";
+  const finalDisplayPic = localPic || userProfile?.avatar_url || session?.user?.image || `https://ui-avatars.com/api/?name=${finalDisplayName}`;
 
   if (status === "loading" || !mounted) return null;
 
@@ -138,6 +151,7 @@ export default function BatchDashboard({ params }: PageProps) {
                   <span style={navRoleText}>{isOwner ? 'FACULTY' : 'STUDENT'}</span>
                 </div>
               </motion.div>
+
               <AnimatePresence>
                 {showProfileMenu && (
                   <motion.div initial={{ opacity: 0, y: 10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.95 }} style={dropdownMenu}>
@@ -153,7 +167,7 @@ export default function BatchDashboard({ params }: PageProps) {
       </header>
 
       <main style={contentArea}>
-        {/* BIG SQUARE BANNER (Fixed Visibility) */}
+        {/* BIG SQUARE BANNER */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={batchBanner}>
           <div style={bannerOverlayPattern} />
           <div style={{ position: 'relative', zIndex: 1 }}>
@@ -162,11 +176,11 @@ export default function BatchDashboard({ params }: PageProps) {
           </div>
         </motion.div>
 
-        {/* OFFERINGS (Added Leaderboard) */}
+        {/* BATCH OFFERINGS */}
         <section style={{ marginBottom: '40px' }}>
           <h3 style={sectionTitle}>Batch Offerings</h3>
           <div style={offeringGrid}>
-            {['All Classes', 'All Tests', 'Leaderboard', 'Community'].map((item) => (
+            {['All Classes', 'All Tests', 'My Doubts', 'Community'].map((item) => (
               <Link key={item} href={item === 'All Classes' ? `/neet/${batchId}/all-classes` : '#'} style={{ textDecoration: 'none' }}>
                 <motion.div whileHover={{ y: -8, scale: 1.02, boxShadow: '0 12px 24px rgba(91, 108, 253, 0.12)' }} whileTap={{ scale: 0.98 }} style={offeringItem}>
                   <span style={{ fontWeight: '800', color: '#000', fontSize: '16px' }}>{item}</span>
@@ -177,82 +191,74 @@ export default function BatchDashboard({ params }: PageProps) {
           </div>
         </section>
 
-        {/* EVENTS (Owner Controls Enabled) */}
+        {/* EVENTS SECTION */}
         <div style={dashboardGrid}>
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: 2 }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: '15px' }}>
               <h3 style={sectionTitle}>Upcoming Events</h3>
               {isOwner && (
-                <motion.button whileHover={{ scale: 1.05, backgroundColor: '#5145e5' }} whileTap={{ scale: 0.95 }} onClick={() => {setEditingEvent(null); setShowEventModal(true)}} style={addBtn}>+ Create</motion.button>
+                <motion.button whileHover={{ scale: 1.05, backgroundColor: '#5145e5' }} whileTap={{ scale: 0.95 }} onClick={() => setShowEventModal(true)} style={addBtn}>+ Create</motion.button>
               )}
             </div>
             {events.length === 0 ? <div style={emptyBox}>🕒 No upcoming events.</div> : events.map(ev => (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} key={ev.id} style={dataRow}>
+              <motion.div key={ev.id} style={dataRow}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: '700', color: '#111' }}>{ev.title}</div>
-                  <div style={{ fontSize: '12px', color: '#5b6cfd', fontWeight: '600' }}>{new Date(ev.event_time).toLocaleString()}</div>
+                  <div style={{ fontSize: '12px', color: '#5b6cfd' }}>{new Date(ev.event_time).toLocaleString()}</div>
                 </div>
-                {isOwner && (
-                    <div style={{display:'flex', gap:'10px'}}>
-                        <button onClick={() => {setEditingEvent(ev); setEventTitle(ev.title); setEventDate(ev.event_time.slice(0,16)); setShowEventModal(true)}} style={textActionBtn}>Edit</button>
-                        <button onClick={() => {if(confirm("Delete?")) supabase.from('events').delete().eq('id', ev.id).then(() => fetchData())}} style={textActionBtnRed}>Delete</button>
-                    </div>
-                )}
               </motion.div>
             ))}
           </div>
         </div>
       </main>
 
-      {/* NOTIFICATION DRAWER (Owner Panel Restored) */}
+      {/* STREAK MODAL */}
+      <AnimatePresence>
+        {showStreakModal && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={modalOverlay} onClick={() => setShowStreakModal(false)}>
+            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} style={streakCard} onClick={e => e.stopPropagation()}>
+              <button style={closeX} onClick={() => setShowStreakModal(false)}>✕</button>
+              <div ref={badgeRef} style={{background:'#fff', borderRadius:'30px', paddingBottom:'10px'}}>
+                <div style={streakHeaderBg}>
+                    <div style={streakCircle}>
+                        <span style={streakNumber}>{streakData.current_streak}</span>
+                        <span style={fireSmall}>🔥</span>
+                    </div>
+                </div>
+                <div style={streakContent}>
+                    <h2 style={{margin:'10px 0', fontSize: '24px', fontWeight: '800'}}>Days Streak!!</h2>
+                    <p style={streakSub}>Let's make learning a daily habit</p>
+                </div>
+              </div>
+              <div style={shareSectionUI}>
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={handleDownloadBadge} style={downloadBtnUI}>Download Card</motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* NOTIFICATION DRAWER */}
       <AnimatePresence>
         {showNotifs && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={modalOverlay} onClick={() => setShowNotifs(false)}>
             <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} style={drawerUI} onClick={e => e.stopPropagation()}>
               <div style={drawerHeaderUI}>
                  <div style={batchTagUI}>{batchId.toUpperCase()}...</div>
-                 <motion.button whileTap={{ scale: 0.9 }} onClick={() => setIsMarkingRead(true)} style={markReadBtnUI}>Mark All Read</motion.button>
+                 <motion.button whileTap={{ scale: 0.9 }} onClick={handleMarkAllRead} style={isMarkingRead ? markReadBtnActive : markReadBtnUI}>
+                    {isMarkingRead ? '✓ Done' : 'Mark All Read'}
+                 </motion.button>
               </div>
               <div style={{padding: '0 20px', flex: 1, overflowY: 'auto'}}>
                 {notices.map(n => (
                     <div key={n.id} style={notifCardUI}>
+                      <div style={iconCircleUI}><span>📢</span></div>
                       <div style={{flex: 1}}>
-                         <div style={{fontWeight:'800'}}>{n.title}</div>
-                         <div style={{fontSize:'14px', color:'#666'}}>{n.content}</div>
-                         {isOwner && (
-                             <div style={{display:'flex', gap:'15px', marginTop:'8px'}}>
-                                <button onClick={() => {setEditingNotif(n); setNewNotice(n.content)}} style={textActionBtn}>Edit</button>
-                                <button onClick={() => {if(confirm("Delete?")) supabase.from('notices').delete().eq('id', n.id).then(() => fetchData())}} style={textActionBtnRed}>Delete</button>
-                             </div>
-                         )}
+                         <div style={notifTitleUI}>{n.title}</div>
+                         <div style={notifBodyUI}>{n.content}</div>
                       </div>
                     </div>
                 ))}
-              </div>
-              {isOwner && (
-                <div style={adminPanelNotifUI}>
-                   <textarea value={newNotice} onChange={e => setNewNotice(e.target.value)} placeholder="Post update..." style={notifInputUI} />
-                   <button onClick={handlePostNotice} style={notifSendBtn}>{editingNotif ? 'Update' : 'Post Notice'}</button>
-                </div>
-              )}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* STREAK MODAL (Enabled) */}
-      <AnimatePresence>
-        {showStreakModal && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={modalOverlay} onClick={() => setShowStreakModal(false)}>
-            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} style={streakCard} onClick={e => e.stopPropagation()}>
-              <button style={closeX} onClick={() => setShowStreakModal(false)}>✕</button>
-              <div ref={badgeRef} style={{background:'#fff', borderRadius:'30px', paddingBottom:'10px'}}>
-                <div style={streakHeaderBg}><div style={streakCircle}><span style={{fontSize:'40px', fontWeight:'900', color:'#ff7a00'}}>{streakData.current_streak}</span>🔥</div></div>
-                <h2 style={{marginTop:'70px'}}>Streak Active!!</h2>
-                <p>Keep up the learning habit!</p>
-              </div>
-              <div style={shareSectionUI}>
-                <button onClick={handleDownloadBadge} style={downloadBtnUI}>Download Badge</button>
               </div>
             </motion.div>
           </motion.div>
@@ -262,19 +268,11 @@ export default function BatchDashboard({ params }: PageProps) {
   )
 }
 
-// --- STYLES (Curved Pic 1 Style) ---
+// --- STYLES ---
+const modalOverlay: any = { position:'fixed', top:0, left:0, width:'100%', height:'100%', background:'rgba(0,0,0,0.4)', zIndex:3000, display:'flex', alignItems:'center', justifyContent:'center' };
 const headerWrapper: any = { position:'fixed', top:0, left:0, width:'100%', background:'#fff', borderBottom:'1px solid #f0f0f0', zIndex: 1000, height: '80px' };
 const headerInner: any = { maxWidth:'1300px', margin:'0 auto', display:'flex', justifyContent:'space-between', alignItems:'center', height:'100%', padding:'0 25px' };
-const contentArea: any = { paddingTop:'130px', maxWidth:'1200px', margin:'0 auto', padding:'0 25px 60px' };
 const backBtnCircle: any = { color:'#333', background:'#f5f5f5', width:'35px', height:'35px', borderRadius:'10px', display:'flex', alignItems:'center', justifyContent:'center', cursor: 'pointer' };
-
-const batchBanner: any = { background:'#1c252e', color:'#fff', padding:'80px 60px', borderRadius:'0 0 70px 0', marginBottom:'50px', position: 'relative', overflow: 'hidden', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' };
-const bannerOverlayPattern: any = { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.05) 1px, transparent 0)', backgroundSize: '24px 24px' };
-
-const offeringGrid: any = { display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:'20px' };
-const offeringItem: any = { padding:'30px', background:'#fff', borderRadius:'30px', border:'1px solid #f0f0f0', display:'flex', justifyContent:'space-between', alignItems:'center', cursor: 'pointer' };
-const arrowCircle: any = { width: '32px', height: '32px', borderRadius: '50%', background: '#f5f7ff', color: '#5b6cfd', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' };
-
 const profileTrigger: any = { display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', padding: '6px 12px', borderRadius: '15px' };
 const navAvatar: any = { width: '45px', height: '45px', borderRadius: '50%', border: '2.5px solid #5b6cfd', objectFit: 'cover' };
 const navNameText: any = { fontSize: '15px', fontWeight: '800', color: '#5b6cfd', lineHeight: '1.2' };
@@ -286,30 +284,45 @@ const streakPill: any = { background: '#fff5f5', border: '1px solid #ffdcdc', pa
 const bellContainer: any = { position: 'relative', background: '#f8f9ff', padding: '10px', borderRadius: '14px', cursor: 'pointer', border: '1px solid #eee' };
 const bellBadge: any = { position: 'absolute', top: '-4px', right: '-4px', background: '#ef4444', color: '#fff', fontSize: '10px', fontWeight: '900', padding: '2px 6px', borderRadius: '10px', border: '2px solid #fff' };
 
+const batchBanner: any = { background:'#1c252e', color:'#fff', padding:'70px 50px', borderRadius:'0 0 70px 0', marginBottom:'40px', position: 'relative', overflow: 'hidden', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' };
+const bannerOverlayPattern: any = { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.05) 1px, transparent 0)', backgroundSize: '24px 24px' };
+const contentArea: any = { paddingTop:'130px', maxWidth:'1200px', margin:'0 auto', padding:'0 25px 50px' };
+
+const sectionTitle: any = { fontSize:'20px', fontWeight:'900', margin:'0 0 25px', color: '#111' };
+const offeringGrid: any = { display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(260px, 1fr))', gap:'20px' };
+const offeringItem: any = { padding:'30px', background:'#fff', borderRadius:'30px', border:'1px solid #f0f0f0', display:'flex', justifyContent:'space-between', alignItems:'center', cursor: 'pointer' };
+const arrowCircle: any = { width: '32px', height: '32px', borderRadius: '50%', background: '#f5f7ff', color: '#5b6cfd', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' };
 const dashboardGrid: any = { display:'flex', gap:'40px' };
 const dataRow: any = { background:'#fff', padding:'25px', borderRadius:'30px', marginBottom:'12px', border:'1px solid #f0f0f0', display:'flex', justifyContent:'space-between', alignItems:'center' };
-const sectionTitle: any = { fontSize:'20px', fontWeight:'900', margin:'0 0 25px', color: '#111' };
-const addBtn: any = { background:'#6157ff', color:'#fff', border:'none', padding:'10px 20px', borderRadius:'12px', fontWeight:'bold', cursor:'pointer' };
-
-const drawerUI: any = { width:'460px', height:'100%', background:'#fff', display:'flex', flexDirection:'column', boxShadow: '-10px 0 30px rgba(0,0,0,0.05)', position: 'absolute', right: 0 };
-const drawerHeaderUI: any = { padding:'30px 25px 20px', display:'flex', justifyContent:'space-between', alignItems: 'center' };
-const batchTagUI: any = { background: '#f0f3ff', color: '#6157ff', padding: '8px 14px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold' };
-const markReadBtnUI: any = { background: '#fff', border: '1px solid #e2e8f0', padding: '10px 18px', borderRadius: '12px', fontSize: '13px', fontWeight: '700', color: '#4a5568', cursor: 'pointer' };
-const notifCardUI: any = { padding: '20px', borderRadius: '25px', background: '#f8fafc', border: '1px solid #f1f5f9', marginBottom: '12px', display:'flex' };
-const adminPanelNotifUI: any = { padding: '20px', borderTop: '1px solid #eee', background: '#fcfdfe' };
-const notifInputUI: any = { width: '100%', padding: '15px', borderRadius: '15px', border: '1px solid #eee', fontSize: '14px', minHeight: '80px' };
-const notifSendBtn: any = { width: '100%', padding: '12px', background: '#111', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 'bold', marginTop: '10px', cursor:'pointer' };
-
-const streakCard: any = { width:'380px', background:'#fff', borderRadius:'30px', overflow:'hidden', position:'relative', textAlign:'center', boxShadow:'0 20px 40px rgba(0,0,0,0.2)' };
-const streakHeaderBg: any = { background: 'linear-gradient(180deg, #ff9d42 0%, #ff7a00 100%)', height:'160px', display:'flex', alignItems:'center', justifyContent:'center', position:'relative' };
-const streakCircle: any = { width:'110px', height:'110px', background:'#fff', borderRadius:'50%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', border:'5px solid #f3e5d8', position:'relative', top:'45px' };
-const closeX: any = { position:'absolute', top:'15px', right:'15px', border:'none', background:'none', fontSize:'20px', cursor:'pointer', color:'#fff', zIndex: 10 };
-const shareSectionUI: any = { padding: '20px 20px 30px', background: '#fcfdfe', borderTop: '1px solid #eee' };
-const downloadBtnUI: any = { width: '100%', background: '#6157ff', color: '#fff', border: 'none', padding: '14px', borderRadius: '16px', fontWeight: 'bold', cursor: 'pointer' };
 
 const dropdownMenu: any = { position: 'absolute', top: '65px', right: '0', background: '#fff', boxShadow: '0 15px 35px rgba(0,0,0,0.15)', borderRadius: '20px', padding: '10px', zIndex: 100, minWidth: '180px', border: '1px solid #f0f0f0' };
 const dropdownItem: any = { padding: '12px 15px', color: '#333', fontSize: '14px', fontWeight: '700', borderRadius: '12px', textDecoration: 'none', display: 'block' };
 const dropdownLogoutBtn: any = { width: '100%', padding: '12px 15px', background: 'none', border: 'none', color: '#ef4444', fontSize: '14px', fontWeight: '800', borderRadius: '12px', textAlign: 'left', cursor: 'pointer' };
-const textActionBtn: any = { background:'none', border:'none', color:'#0070f3', fontSize:'12px', fontWeight:'bold', cursor:'pointer', padding:0 };
-const textActionBtnRed: any = { background:'none', border:'none', color:'#ff4d4d', fontSize:'12px', fontWeight:'bold', cursor:'pointer', padding:0 };
+
+const addBtn: any = { background:'#6157ff', color:'#fff', border:'none', padding:'10px 20px', borderRadius:'12px', fontWeight:'bold', cursor:'pointer' };
 const emptyBox: any = { padding: '40px', textAlign: 'center', color: '#aaa', fontSize: '14px' };
+const drawerUI: any = { width:'460px', height:'100%', background:'#fff', display:'flex', flexDirection:'column', boxShadow: '-10px 0 30px rgba(0,0,0,0.05)', position: 'absolute', right: 0 };
+const drawerHeaderUI: any = { padding:'30px 25px 20px', display:'flex', justifyContent:'space-between', alignItems: 'center' };
+const batchTagUI: any = { background: '#f0f3ff', color: '#6157ff', padding: '8px 14px', borderRadius: '20px', fontSize: '11px', fontWeight: 'bold' };
+const markReadBtnUI: any = { background: '#fff', border: '1px solid #e2e8f0', padding: '10px 18px', borderRadius: '12px', fontSize: '13px', fontWeight: '700', color: '#4a5568', cursor: 'pointer' };
+const markReadBtnActive: any = { background: '#6157ff', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: '12px', fontSize: '13px', fontWeight: '700', cursor: 'pointer' };
+
+const dateLabelUI: any = { fontSize: '14px', color: '#94a3b8', margin: '20px 0 15px', fontWeight: '700' };
+const notifCardUI: any = { display: 'flex', gap: '15px', padding: '20px', borderRadius: '25px', background: '#f8fafc', border: '1px solid #f1f5f9', marginBottom: '12px' };
+const iconCircleUI: any = { position: 'relative', width: '52px', height: '52px', borderRadius: '16px', background: '#fff', display: 'flex', alignItems: 'center', justifyContent:'center', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' };
+const notifTitleUI: any = { fontWeight: '800', fontSize: '15px', color: '#111' };
+const notifBodyUI: any = { fontSize: '14px', color: '#666', marginTop: '4px', lineHeight: '1.4' };
+
+const streakCard: any = { width:'380px', background:'#fff', borderRadius:'30px', overflow:'hidden', position:'relative', textAlign:'center', boxShadow:'0 20px 40px rgba(0,0,0,0.2)' };
+const streakHeaderBg: any = { background: 'linear-gradient(180deg, #ff9d42 0%, #ff7a00 100%)', height:'160px', display:'flex', alignItems:'center', justifyContent:'center', position:'relative' };
+const streakCircle: any = { width:'110px', height:'110px', background:'#fff', borderRadius:'50%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', border:'5px solid #f3e5d8', position:'relative', top:'45px' };
+const streakNumber: any = { fontSize: '48px', fontWeight: '900', color: '#ff7a00' };
+const fireSmall: any = { position:'absolute', bottom:'-5px', fontSize:'22px' };
+const streakContent: any = { padding:'70px 20px 10px', background:'#fff' };
+const streakSub: any = { fontSize:'14px', color:'#666', margin:'5px 0' };
+const closeX: any = { position:'absolute', top:'15px', right:'15px', border:'none', background:'none', fontSize:'20px', cursor:'pointer', color:'#fff', zIndex: 10 };
+const shareSectionUI: any = { padding: '20px 20px 30px', background: '#fcfdfe', borderTop: '1px solid #eee' };
+const downloadBtnUI: any = { width: '100%', background: '#6157ff', color: '#fff', border: 'none', padding: '14px', borderRadius: '16px', fontWeight: 'bold', cursor: 'pointer' };
+const modal: any = { background:'#fff', padding:'40px', borderRadius:'30px', width:'400px', margin:'auto' };
+const modalInput: any = { width:'100%', padding:'15px', borderRadius:'12px', border:'1px solid #eee' };
+const notifSendBtn: any = { flex: 1, padding: '12px', background: '#111', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor:'pointer' };
