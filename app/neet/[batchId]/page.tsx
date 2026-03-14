@@ -25,9 +25,8 @@ export default function BatchDashboard({ params }: PageProps) {
   const [events, setEvents] = useState<any[]>([])
   const [userProfile, setUserProfile] = useState<any>(null)
   
-  // Announcement/Notice Form States
+  // Announcement States
   const [newNotice, setNewNotice] = useState("")
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
   
   // Event Form States
   const [eventTitle, setEventTitle] = useState("")
@@ -60,48 +59,36 @@ export default function BatchDashboard({ params }: PageProps) {
     }
   };
 
-  const uploadImage = async (file: File) => {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-    const filePath = `uploads/${fileName}`;
-    const { error: uploadError } = await supabase.storage.from('NOTICES').upload(filePath, file);
-    if (uploadError) throw uploadError;
-    const { data } = supabase.storage.from('NOTICES').getPublicUrl(filePath);
-    return data.publicUrl;
-  };
-
-  // --- REFACTORED NOTIFICATION LOGIC ---
+  // --- REFACTORED NOTIFICATION LOGIC (TEXT ONLY) ---
   const handlePostNotice = async (textOverride?: any) => {
     const content = typeof textOverride === 'string' ? textOverride : newNotice;
     if (!content || !content.trim()) return;
+    
     setUploading(true);
     try {
-      let finalImageUrl = editingNotif?.image_url || null; 
-      if (selectedFile) finalImageUrl = await uploadImage(selectedFile);
-
       if (editingNotif) {
-        const { error } = await supabase.from('notices').update({ 
-            content: content.trim(), 
-            image_url: finalImageUrl,
-            title: "Update" 
-        }).eq('id', editingNotif.id);
+        const { error } = await supabase.from('notices')
+          .update({ content: content.trim(), title: "Update" })
+          .eq('id', editingNotif.id);
         if (error) throw error;
-        setNotices(prev => prev.map(n => n.id === editingNotif.id ? { ...n, content: content.trim(), image_url: finalImageUrl } : n));
+        setNotices(prev => prev.map(n => n.id === editingNotif.id ? { ...n, content: content.trim() } : n));
       } else {
         const { data, error } = await supabase.from('notices').insert([{ 
             batch_id: batchId, 
             title: typeof textOverride === 'string' ? "Event Alert" : "Announcement",
             content: content.trim(),
-            image_url: finalImageUrl,
             category: typeof textOverride === 'string' ? "Event" : "General"
         }]).select();
         if (error) throw error;
         if (data) setNotices(prev => [data[0], ...prev]);
       }
-      setNewNotice(""); setSelectedFile(null); setEditingNotif(null);
+      setNewNotice("");
+      setEditingNotif(null);
     } catch (err: any) {
       alert("Notice Error: " + err.message);
-    } finally { setUploading(false); }
+    } finally {
+      setUploading(false);
+    }
   };
 
   // --- REFACTORED EVENT LOGIC ---
@@ -125,7 +112,9 @@ export default function BatchDashboard({ params }: PageProps) {
       setShowEventModal(false); setEditingEvent(null); setEventTitle(""); setEventDate("");
     } catch (err: any) {
       alert("Event Error: " + err.message);
-    } finally { setUploading(false); }
+    } finally {
+      setUploading(false);
+    }
   };
 
   const deleteEvent = async (id: string) => {
@@ -237,23 +226,17 @@ export default function BatchDashboard({ params }: PageProps) {
               </div>
               {isOwner && (
                 <div style={adminPanel}>
-                  <textarea value={newNotice} onChange={e => setNewNotice(e.target.value)} placeholder="Message content..." style={notifInput} />
-                  <label style={fileLabel}>
-                    {selectedFile ? `📎 ${selectedFile.name}` : "📁 Add Image from Local"}
-                    <input type="file" accept="image/*" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} style={{ display: 'none' }} />
-                  </label>
+                  <textarea value={newNotice} onChange={e => setNewNotice(e.target.value)} placeholder="Type notice here..." style={notifInput} />
                   <div style={{display:'flex', gap:'10px', marginTop:'10px'}}>
                     <button onClick={() => handlePostNotice()} disabled={uploading} style={sendBtn}>
-                      {uploading ? "Uploading..." : editingNotif ? "Update" : "Post"}
+                      {uploading ? "..." : editingNotif ? "Update Notice" : "Post Notice"}
                     </button>
-                    {editingNotif && <button onClick={() => {setEditingNotif(null); setNewNotice(""); setSelectedFile(null);}} style={cancelBtn}>Cancel</button>}
                   </div>
                 </div>
               )}
               <div style={{padding:'10px', overflowY:'auto', flex: 1}}>
                 {notices.map(n => (
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} key={n.id} style={notifCard}>
-                    {n.image_url && <img src={n.image_url} alt="notice" style={notifImgDisplay} />}
                     <div style={{lineHeight: '1.5', fontWeight: '500', color: '#1c252e'}}>{n.content}</div>
                     <div style={{display:'flex', justifyContent:'space-between', marginTop:'10px', alignItems: 'center'}}>
                       <small style={{color:'#6157ff', fontWeight:'700'}}>
@@ -292,7 +275,6 @@ export default function BatchDashboard({ params }: PageProps) {
   )
 }
 
-// --- STYLES ---
 const headerWrapper: any = { position:'fixed', top:0, left:0, width:'100%', background:'#fff', borderBottom:'1px solid #f0f0f0', zIndex: 1000, height: '65px' };
 const headerInner: any = { maxWidth:'1200px', margin:'0 auto', display:'flex', justifyContent:'space-between', alignItems:'center', height:'100%', padding:'0 20px' };
 const backBtnCircle: any = { textDecoration:'none', color:'#333', background:'#f5f5f5', width:'35px', height:'35px', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center' };
@@ -313,12 +295,9 @@ const overlay: any = { position:'fixed', top:0, left:0, width:'100%', height:'10
 const drawer: any = { position: 'fixed', right: 0, top: 0, width:'420px', height:'100%', background:'#fff', display:'flex', flexDirection:'column', boxShadow: '-10px 0 30px rgba(0,0,0,0.1)' };
 const drawerHeader: any = { padding:'25px', borderBottom:'1px solid #f0f0f0', display:'flex', justifyContent:'space-between', alignItems: 'center' };
 const adminPanel: any = { padding:'20px', background:'#f9fafc', borderBottom:'1px solid #eee' };
-const notifInput: any = { width:'100%', padding:'12px', borderRadius:'12px', border:'1px solid #eee', resize:'none', fontSize:'14px' };
-const fileLabel: any = { display: 'block', background: '#fff', border: '1px dashed #ccc', padding: '10px', borderRadius: '12px', textAlign: 'center', cursor: 'pointer', fontSize: '13px', color: '#666', marginTop:'10px' };
-const sendBtn: any = { width:'100%', padding:'15px', background:'#6157ff', color:'#fff', border:'none', borderRadius:'12px', fontWeight:'bold', marginTop:'10px', cursor:'pointer' };
-const cancelBtn: any = { padding:'10px 15px', background:'#eee', color:'#666', border:'none', borderRadius:'12px', fontWeight:'bold', cursor:'pointer', marginTop:'10px' };
+const notifInput: any = { width:'100%', padding:'12px', borderRadius:'12px', border:'1px solid #eee', resize:'none', fontSize:'14px', minHeight:'100px' };
+const sendBtn: any = { width:'100%', padding:'15px', background:'#6157ff', color:'#fff', border:'none', borderRadius:'12px', fontWeight:'bold', cursor:'pointer' };
 const notifCard: any = { padding:'20px', borderBottom:'1px solid #f9f9f9', fontSize:'14px' };
-const notifImgDisplay: any = { width: '100%', borderRadius: '12px', marginBottom: '12px', objectFit: 'cover', maxHeight: '250px', border: '1px solid #eee' };
 const closeBtn: any = { background:'none', border:'none', fontSize:'24px', cursor:'pointer', color:'#ccc' };
 const editLinkBtn: any = { background:'none', border:'none', color:'#0070f3', fontSize:'12px', fontWeight:'bold', cursor:'pointer' };
 const delLinkBtn: any = { background:'none', border:'none', color:'#ff4d4d', fontSize:'12px', fontWeight:'bold', cursor:'pointer' };
