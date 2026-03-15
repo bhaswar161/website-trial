@@ -1,4 +1,4 @@
-'use client'
+"use client";
 import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
 import { useState, useEffect, useMemo } from 'react'
@@ -20,7 +20,6 @@ export default function AdminPanel() {
 
   const isOwner = session?.user?.email === "bhaswarray@gmail.com";
 
-  // Security: Kick out non-admins immediately
   useEffect(() => {
     if (status === "unauthenticated" || (status === "authenticated" && !isOwner)) {
       redirect("/");
@@ -34,8 +33,11 @@ export default function AdminPanel() {
   }, [isOwner]);
 
   async function fetchAdminData() {
+    // Fetch batches
     const { data: batchData } = await supabase.from('batches').select('*').order('created_at', { ascending: false });
-    const { data: enrollData } = await supabase.from('enrollments').select('*');
+    // Fetch enrollments with full details
+    const { data: enrollData } = await supabase.from('enrollments').select('*').order('created_at', { ascending: false });
+    
     if (batchData) setBatches(batchData);
     if (enrollData) setStudents(enrollData);
   }
@@ -73,27 +75,27 @@ export default function AdminPanel() {
   if (status === "loading") return <div style={{padding:'50px'}}>Checking Authorization...</div>;
 
   return (
-    <div style={{ padding: '40px', maxWidth: '1200px', margin: '0 auto', fontFamily: 'sans-serif', background: '#fcfdfe', minHeight: '100vh' }}>
+    <div style={{ padding: '40px', maxWidth: '1400px', margin: '0 auto', fontFamily: 'sans-serif', background: '#fcfdfe', minHeight: '100vh' }}>
       
-      {/* 1. DEBUG HEADER */}
+      {/* 1. HEADER */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
         <div>
-          <Link href="/" style={{ color: '#5b6cfd', fontWeight: 'bold', textDecoration: 'none' }}>← Home</Link>
-          <h1 style={{ fontSize: '32px', marginTop: '10px' }}>Admin Control Center</h1>
+          <Link href="/neet" style={{ color: '#5b6cfd', fontWeight: 'bold', textDecoration: 'none' }}>← Back to Neet Page</Link>
+          <h1 style={{ fontSize: '32px', marginTop: '10px', fontWeight: '900' }}>Admin Control Center</h1>
         </div>
         <div style={{ textAlign: 'right', padding: '15px', background: '#fff', borderRadius: '12px', border: '1px solid #eee' }}>
-           <div style={{fontSize: '13px', fontWeight: 'bold', color: isOwner ? 'green' : 'red'}}>
-            {isOwner ? "👑 OWNER ACCESS GRANTED" : "🚫 UNAUTHORIZED"}
-           </div>
-           <div style={{fontSize: '12px', color: '#666'}}>{session?.user?.email}</div>
+            <div style={{fontSize: '13px', fontWeight: 'bold', color: isOwner ? 'green' : 'red'}}>
+             {isOwner ? "👑 OWNER ACCESS GRANTED" : "🚫 UNAUTHORIZED"}
+            </div>
+            <div style={{fontSize: '12px', color: '#666'}}>{session?.user?.email}</div>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '400px 1fr', gap: '30px' }}>
         
         {/* 2. ADD NEW BATCH FORM */}
         <div style={adminCard}>
-          <h2 style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>🚀 Create New Batch</h2>
+          <h2 style={{ marginBottom: '20px', fontSize: '20px' }}>🚀 Create New Batch</h2>
           <form onSubmit={handleAddBatch} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
             <input 
               style={inputStyle} placeholder="Course Name (e.g. Yakeen NEET 2.0)" 
@@ -101,60 +103,81 @@ export default function AdminPanel() {
             />
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                 <input 
-                style={inputStyle} placeholder="Display Price (e.g. 6,000)" 
+                style={inputStyle} placeholder="Price (e.g. 6,000)" 
                 value={newBatch.price} onChange={e => setNewBatch({...newBatch, price: e.target.value})} 
                 />
                 <div style={{ ...inputStyle, display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <label style={{fontSize: '12px'}}>Theme:</label>
-                <input type="color" value={newBatch.color} style={{border:'none', width:'100%'}} onChange={e => setNewBatch({...newBatch, color: e.target.value})} />
+                <label style={{fontSize: '11px'}}>Color:</label>
+                <input type="color" value={newBatch.color} style={{border:'none', width:'100%', height:'20px', cursor:'pointer'}} onChange={e => setNewBatch({...newBatch, color: e.target.value})} />
                 </div>
             </div>
             <input 
-              style={inputStyle} placeholder="Tags (e.g. #all, #class 11, #dropper)" 
+              style={inputStyle} placeholder="Tags (comma separated)" 
               value={newBatch.hashtags} onChange={e => setNewBatch({...newBatch, hashtags: e.target.value})} 
             />
             <button type="submit" disabled={loading} style={btnStyle}>
-              {loading ? 'Processing...' : 'Deploy Batch to Website'}
+              {loading ? 'Processing...' : 'Deploy Batch'}
             </button>
           </form>
         </div>
 
-        {/* 3. STUDENT TRACKER */}
+        {/* 3. STUDENT TRACKER (DETAILED VERSION) */}
         <div style={adminCard}>
-          <h2 style={{ marginBottom: '20px' }}>👨‍🎓 Enrolled Students ({students.length})</h2>
-          <div style={{ maxHeight: '350px', overflowY: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ borderBottom: '2px solid #f0f0f0', textAlign: 'left', fontSize: '12px', color: '#999' }}>
-                  <th style={{ padding: '10px' }}>STUDENT</th>
-                  <th style={{ padding: '10px' }}>BATCH ID</th>
+          <h2 style={{ marginBottom: '20px', fontSize: '20px' }}>👨‍🎓 Recent Enrollments ({students.length})</h2>
+          <div style={{ maxHeight: '600px', overflowY: 'auto', borderRadius: '12px', border: '1px solid #f0f0f0' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', background: '#fff' }}>
+              <thead style={{ position: 'sticky', top: 0, background: '#f9f9fb', zIndex: 10 }}>
+                <tr style={{ textAlign: 'left', fontSize: '12px', color: '#999', borderBottom: '2px solid #eee' }}>
+                  <th style={{ padding: '15px' }}>STUDENT NAME</th>
+                  <th style={{ padding: '15px' }}>BATCH ENROLLED</th>
+                  <th style={{ padding: '15px' }}>DATE & TIME</th>
                 </tr>
               </thead>
               <tbody>
                 {students.map((s, i) => (
-                  <tr key={i} style={{ borderBottom: '1px solid #f9f9f9' }}>
-                    <td style={{ padding: '12px', fontSize: '13px', fontWeight: '600' }}>{s.student_email}</td>
-                    <td style={{ padding: '12px', fontSize: '11px', color: '#888' }}>{s.batch_id}</td>
-                  </tr>
+                  <motion.tr 
+                    initial={{ opacity: 0 }} 
+                    animate={{ opacity: 1 }} 
+                    key={i} 
+                    style={{ borderBottom: '1px solid #f6f6f6' }}
+                  >
+                    <td style={{ padding: '15px' }}>
+                        <div style={{ fontWeight: '700', fontSize: '14px', color: '#1a1a1a' }}>{s.student_name || "New Student"}</div>
+                        <div style={{ fontSize: '12px', color: '#5b6cfd' }}>{s.student_email}</div>
+                    </td>
+                    <td style={{ padding: '15px' }}>
+                        <span style={{ background: '#eef2ff', color: '#5b6cfd', padding: '5px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold' }}>
+                            {s.batch_name || s.batch_id}
+                        </span>
+                    </td>
+                    <td style={{ padding: '15px', fontSize: '13px', color: '#777' }}>
+                        {new Date(s.created_at).toLocaleString('en-IN', { 
+                            day: '2-digit', 
+                            month: 'short', 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                        })}
+                    </td>
+                  </motion.tr>
                 ))}
               </tbody>
             </table>
           </div>
         </div>
 
-        {/* 4. ACTIVE BATCHES MANAGEMENT (NEW FEATURE) */}
+        {/* 4. ACTIVE BATCHES MANAGEMENT */}
         <div style={{ ...adminCard, gridColumn: 'span 2' }}>
-          <h2 style={{ marginBottom: '20px' }}>📦 Live Website Batches</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
+          <h2 style={{ marginBottom: '20px', fontSize: '20px' }}>📦 Live Website Batches</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
             {batches.map(b => (
-              <div key={b.id} style={{ padding: '20px', borderRadius: '15px', border: `2px solid ${b.color}`, background: '#fff' }}>
-                <div style={{ fontWeight: 'bold', fontSize: '16px' }}>{b.name}</div>
-                <div style={{ fontSize: '12px', color: '#888', margin: '5px 0' }}>Price: ₹{b.price} | Tags: {b.hashtags?.join(', ')}</div>
+              <div key={b.id} style={{ padding: '20px', borderRadius: '18px', border: `1px solid #eee`, borderLeft: `6px solid ${b.color}`, background: '#fff', boxShadow: '0 4px 15px rgba(0,0,0,0.02)' }}>
+                <div style={{ fontWeight: '900', fontSize: '18px', color: '#1a1a1a' }}>{b.name}</div>
+                <div style={{ fontSize: '13px', color: '#666', margin: '8px 0' }}>Price: <b>₹{b.price}</b> | Tags: {b.hashtags?.join(', ')}</div>
                 <button 
                   onClick={() => handleDelete(b.id)}
-                  style={{ marginTop: '10px', background: '#fff0f0', color: '#ff4757', border: 'none', padding: '5px 12px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}
+                  style={{ marginTop: '10px', background: '#fff0f0', color: '#ff4757', border: '1px solid #ffdada', padding: '8px 15px', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px' }}
                 >
-                  Delete Course
+                  Remove from Website
                 </button>
               </div>
             ))}

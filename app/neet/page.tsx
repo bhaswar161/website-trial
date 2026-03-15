@@ -58,7 +58,7 @@ export default function NeetPage() {
         return;
     }
 
-    // Immediate UI feedback
+    // Attempt 1: Full enrollment (Requires student_name and batch_name columns in Supabase)
     const { error } = await supabase
       .from('enrollments')
       .insert([{ 
@@ -68,13 +68,22 @@ export default function NeetPage() {
         batch_name: batchName 
       }]);
     
-    // Check for success or if already enrolled (error 23505)
     if (!error || (error as any).code === '23505') {
       setEnrolledBatches(prev => [...prev, batchId]);
       alert(`🎉 Successfully enrolled in ${batchName}!`);
     } else {
-      console.error("Enrollment failed:", error.message);
-      alert("Enrollment failed. Please check if your database table has 'student_name' and 'batch_name' columns.");
+      // Fallback: Basic enrollment (Only email and batch_id) if columns are missing
+      const { error: fallbackError } = await supabase
+        .from('enrollments')
+        .insert([{ student_email: session.user.email, batch_id: batchId }]);
+
+      if (!fallbackError) {
+        setEnrolledBatches(prev => [...prev, batchId]);
+        alert("🎉 Enrolled! (Note: Add 'student_name' and 'batch_name' columns to Supabase for better tracking)");
+      } else {
+        console.error("Enrollment failed:", fallbackError.message);
+        alert("Enrollment failed. Ensure your Supabase RLS 'INSERT' policy is enabled for authenticated users.");
+      }
     }
   };
 
@@ -141,7 +150,7 @@ export default function NeetPage() {
         .filter-btn { background: ${theme.card}; border: 1px solid ${theme.border}; padding: 10px 20px; cursor: pointer; font-weight: 600; color: ${theme.subtext}; border-radius: 10px; text-transform: uppercase; font-size: 12px; transition: 0.2s; }
         .filter-btn.active { color: #fff; background: #5b6cfd; border-color: #5b6cfd; }
 
-        /* BLUE SPARK ANIMATION */
+        /* BATCH CARD WITH BLUE SPARK */
         .batch-card {
             background: ${theme.card}; 
             border-radius: 24px; 
@@ -154,7 +163,7 @@ export default function NeetPage() {
         .batch-card:hover {
             transform: translateY(-12px);
             border-color: #5b6cfd;
-            box-shadow: 0 0 20px rgba(91, 108, 253, 0.4);
+            box-shadow: 0 0 25px rgba(91, 108, 253, 0.5);
         }
         .batch-card::after {
             content: '';
@@ -216,8 +225,6 @@ export default function NeetPage() {
       </header>
 
       <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 20px' }}>
-        <button onClick={() => router.back()} style={{ background: theme.card, border: `1px solid ${theme.border}`, color: theme.text, width: '42px', height: '42px', borderRadius: '50%', cursor: 'pointer', marginBottom: '30px', fontSize: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>←</button>
-
         <h1 style={{ fontSize: '42px', fontWeight: '900', color: theme.text, marginBottom: '10px', letterSpacing: '-1px' }}>NEET Online Preparation</h1>
         <p style={{ color: theme.subtext, marginBottom: '40px', fontSize: '18px', maxWidth: '850px', lineHeight: '1.6' }}>
             Access StudyHub's premium courses and resources for NEET aspirants. Master concepts with top faculty and high-yield study material.
@@ -266,8 +273,6 @@ export default function NeetPage() {
                           <img src="https://cdn-icons-png.flaticon.com/512/3670/3670051.png" style={{ width: '22px', cursor: 'pointer' }} onClick={() => handleShare(batch.name)} alt="whatsapp" />
                       </div>
                     </div>
-
-                    <div style={{ color: theme.subtext, fontSize: '14px', marginBottom: '15px' }}>👥 For NEET Aspirants | 📅 Starts: 13 Apr, 2026</div>
 
                     <div className="price-container">
                       <span style={{ fontSize: '28px', fontWeight: '900', color: '#5b6cfd' }}>₹0</span>
