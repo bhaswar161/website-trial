@@ -8,7 +8,6 @@ export default function HomePage() {
   const [customName, setCustomName] = useState("");
   const [profilePic, setProfilePic] = useState("");
 
-  // Check if the current user is the owner (you)
   const isOwner = session?.user?.email === "bhaswarray@gmail.com";
 
   useEffect(() => {
@@ -16,19 +15,37 @@ export default function HomePage() {
       setCustomName(localStorage.getItem("userFirstName") || "");
       setProfilePic(localStorage.getItem("userProfilePic") || "");
     };
-
-    updateProfile(); 
-    window.addEventListener('storage', updateProfile);
-    return () => window.removeEventListener('storage', updateProfile);
+    updateProfile();
   }, []);
 
   const displayName = customName || session?.user?.name?.split(' ')[0] || "Student";
+
+  const examCategories = [
+    {
+      title: "NEET",
+      pills: ["class 11", "class 12", "Dropper"],
+      href: "/neet",
+      icon: "https://cdn-icons-png.flaticon.com/512/3063/3063200.png"
+    },
+    {
+      title: "IIT JEE",
+      pills: ["class 11", "class 12", "Dropper"],
+      href: "#",
+      icon: "https://cdn-icons-png.flaticon.com/512/4341/4341139.png"
+    },
+    {
+      title: "School Boards",
+      pills: ["CBSE", "ICSE", "State Boards"],
+      href: "#",
+      icon: "https://cdn-icons-png.flaticon.com/512/2941/2941513.png"
+    }
+  ];
 
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: `
         * { margin:0; padding:0; box-sizing:border-box; font-family: Arial, sans-serif; }
-        body { background:#f5f7fb; overflow-x: hidden; }
+        body { background:#fcfdfe; overflow-x: hidden; }
 
         header {
           display:flex;
@@ -36,58 +53,108 @@ export default function HomePage() {
           justify-content:space-between;
           padding:15px 5%;
           background:white;
-          box-shadow:0 2px 10px rgba(0,0,0,0.1);
+          box-shadow:0 2px 15px rgba(0,0,0,0.05);
           position: sticky;
           top: 0;
           z-index: 1000;
         }
 
-        .logo { font-weight:bold; font-size:24px; color:#6c63ff; text-decoration:none; }
+        .logo { font-weight:900; font-size:24px; color:#5b6cfd; text-decoration:none; letter-spacing: -0.5px; }
         nav ul { display:flex; gap:25px; list-style:none; align-items:center; }
-        nav ul li { cursor: pointer; color: #444; font-weight: 500; font-size: 15px; }
+        nav ul li { cursor: pointer; color: #444; font-weight: 600; font-size: 15px; }
 
         /* MEGA MENU */
         .mega-wrapper { position:relative; padding-bottom:15px; margin-bottom: -15px; }
-        .all-courses-btn { border:2px solid #6c63ff; padding:8px 16px; border-radius:12px; color:#6c63ff; font-weight:600; display:flex; align-items:center; gap:8px; }
-        .arrow { width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; border-top:6px solid #6c63ff; transition:0.3s; }
+        .all-courses-btn { border:2px solid #5b6cfd; padding:8px 18px; border-radius:12px; color:#5b6cfd; font-weight:700; display:flex; align-items:center; gap:8px; }
+        .arrow { width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; border-top:6px solid #5b6cfd; transition:0.3s; }
         .mega-wrapper:hover .arrow { transform:rotate(180deg); }
-        .mega-menu { position:absolute; top:100%; left:0; width: 800px; background:white; border-radius:12px; box-shadow:0 15px 40px rgba(0,0,0,0.2); display:none; overflow:hidden; }
+        .mega-menu { position:absolute; top:100%; left:0; width: 600px; background:white; border-radius:20px; box-shadow:0 20px 50px rgba(0,0,0,0.1); display:none; overflow:hidden; }
         .mega-wrapper:hover .mega-menu { display:block; }
         .mega-container { display:flex; }
-        .mega-left { width:35%; background:#f8f9fa; padding:20px; }
-        .mega-left div { padding:10px; border-radius:8px; margin-bottom:5px; cursor:pointer; }
-        .mega-left div:hover { background:white; color:#6c63ff; }
-        .mega-right { width:65%; padding:20px; display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
-        .course-item { background:#fafafa; padding:12px; border-radius:8px; font-weight:600; text-decoration:none; color:#333; text-align:center; border: 1px solid #eee; }
-        .course-item:hover { background:#6c63ff; color:white; }
+        .mega-left { width:40%; background:#f8f9fa; padding:20px; }
+        .mega-right { width:60%; padding:20px; display:grid; grid-template-columns: 1fr; gap:10px; }
+        .course-item { padding:12px; border-radius:10px; font-weight:700; text-decoration:none; color:#333; border: 1px solid #eee; }
+        .course-item:hover { background:#f4f6ff; color:#5b6cfd; border-color: #5b6cfd; }
 
-        /* HERO SECTION */
-        .hero { display: flex; align-items: center; justify-content: space-between; padding: 60px 8%; background: linear-gradient(135deg,#6a1b9a,#ff4ecd); border-radius: 0 0 40px 40px; color: white; }
-        .hero-text { flex: 1; }
-        .hero h1 { font-size: clamp(30px, 5vw, 48px); line-height: 1.2; }
-        .hero p { margin-top: 20px; font-size: 18px; opacity: 0.9; }
-        .hero-btn { margin-top: 30px; padding: 15px 35px; border: none; border-radius: 8px; background: white; color: #6a1b9a; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        .hero-btn:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
-        .hero img { width: clamp(200px, 30vw, 400px); transform: rotate(-5deg); }
+        /* HERO */
+        .hero { display: flex; align-items: center; justify-content: space-between; padding: 100px 10% 140px; background: linear-gradient(135deg,#6a1b9a,#ff4ecd); border-radius: 0 0 80px 80px; color: white; }
+        .hero h1 { font-size: 52px; font-weight: 900; line-height: 1.1; }
+        .hero p { margin: 20px 0 30px; font-size: 18px; opacity: 0.9; }
+        .hero-btn { padding: 16px 40px; border: none; border-radius: 14px; background: white; color: #6a1b9a; font-weight: 900; cursor: pointer; box-shadow: 0 10px 20px rgba(0,0,0,0.1); transition: 0.3s; }
+        .hero-btn:hover { transform: translateY(-3px); }
 
-        /* ADMIN BADGE */
-        .admin-badge { background: #FFD700; color: #000; padding: 5px 10px; border-radius: 5px; font-size: 12px; font-weight: bold; margin-left: 10px; }
+        /* EXAM CATEGORIES SECTION */
+        .section { padding: 100px 8%; text-align: center; }
+        .section-tag { color: #5b6cfd; font-weight: 800; text-transform: uppercase; font-size: 14px; letter-spacing: 1px; }
+        .section-title { font-size: 36px; font-weight: 900; color: #1c252e; margin: 10px 0 20px; }
+        .section-sub { color: #666; font-size: 16px; margin-bottom: 50px; max-width: 600px; margin-left: auto; margin-right: auto; }
 
-        .section { padding: 60px 5%; text-align: center; }
-        .courses-grid { display: flex; justify-content: center; flex-wrap: wrap; gap: 25px; margin-top: 40px; }
-        .card { background: white; padding: 30px; width: 280px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.08); }
-        .card h3 { color: #6a1b9a; margin-bottom: 10px; }
-        .card-btn { display: inline-block; margin-top: 15px; padding: 10px 20px; background: #6c63ff; color: white; border-radius: 8px; text-decoration: none; font-weight: bold; }
-
-        .auth-btns { display: flex; align-items: center; gap: 15px; }
-        .login-btn { background:#6c63ff; color:white; padding:10px 20px; border-radius:8px; cursor:pointer; border:none; font-weight:600; }
-
-        @media (max-width: 900px) {
-          nav ul li:not(.mega-wrapper) { display: none; }
-          .mega-menu { width: 90vw; left: -10px; }
-          .hero { flex-direction: column; text-align: center; }
-          .hero img { margin-top: 30px; width: 70%; }
+        .category-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 30px; }
+        
+        .cat-card { 
+            background: white; 
+            border-radius: 24px; 
+            padding: 35px; 
+            text-align: left; 
+            position: relative; 
+            overflow: hidden; 
+            border: 1px solid #f0f0f0; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.03); 
+            transition: 0.3s ease;
         }
+        .cat-card:hover { transform: translateY(-10px); box-shadow: 0 20px 40px rgba(91, 108, 253, 0.1); }
+
+        /* The Circle Graphic behind the card */
+        .cat-card::after {
+            content: "";
+            position: absolute;
+            top: 10%;
+            right: -15%;
+            width: 180px;
+            height: 180px;
+            background: #fff5f8;
+            border-radius: 50%;
+            z-index: 0;
+        }
+
+        .cat-content { position: relative; z-index: 2; }
+        .cat-title { font-size: 24px; font-weight: 900; color: #1c252e; margin-bottom: 20px; }
+        
+        .pill-group { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 30px; }
+        .pill { 
+            padding: 8px 16px; 
+            border: 1px solid #eee; 
+            border-radius: 50px; 
+            font-size: 13px; 
+            font-weight: 600; 
+            color: #666; 
+            background: #fafafa;
+        }
+
+        .explore-link { 
+            display: flex; 
+            align-items: center; 
+            gap: 10px; 
+            text-decoration: none; 
+            color: #1c252e; 
+            font-weight: 800; 
+            font-size: 15px; 
+            transition: 0.2s;
+        }
+        .explore-link:hover { color: #5b6cfd; gap: 15px; }
+
+        .cat-icon {
+            position: absolute;
+            right: 25px;
+            bottom: 60px;
+            width: 60px;
+            height: 60px;
+            z-index: 1;
+            opacity: 0.9;
+        }
+
+        .login-btn { background:#5b6cfd; color:white; padding:10px 22px; border-radius:12px; cursor:pointer; border:none; font-weight:700; }
+        .logout-btn { background:#ff4757; color:white; padding:10px 20px; border-radius:10px; cursor:pointer; border:none; font-weight:700; }
       ` }} />
 
       <header>
@@ -99,42 +166,33 @@ export default function HomePage() {
               <div className="mega-menu">
                 <div className="mega-container">
                   <div className="mega-left">
-                    <div><b>Competitive Exams</b><br/><small>JEE, NEET, GATE</small></div>
-                    <div><b>School Preparation</b><br/><small>Class 9-12</small></div>
+                    <div><b>Exams</b></div>
+                    <div style={{color: '#5b6cfd'}}>Medical & Engineering</div>
                   </div>
                   <div className="mega-right">
-                    <Link href="/neet" className="course-item">NEET</Link>
-                    <Link href="#" className="course-item">IIT JEE</Link>
-                    <Link href="#" className="course-item">Class 12</Link>
-                    <Link href="#" className="course-item">Class 11</Link>
+                    <Link href="/neet" className="course-item">NEET Preparation</Link>
+                    <Link href="#" className="course-item">IIT JEE Mains & Adv</Link>
                   </div>
                 </div>
               </div>
             </li>
-            {/* Special link for you */}
-            {isOwner && <li><Link href="/neet" style={{color: '#6c63ff', fontWeight: 'bold', textDecoration: 'none'}}>Live Dashboard</Link></li>}
+            {isOwner && <li><Link href="/neet" style={{color: '#5b6cfd', fontWeight: '800', textDecoration: 'none'}}>Live Dashboard</Link></li>}
             <li>Books</li>
             <li>Results</li>
           </ul>
         </nav>
 
-        <div className="auth-btns">
+        <div className="auth-btns" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
           {session ? (
             <>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ width: '38px', height: '38px', borderRadius: '50%', overflow: 'hidden', backgroundColor: '#6c63ff', border: '2px solid #6c63ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {profilePic ? (
-                    <img src={profilePic} alt="User" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  ) : (
-                    <span style={{ color: 'white', fontWeight: 'bold', fontSize: '14px' }}>{displayName[0].toUpperCase()}</span>
-                  )}
-                </div>
-                <div style={{display: 'flex', flexDirection: 'column'}}>
-                  <Link href="/profile" style={{fontWeight:'bold', color:'#6c63ff', textDecoration:'none'}}>Hi, {displayName}</Link>
-                  {isOwner && <span style={{fontSize: '10px', color: '#666', fontWeight: 'bold'}}>FACULTY</span>}
+                <img src={profilePic || session.user?.image || ""} style={{width:'40px', height:'40px', borderRadius:'50%', border:'2px solid #5b6cfd'}} />
+                <div style={{display:'flex', flexDirection:'column'}}>
+                  <span style={{fontWeight:'800', fontSize:'14px'}}>Hi, {displayName}</span>
+                  <span style={{fontSize:'10px', fontWeight:'900', color:'#5b6cfd'}}>{isOwner ? 'FACULTY' : 'STUDENT'}</span>
                 </div>
               </div>
-              <button className="login-btn" style={{background:'#ff4757'}} onClick={() => signOut()}>Logout</button>
+              <button className="logout-btn" onClick={() => signOut()}>Logout</button>
             </>
           ) : (
             <button className="login-btn" onClick={() => signIn('google')}>Login / Register</button>
@@ -144,39 +202,40 @@ export default function HomePage() {
 
       <div className="hero">
         <div className="hero-text">
-          <h1>{session ? (isOwner ? `Welcome, Faculty ${displayName}!` : `Welcome back, ${displayName}!`) : "Crack NEET, JEE & Boards"}</h1>
-          <p>{isOwner ? "Manage your batches and start your live interactions for today." : "Free notes, MCQs, mock tests and revision for Class 11 & 12 students."}</p>
-          
-          <button className="hero-btn" onClick={() => session ? window.location.href='/neet' : signIn('google')}>
-            {session ? (isOwner ? "🚀 Start Live Classes" : "Go to My Courses") : "Start Learning"}
-          </button>
+          <h1>{session ? `Welcome back, ${displayName}!` : "Crack NEET, JEE & Boards"}</h1>
+          <p>Get access to premium notes, MCQs, and real-time interaction with faculty.</p>
+          <button className="hero-btn" onClick={() => window.location.href='/neet'}>Start Learning</button>
         </div>
-        <img src="https://cdn-icons-png.flaticon.com/512/3135/3135755.png" alt="Hero" />
+        <img src="https://cdn-icons-png.flaticon.com/512/3135/3135755.png" alt="Hero" style={{width:'380px'}} />
       </div>
 
       <div className="section">
-        <h2>Popular Courses</h2>
-        <div className="courses-grid">
-          <div className="card">
-            <h3>Class 11</h3>
-            <p>Physics, Chemistry, Biology & Maths</p>
-            <Link href="#" className="card-btn">Explore</Link>
-          </div>
-          <div className="card">
-            <h3>Class 12</h3>
-            <p>Boards + Competitive Prep</p>
-            <Link href="#" className="card-btn">Explore</Link>
-          </div>
-          <div className="card">
-            <h3>NEET</h3>
-            <p>MCQs, PYQs and Mock Tests</p>
-            <Link href="/neet" className="card-btn">Explore</Link>
-          </div>
+        <div className="section-tag">Explore</div>
+        <h2 className="section-title">Exam Categories</h2>
+        <p className="section-sub">StudyHub is preparing students for the most competitive exams in the country. Find your path below.</p>
+        
+        <div className="category-grid">
+          {examCategories.map((cat, idx) => (
+            <div key={idx} className="cat-card">
+              <div className="cat-content">
+                <h3 className="cat-title">{cat.title}</h3>
+                <div className="pill-group">
+                  {cat.pills.map((pill, pIdx) => (
+                    <span key={pIdx} className="pill">{pill}</span>
+                  ))}
+                </div>
+                <Link href={cat.href} className="explore-link">
+                  Explore Category <span>➔</span>
+                </Link>
+              </div>
+              <img src={cat.icon} className="cat-icon" alt="icon" />
+            </div>
+          ))}
         </div>
       </div>
 
-      <footer style={{padding:'25px', textAlign:'center', background:'#6a1b9a', color:'white'}}>
-        © 2026 StudyHub | Faculty: Bhaswar Ray | Made for Future Doctors
+      <footer style={{padding:'40px', textAlign:'center', background:'#1c252e', color:'white'}}>
+        <p style={{opacity: 0.6, fontSize: '14px'}}>© 2026 StudyHub | Faculty: Bhaswar Ray | Made for Future Doctors</p>
       </footer>
     </>
   )
