@@ -103,7 +103,7 @@ export default function HomePage() {
           border-bottom: 1px solid rgba(0,0,0,0.05);
           position: sticky;
           top: 0;
-          z-index: 1000;
+          zIndex: 1000;
           height: 80px;
         }
 
@@ -120,7 +120,7 @@ export default function HomePage() {
         .mega-menu { 
           position:absolute; top:75px; left: 50%; transform: translateX(-50%); width: 550px; background:white; 
           border-radius:24px; box-shadow:0 25px 60px rgba(0,0,0,0.12); 
-          overflow:hidden; z-index: 2000; border: 1px solid #f0f0f0;
+          overflow:hidden; zIndex: 2000; border: 1px solid #f0f0f0;
         }
         
         .mega-container { display:flex; height: 320px; }
@@ -140,11 +140,11 @@ export default function HomePage() {
 
         @keyframes gradientShift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
 
-        .sketch-asset { position: absolute; pointer-events: none; z-index: 1; opacity: 0.35; filter: brightness(0) invert(1); }
-        .sketch-text-asset { position: absolute; font-family: 'Comic Sans MS', cursive; color: white; opacity: 0.25; font-weight: bold; pointer-events: none; z-index: 1; }
+        .sketch-asset { position: absolute; pointer-events: none; zIndex: 1; opacity: 0.35; filter: brightness(0) invert(1); }
+        .sketch-text-asset { position: absolute; font-family: 'Comic Sans MS', cursive; color: white; opacity: 0.25; font-weight: bold; pointer-events: none; zIndex: 1; }
 
-        .hero h1 { font-size: clamp(32px, 5vw, 58px); font-weight: 900; line-height: 1.1; position: relative; z-index: 10; margin-bottom: 20px; }
-        .hero-btn { padding: 18px 45px; border: none; border-radius: 16px; background: white; color: #6a1b9a; font-weight: 900; font-size: 18px; cursor: pointer; box-shadow: 0 15px 30px rgba(0,0,0,0.2); transition: 0.3s; position: relative; z-index: 10; }
+        .hero h1 { font-size: clamp(32px, 5vw, 58px); font-weight: 900; line-height: 1.1; position: relative; zIndex: 10; margin-bottom: 20px; text-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .hero-btn { padding: 18px 45px; border: none; border-radius: 16px; background: white; color: #6a1b9a; font-weight: 900; font-size: 18px; cursor: pointer; box-shadow: 0 15px 30px rgba(0,0,0,0.2); transition: 0.3s; position: relative; zIndex: 10; }
 
         .section { padding: 100px 8%; text-align: center; }
         .section-title { font-size: 48px; font-weight: 950; color: #1c252e; margin-bottom: 10px; letter-spacing: -1.5px; }
@@ -159,25 +159,37 @@ export default function HomePage() {
             transition: 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); cursor: pointer;
         }
         .cat-card:hover { transform: translateY(-15px); border-color: #5b6cfd; box-shadow: 0 25px 60px rgba(91, 108, 253, 0.15); }
-        .cat-card::after { content: ""; position: absolute; top: 0; right: -15%; width: 200px; height: 200px; background: #fff1f5; border-radius: 50%; z-index: 0; }
+        
+        /* FIX BALLOON BEHIND WRITING */
+        .cat-card::after { 
+            content: ""; position: absolute; top: 0; right: -15%; 
+            width: 200px; height: 200px; background: #fff1f5; 
+            border-radius: 50%; zIndex: 0; /* Behind content */
+            pointer-events: none;
+        }
 
-        .pill { padding: 10px 20px; border: 1px solid #eee; border-radius: 50px; font-size: 13px; font-weight: 700; color: #5b6cfd; background: #f4f6ff; margin: 0 10px 10px 0; display: inline-block; }
-        .cat-icon { position: absolute; right: 30px; bottom: 50px; width: 95px; height: 95px; z-index: 1; transition: 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .cat-content { position: relative; zIndex: 2; } /* Above balloon */
+
+        .pill { padding: 10px 20px; border: 1px solid #eee; border-radius: 50px; font-size: 13px; font-weight: 700; color: #5b6cfd; background: #f4f6ff; margin: 0 10px 10px 0; display: inline-block; position: relative; zIndex: 2; }
+        
+        /* ANIMATED ICON HOVER TRIGGER */
+        .cat-icon { position: absolute; right: 30px; bottom: 50px; width: 95px; height: 95px; zIndex: 1; transition: 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .cat-card:hover .cat-icon { transform: scale(1.2) rotate(-15deg) translateY(-12px); filter: drop-shadow(0 20px 30px rgba(91, 108, 253, 0.3)); }
 
         .profile-link-area { display: flex; align-items: center; gap: 12px; cursor: pointer; text-decoration: none; color: inherit; }
         .logout-btn { background:#ff4757; color:white; padding:10px 20px; border-radius:10px; cursor:pointer; border:none; font-weight:700; }
         .login-btn { background:#5b6cfd; color:white; padding:12px 24px; border-radius:14px; cursor:pointer; border:none; font-weight:700; }
 
         @media (max-width: 1100px) {
-          header { grid-template-columns: 1fr 1fr; }
+          header { grid-template-columns: 1fr auto; padding: 0 15px; }
           .nav-center { display: none; }
           .hero { flex-direction: column; text-align: center; }
           .hero img { width: 320px !important; margin-top: 50px; }
-          .hero-text { margin: 0 auto; }
         }
         @media (max-width: 600px) {
           .section-title { font-size: 32px; }
           .cat-card { padding: 30px; }
+          .cat-title { font-size: 26px !important; }
           .logo { font-size: 20px; }
         }
       ` }} />
@@ -261,7 +273,7 @@ export default function HomePage() {
 
       <div className="section" id="categories" ref={examSectionRef}>
         <h2 className="section-title">Explore Your Path</h2>
-        <p className="section-sub">Choose your target exam category and get access to high-yield study materials, live lectures, and performance analytics designed specifically for medical and engineering success.</p>
+        <p className="section-sub">Achieve your dreams with our goal-oriented courses. Whether you're aiming for medical school, engineering, or top board scores, we provide the ultimate learning framework.</p>
         
         <div className="category-grid">
           {examCategories.map((cat, idx) => (
@@ -269,8 +281,8 @@ export default function HomePage() {
               <div className="cat-content">
                 <h3 className="cat-title" style={{fontWeight: 950, fontSize: '32px', marginBottom: '15px'}}>{cat.title}</h3>
                 <div>{cat.pills.map((pill, pIdx) => (<span key={pIdx} className="pill">{pill}</span>))}</div>
-                <div style={{fontWeight: '800', marginTop: '25px', display: 'flex', alignItems:'center', gap: '8px', color: '#1c252e'}}>
-                   Explore Category ➔
+                <div style={{fontWeight: '800', marginTop: '20px', display: 'flex', alignItems:'center', gap: '8px', color: '#1c252e'}}>
+                   Explore Category <span>➔</span>
                 </div>
               </div>
               <img src={cat.icon} className="cat-icon" alt="icon" />
@@ -280,7 +292,7 @@ export default function HomePage() {
       </div>
 
       <footer style={{padding:'50px 20px', textAlign:'center', background:'#1c252e', color:'white'}}>
-        <p style={{opacity: 0.5, fontSize: '15px'}}>© 2026 StudyHub | Made for Future Doctors | By Bhaswar Ray</p>
+        <p style={{opacity: 0.5, fontSize: '15px'}}>© 2026 StudyHub | Made for future doctors | By Bhaswar Ray</p>
       </footer>
     </>
   )
