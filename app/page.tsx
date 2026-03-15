@@ -272,7 +272,7 @@ export default function HomePage() {
           <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
             {session ? `Welcome back, ${displayName}!` : "Crack NEET, JEE & Boards"}
           </motion.h1>
-          <p>The only platform built by doctors for future doctors. Get premium revision notes, interactive mock tests, and faculty guidance.</p>
+          <p>The platform is built for the future of students so that they can get a guide in their ambitious path. Get premium revision notes, interactive mock tests, and faculty guidance.</p>
           {/* SMART BUTTON LOGIC */}
           <button className="hero-btn" onClick={handleStartLearning}>
             {session ? "Start Learning Now" : "Join StudyHub Now"}
@@ -319,7 +319,7 @@ export default function HomePage() {
       </div>
 
       <footer style={{padding:'40px', textAlign:'center', background:'#1c252e', color:'white'}}>
-        <p style={{opacity: 0.6, fontSize: '14px'}}>© 2026 StudyHub | Faculty: Bhaswar Ray | Made by Bhaswar Ray</p>
+        <p style={{opacity: 0.6, fontSize: '14px'}}>© 2026 StudyHub | Made for students | Made by Bhaswar Ray</p>
       </footer>
     </>
   )
