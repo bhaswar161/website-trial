@@ -26,7 +26,6 @@ export default function HomePage() {
     if (!session) {
       signIn('google');
     } else {
-      // Smooth scroll to categories section
       examSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   };
@@ -52,6 +51,16 @@ export default function HomePage() {
     }
   ];
 
+  // Decoration elements for the banner
+  const floatingElements = [
+    { icon: "E=mc²", top: "15%", left: "10%", delay: 0 },
+    { icon: "π", top: "20%", left: "45%", delay: 2 },
+    { icon: "⚛️", top: "60%", left: "5%", delay: 1 },
+    { icon: "H₂O", top: "70%", left: "40%", delay: 3 },
+    { icon: "∫dx", top: "15%", left: "80%", delay: 1.5 },
+    { icon: "🧬", top: "50%", left: "85%", delay: 0.5 },
+  ];
+
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: `
@@ -74,9 +83,8 @@ export default function HomePage() {
         nav ul { display:flex; gap:25px; list-style:none; align-items:center; }
         nav ul li { cursor: pointer; color: #444; font-weight: 600; font-size: 15px; }
 
-        /* MEGA MENU */
         .mega-wrapper { position:relative; padding-bottom:15px; margin-bottom: -15px; }
-        .all-courses-btn { border:2px solid #5b6cfd; padding:8px 18px; border-radius:12px; color:#5b6cfd; font-weight:700; display:flex; align-items:center; gap:8px; }
+        .all-courses-btn { border:2px solid #5b6cfd; padding:8px 16px; border-radius:12px; color:#5b6cfd; font-weight:700; display:flex; align-items:center; gap:8px; }
         .arrow { width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; border-top:6px solid #5b6cfd; transition:0.3s; }
         .mega-wrapper:hover .arrow { transform:rotate(180deg); }
         .mega-menu { position:absolute; top:100%; left:0; width: 600px; background:white; border-radius:20px; box-shadow:0 20px 50px rgba(0,0,0,0.1); display:none; overflow:hidden; }
@@ -87,7 +95,6 @@ export default function HomePage() {
         .course-item { padding:12px; border-radius:10px; font-weight:700; text-decoration:none; color:#333; border: 1px solid #eee; }
         .course-item:hover { background:#f4f6ff; color:#5b6cfd; border-color: #5b6cfd; }
 
-        /* HERO IMPROVED WITH DYNAMIC COLOR */
         .hero { 
           display: flex; 
           align-items: center; 
@@ -119,7 +126,7 @@ export default function HomePage() {
         }
 
         .hero h1 { font-size: 52px; font-weight: 900; line-height: 1.1; position: relative; z-index: 2; }
-        .hero p { margin: 20px 0 30px; font-size: 18px; opacity: 0.9; position: relative; z-index: 2; }
+        .hero p { margin: 20px 0 30px; font-size: 18px; opacity: 0.9; position: relative; z-index: 2; max-width: 500px;}
         .hero-btn { 
           padding: 16px 40px; 
           border: none; 
@@ -135,7 +142,6 @@ export default function HomePage() {
         }
         .hero-btn:hover { transform: scale(1.05); background: #f8f8f8; }
 
-        /* EXAM CATEGORIES SECTION */
         .section { padding: 80px 8% 100px; text-align: center; }
         .section-title { font-size: 36px; font-weight: 900; color: #1c252e; margin-bottom: 15px; }
         .section-sub { color: #666; font-size: 16px; margin-bottom: 50px; max-width: 600px; margin-left: auto; margin-right: auto; }
@@ -195,7 +201,6 @@ export default function HomePage() {
             font-size: 15px; 
         }
 
-        /* HOVER ICON ANIMATION */
         .cat-icon {
             position: absolute;
             right: 20px;
@@ -214,7 +219,17 @@ export default function HomePage() {
         .login-btn { background:#5b6cfd; color:white; padding:10px 22px; border-radius:12px; cursor:pointer; border:none; font-weight:700; }
         .logout-btn { background:#ff4757; color:white; padding:10px 20px; border-radius:10px; cursor:pointer; border:none; font-weight:700; }
         
-        .profile-link-area { display: flex; alignItems: center; gap: 10px; cursor: pointer; text-decoration: none; color: inherit; }
+        .profile-link-area { display: flex; align-items: center; gap: 10px; cursor: pointer; text-decoration: none; color: inherit; }
+        
+        .floating-math {
+          position: absolute;
+          font-weight: bold;
+          font-size: 24px;
+          color: rgba(255, 255, 255, 0.3);
+          user-select: none;
+          pointer-events: none;
+          z-index: 1;
+        }
       ` }} />
 
       <header>
@@ -245,8 +260,7 @@ export default function HomePage() {
         <div className="auth-btns" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
           {session ? (
             <>
-              {/* CLICK NAME OR PIC TO GO TO PROFILE */}
-              <Link href="/profile" className="profile-link-area" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Link href="/profile" className="profile-link-area">
                 <img src={profilePic || session.user?.image || ""} style={{width:'40px', height:'40px', borderRadius:'50%', border:'2px solid #5b6cfd'}} />
                 <div style={{display:'flex', flexDirection:'column'}}>
                   <span style={{fontWeight:'800', fontSize:'14px', color: '#1c252e'}}>Hi, {displayName}</span>
@@ -261,19 +275,37 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* HERO SECTION WITH ANIMATED BLOBS & DYNAMIC COLOR */}
       <div className="hero">
-        <motion.div 
-          animate={{ x: [0, 50, 0], y: [0, 30, 0] }} 
-          transition={{ duration: 8, repeat: Infinity }} 
-          className="floating-blob" style={{top: '10%', right: '15%'}} 
-        />
+        {/* Floating Background Blobs */}
+        <motion.div animate={{ x: [0, 50, 0], y: [0, 30, 0] }} transition={{ duration: 8, repeat: Infinity }} className="floating-blob" style={{top: '10%', right: '15%'}} />
+        
+        {/* Floating Math/Physics Symbols */}
+        {floatingElements.map((el, i) => (
+          <motion.div
+            key={i}
+            className="floating-math"
+            style={{ top: el.top, left: el.left }}
+            animate={{ 
+              y: [0, -20, 0], 
+              rotate: [0, 10, -10, 0],
+              opacity: [0.2, 0.4, 0.2]
+            }}
+            transition={{ 
+              duration: 5 + i, 
+              repeat: Infinity, 
+              delay: el.delay,
+              ease: "easeInOut" 
+            }}
+          >
+            {el.icon}
+          </motion.div>
+        ))}
+
         <div className="hero-text">
           <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
             {session ? `Welcome back, ${displayName}!` : "Crack NEET, JEE & Boards"}
           </motion.h1>
-          <p>The platform is built for the future of students so that they can get a guide in their ambitious path. Get premium revision notes, interactive mock tests, and faculty guidance.</p>
-          {/* SMART BUTTON LOGIC */}
+          <p>The platform built for the future of students. Get premium revision notes, interactive mock tests, and faculty guidance.</p>
           <button className="hero-btn" onClick={handleStartLearning}>
             {session ? "Start Learning Now" : "Join StudyHub Now"}
           </button>
@@ -288,7 +320,6 @@ export default function HomePage() {
         />
       </div>
 
-      {/* ADDED ID FOR SMOOTH SCROLL */}
       <div className="section" id="categories" ref={examSectionRef}>
         <h2 className="section-title">Exam Categories</h2>
         <p className="section-sub">We prepare students for 35+ categories. Find the one you are preparing for.</p>
