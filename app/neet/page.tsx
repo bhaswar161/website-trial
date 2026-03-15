@@ -4,7 +4,7 @@ import { redirect, useRouter } from "next/navigation"
 import Link from "next/link"
 import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@supabase/supabase-js'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 
 export default function NeetPage() {
   const { data: session, status } = useSession()
@@ -13,11 +13,10 @@ export default function NeetPage() {
   const [enrolledBatches, setEnrolledBatches] = useState<string[]>([])
   const [activeFilter, setActiveFilter] = useState("#all");
 
-  const supabase = useMemo(() => {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-    return createClient(url, key);
-  }, []);
+  const supabase = useMemo(() => createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  ), []);
 
   const isOwner = session?.user?.email === "bhaswarray@gmail.com";
   const displayName = session?.user?.name?.split(' ')[0] || "Student";
@@ -47,7 +46,7 @@ export default function NeetPage() {
   };
 
   const handleShare = (batchName: string) => {
-    const text = encodeURIComponent(`Hey! Check out this ${batchName} on StudyHub: ` + window.location.href);
+    const text = encodeURIComponent(`Check out this ${batchName} on StudyHub: ` + window.location.href);
     window.open(`https://wa.me/?text=${text}`, '_blank');
   };
 
@@ -91,13 +90,11 @@ export default function NeetPage() {
           border-bottom: 1px solid #e2e8f0;
           position: sticky; top: 0; z-index: 1000; height: 80px;
         }
-        .nav-center ul { display: flex; gap: 30px; list-style: none; align-items: center; }
-        .nav-link { text-decoration: none; color: #444; font-weight: 600; font-size: 15px; transition: 0.2s; }
+        .nav-center ul { display: flex; gap: 25px; list-style: none; align-items: center; }
+        .nav-link { text-decoration: none; color: #444; font-weight: 600; font-size: 14px; transition: 0.2s; }
         .filter-btn { background: #fff; border: 1px solid #e2e8f0; padding: 10px 20px; cursor: pointer; font-weight: 600; color: #64748b; border-radius: 10px; text-transform: uppercase; font-size: 12px; }
         .filter-btn.active { color: #fff; background: #5b6cfd; border-color: #5b6cfd; }
         .price-container { display: flex; align-items: center; gap: 12px; margin: 15px 0; }
-        .price-final { font-size: 28px; font-weight: 900; color: #5b6cfd; }
-        .price-original { font-size: 16px; color: #94a3b8; text-decoration: line-through; }
         .discount-badge { background: #eefcf1; color: #10b981; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 800; border: 1px solid #d1fae5; }
       `}} />
 
@@ -108,11 +105,8 @@ export default function NeetPage() {
           <ul>
             <Link href="/" className="nav-link">Home</Link>
             {isOwner ? (
-                <motion.div
-                  animate={{ scale: [1, 1.05, 1] }}
-                  transition={{ repeat: Infinity, duration: 2 }}
-                >
-                  <Link href="/admin" className="nav-link" style={{color:'#fff', background: '#ff4757', padding: '8px 16px', borderRadius: '10px', fontWeight: 800}}>Admin Panel</Link>
+                <motion.div animate={{ scale: [1, 1.05, 1] }} transition={{ repeat: Infinity, duration: 2 }}>
+                  <Link href="/admin" className="nav-link" style={{color:'#fff', background: '#ff4757', padding: '10px 20px', borderRadius: '12px', fontWeight: 800}}>Admin Panel</Link>
                 </motion.div>
             ) : (
                 <Link href="/neet" className="nav-link" style={{color:'#5b6cfd'}}>Dashboard</Link>
@@ -137,7 +131,7 @@ export default function NeetPage() {
       <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 20px' }}>
         <button onClick={() => router.back()} style={{ background: '#fff', border: '1px solid #e2e8f0', width: '42px', height: '42px', borderRadius: '50%', cursor: 'pointer', marginBottom: '30px', fontSize: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>←</button>
 
-        <div style={{ display: 'flex', gap: '12px', marginBottom: '40px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '12px', marginBottom: '40px', flexWrap: 'wrap', borderBottom: '1px solid #e2e8f0', paddingBottom: '25px' }}>
           {["#all", "#class 11", "#class 12", "#dropper"].map(tag => (
             <button key={tag} onClick={() => setActiveFilter(tag)} className={`filter-btn ${activeFilter === tag ? 'active' : ''}`}>{tag.replace('#', '')}</button>
           ))}
@@ -146,7 +140,7 @@ export default function NeetPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '35px' }}>
           {filteredBatches.map((batch) => {
             const isEnrolled = enrolledBatches.includes(batch.id);
-            const showOnlyExplore = isOwner || isEnrolled;
+            const isAuthorized = isOwner || isEnrolled;
 
             return (
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} key={batch.id} style={{ background: '#fff', borderRadius: '24px', overflow: 'hidden', border: '1px solid #e2e8f0', boxShadow: '0 10px 30px rgba(0,0,0,0.04)' }}>
@@ -174,20 +168,26 @@ export default function NeetPage() {
                     <div>📅 Starts: 13 Apr, 2026</div>
                   </div>
 
+                  {isOwner && (
+                    <div style={{ display: 'flex', gap: '6px', marginBottom: '15px', flexWrap: 'wrap' }}>
+                      {batch.hashtags.map(t => <span key={t} style={{fontSize:'10px', background:'#f8fafc', color: '#5b6cfd', border: '1px solid #e2e8f0', padding:'3px 8px', borderRadius:'6px', fontWeight: '700'}}>{t}</span>)}
+                    </div>
+                  )}
+
                   <div className="price-container">
-                    <span className="price-final">₹0</span>
-                    <span className="price-original">₹{batch.price}</span>
+                    <span style={{ fontSize: '28px', fontWeight: '900', color: '#5b6cfd' }}>₹0</span>
+                    <span style={{ fontSize: '16px', color: '#94a3b8', textDecoration: 'line-through' }}>₹{batch.price}</span>
                     <div className="discount-badge">🏷️ Discount of 100% applied</div>
                   </div>
 
                   <div style={{ display: 'flex', gap: '12px' }}>
-                    {showOnlyExplore ? (
+                    {isAuthorized ? (
                       <Link href={`/neet/${batch.id}`} style={{ flex: 1 }}>
                         <button style={{ width: '100%', padding: '15px', borderRadius: '14px', fontWeight: '900', background: batch.color, color: '#fff', border: 'none', cursor: 'pointer' }}>EXPLORE</button>
                       </Link>
                     ) : (
                       <>
-                        <button style={{ flex: 1, padding: '15px', borderRadius: '14px', fontWeight: '900', background: '#fff', border: `2px solid ${batch.color}`, color: batch.color, opacity: 0.6, cursor: 'not-allowed' }}>EXPLORE</button>
+                        <button style={{ flex: 1, padding: '15px', borderRadius: '14px', fontWeight: '900', background: '#fff', border: `2px solid ${batch.color}`, color: batch.color, opacity: 0.5, cursor: 'not-allowed' }}>EXPLORE</button>
                         <button 
                             onClick={() => handleEnroll(batch.id)}
                             style={{ flex: 1, padding: '15px', borderRadius: '14px', fontWeight: '900', background: batch.color, color: '#fff', border: 'none', cursor: 'pointer' }}
