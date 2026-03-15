@@ -25,21 +25,17 @@ export default function BatchDashboard({ params }: PageProps) {
 
   // Data States
   const [notices, setNotices] = useState<any[]>([])
-  const [events, setEvents] = useState<any[]>([])
   const [userProfile, setUserProfile] = useState<any>(null)
   const [lastReadTime, setLastReadTime] = useState<number>(0)
   
   // UI States
   const [showNotifs, setShowNotifs] = useState(false)
   const [showProfileMenu, setShowProfileMenu] = useState(false)
-  const [showEventModal, setShowEventModal] = useState(false)
   const [showStreakModal, setShowStreakModal] = useState(false)
 
   // Admin Input States
   const [newNotice, setNewNotice] = useState("")
   const [noticeSubject, setNoticeSubject] = useState("")
-  const [eventTitle, setEventTitle] = useState("")
-  const [eventDate, setEventDate] = useState("")
   const [editingNotif, setEditingNotif] = useState<any>(null)
 
   const supabase = useMemo(() => createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!), []); 
@@ -47,14 +43,14 @@ export default function BatchDashboard({ params }: PageProps) {
 
   useEffect(() => { 
     setMounted(true);
-    const sync = () => {
+    const syncProfile = () => {
       setLocalName(localStorage.getItem("userFirstName") || "");
       setLocalPic(localStorage.getItem("userProfilePic") || "");
       setStreak(parseInt(localStorage.getItem("userStreak") || "0"));
       const saved = localStorage.getItem(`last_read_${batchId}`);
       if (saved) setLastReadTime(parseInt(saved));
     };
-    sync();
+    syncProfile();
 
     const interval = setInterval(() => {
       setStudySeconds(s => {
@@ -79,13 +75,8 @@ export default function BatchDashboard({ params }: PageProps) {
   const fetchData = async () => {
     supabase.from('student_stats').select('*').eq('email', session?.user?.email).single().then(({data}) => setUserProfile(data));
     supabase.from('notices').select('*').eq('batch_id', batchId).order('created_at', { ascending: false }).then(({data}) => setNotices(data || []));
-    
-    // FETCH EVENTS: Simplified fetch to ensure rows appear on dashboard
-    const { data: eData } = await supabase.from('events').select('*').eq('batch_id', batchId).order('event_time', { ascending: true });
-    setEvents(eData || []);
   };
 
-  // --- ACTIONS ---
   const handlePostNotice = async () => {
     if (!newNotice.trim() || !noticeSubject.trim()) return;
     const nData = { batch_id: batchId, title: noticeSubject, content: newNotice.trim() };
@@ -95,35 +86,6 @@ export default function BatchDashboard({ params }: PageProps) {
       await supabase.from('notices').insert([nData]);
     }
     setNewNotice(""); setNoticeSubject(""); setEditingNotif(null); fetchData();
-  };
-
-  const handleSaveEvent = async () => {
-    if (!eventTitle || !eventDate) return;
-    const newEv = { batch_id: batchId, title: eventTitle, event_time: eventDate, is_done: false };
-    
-    // 1. Database Insert
-    const { error } = await supabase.from('events').insert([newEv]);
-    if (!error) {
-      // 2. Auto-Notify students
-      await supabase.from('notices').insert([{ 
-        batch_id: batchId, 
-        title: "📅 New Event Scheduled", 
-        content: `${eventTitle} on ${new Date(eventDate).toLocaleString()}` 
-      }]);
-      setShowEventModal(false); setEventTitle(""); setEventDate(""); fetchData();
-    }
-  };
-
-  const handleDoneDismiss = async (ev: any) => {
-    // 1. Mark as done (this version keeps it in DB but updates state)
-    await supabase.from('events').update({ is_done: true }).eq('id', ev.id);
-    // 2. Auto Notice completion
-    await supabase.from('notices').insert([{ 
-        batch_id: batchId, 
-        title: "Mission Accomplished ✅", 
-        content: `Event "${ev.title}" is finished.` 
-    }]);
-    fetchData();
   };
 
   const handleDownloadBadge = async () => {
@@ -207,30 +169,6 @@ export default function BatchDashboard({ params }: PageProps) {
             ))}
           </div>
         </section>
-
-        {/* UPCOMING EVENTS */}
-        <div style={dashboardGrid}>
-          <div style={{ flex: 1 }}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: '15px' }}>
-              <h3 style={sectionTitle}>Upcoming Events</h3>
-              {isOwner && <button onClick={() => setShowEventModal(true)} style={addBtn}>+ Create Event</button>}
-            </div>
-            {events.filter(e => !e.is_done).length === 0 ? <div style={emptyBox}>🕒 No upcoming events.</div> : events.filter(e => !e.is_done).map(ev => (
-              <motion.div layout initial={{opacity:0}} animate={{opacity:1}} key={ev.id} style={dataRow}>
-                <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: '800' }}>{ev.title}</div>
-                    <div style={{ fontSize: '12px', color: '#666' }}>{new Date(ev.event_time).toLocaleString()}</div>
-                </div>
-                {isOwner && (
-                  <div style={{display:'flex', gap:'10px'}}>
-                    <motion.button whileTap={{scale:0.9}} onClick={() => handleDoneDismiss(ev)} style={{...textActionBtn, color:'#22c55e'}}>✓ Done</motion.button>
-                    <button onClick={() => {if(confirm("Delete?")) supabase.from('events').delete().eq('id', ev.id).then(()=>fetchData())}} style={textActionBtnRed}>Delete</button>
-                  </div>
-                )}
-              </motion.div>
-            ))}
-          </div>
-        </div>
       </main>
 
       {/* NOTIFICATION DRAWER */}
@@ -302,20 +240,6 @@ export default function BatchDashboard({ params }: PageProps) {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* EVENT MODAL */}
-      <AnimatePresence>
-        {showEventModal && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={modalOverlay} onClick={() => setShowEventModal(false)}>
-            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} style={modal} onClick={e => e.stopPropagation()}>
-               <h3 style={{marginTop:0}}>Create Event</h3>
-               <input placeholder="Title" value={eventTitle} onChange={e => setEventTitle(e.target.value)} style={modalInput} />
-               <input type="datetime-local" value={eventDate} onChange={e => setEventDate(e.target.value)} style={{...modalInput, marginTop:'10px'}} />
-               <button onClick={handleSaveEvent} style={notifSendBtn}>Save Event</button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   )
 }
@@ -341,8 +265,6 @@ const offeringGrid: any = { display:'grid', gridTemplateColumns:'repeat(auto-fit
 const offeringItem: any = { padding:'30px', background:'#fff', borderRadius:'30px', border:'1px solid #f0f0f0', display:'flex', justifyContent:'space-between', alignItems:'center', cursor: 'pointer', boxShadow: '0 8px 20px rgba(0,0,0,0.03)' };
 const arrowCircle: any = { width: '32px', height: '32px', borderRadius: '50%', background: '#f5f7ff', color: '#5b6cfd', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' };
 const sectionTitle: any = { fontSize:'22px', fontWeight:'900', margin:'0 0 25px' };
-const dashboardGrid: any = { display:'flex', gap:'40px' };
-const dataRow: any = { background:'#fff', padding:'25px', borderRadius:'30px', marginBottom:'12px', border:'1px solid #f0f0f0', display:'flex', justifyContent:'space-between', alignItems:'center' };
 const textActionBtn: any = { background:'none', border:'none', color:'#5b6cfd', fontSize:'12px', fontWeight:'bold', cursor:'pointer' };
 const textActionBtnRed: any = { background:'none', border:'none', color:'#ff4d4d', fontSize:'12px', fontWeight:'bold', cursor:'pointer' };
 const addBtn: any = { background:'#6157ff', color:'#fff', border:'none', padding:'10px 20px', borderRadius:'12px', fontWeight:'bold', cursor:'pointer' };
@@ -367,6 +289,3 @@ const closeX: any = { position:'absolute', top:'20px', right:'20px', border:'non
 const dropdownMenu: any = { position: 'absolute', top: '65px', right: '0', background: '#fff', boxShadow: '0 15px 35px rgba(0,0,0,0.12)', borderRadius: '20px', padding: '10px', zIndex: 100, minWidth: '180px', border: '1px solid #f0f0f0', display:'flex', flexDirection:'column' };
 const dropdownItem: any = { padding: '12px 15px', color: '#333', fontSize: '14px', fontWeight: '700', borderRadius: '12px', textDecoration: 'none', display: 'block' };
 const dropdownLogoutBtn: any = { width:'100%', textAlign:'left', padding: '12px 15px', background: 'none', border: 'none', color: '#ef4444', fontSize: '14px', fontWeight: '800', borderRadius: '12px', cursor: 'pointer' };
-const modal: any = { background:'#fff', padding:'40px', borderRadius:'30px', width:'400px', margin:'auto' };
-const modalInput: any = { width:'100%', padding:'15px', borderRadius:'12px', border:'1px solid #eee' };
-const emptyBox: any = { padding: '40px', textAlign: 'center', color: '#aaa', fontSize: '14px' };
