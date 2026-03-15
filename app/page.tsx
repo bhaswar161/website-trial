@@ -1,47 +1,31 @@
-'use client'
-import Link from 'next/link'
-import { useSession, signIn, signOut } from 'next-auth/react'
-import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+"use client";
+import { useSession, signOut } from "next-auth/react"
+import { useState } from 'react'
+import { motion, AnimatePresence } from "framer-motion"
+import Link from "next/link"
 
-export default function HomePage() {
-  const { data: session } = useSession();
-  const [customName, setCustomName] = useState("");
-  const [profilePic, setProfilePic] = useState("");
-  const [showMegaMenu, setShowMegaMenu] = useState(false);
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [activeCategory, setActiveCategory] = useState("Competitive");
-
-  const isOwner = session?.user?.email === "bhaswarray@gmail.com";
-
-  useEffect(() => {
-    const updateProfile = () => {
-      setCustomName(localStorage.getItem("userFirstName") || "");
-      setProfilePic(localStorage.getItem("userProfilePic") || "");
-    };
-    updateProfile(); 
-  }, []);
-
-  const displayName = customName || session?.user?.name?.split(' ')[0] || "Student";
+export default function Homepage() {
+  const { data: session } = useSession()
+  const [showMegaMenu, setShowMegaMenu] = useState(false)
+  const [activeCategory, setActiveCategory] = useState("Competitive")
 
   const categories = [
-    { id: "Competitive", title: "Competitive Exams", sub: "JEE, NEET, GATE", items: [{name: "NEET", href: "/neet"}, {name: "IIT JEE", href: "#"}] },
-    { id: "School", title: "School Preparation", sub: "Class 9-12", items: [{name: "Class 12", href: "#"}, {name: "Class 11", href: "#"}] },
-  ];
+    { id: "Competitive", title: "Competitive Exams", sub: "NEET, IIT JEE, GATE", items: ["NEET 2026", "NEET 2025", "IIT JEE", "GATE"] },
+    { id: "Boards", title: "School Boards", sub: "CBSE, ICSE, State", items: ["Class 12 Boards", "Class 11 Boards", "Class 10 Prep"] },
+    { id: "Upskilling", title: "Upskilling", sub: "Coding, Soft Skills", items: ["Web Dev", "Python", "Communication"] }
+  ]
 
   return (
-    <div style={{ background: '#fcfdfe', minHeight: '100vh', fontFamily: 'sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: '#fcfdfe', fontFamily: 'sans-serif' }}>
       
-      {/* PREMIUM HEADER */}
+      {/* IMPROVED HEADER WITH MEGA MENU */}
       <header style={headerWrapper}>
         <div style={headerInner}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '30px' }}>
-            <Link href="/" style={{ textDecoration: 'none' }}>
-              <h1 style={{ fontSize: '24px', fontWeight: '900', color: '#5b6cfd', margin: 0 }}>StudyHub</h1>
-            </Link>
+            <h1 style={{ fontSize: '24px', fontWeight: '900', color: '#5b6cfd', margin: 0 }}>StudyHub</h1>
             
             <nav style={{ display: 'flex', alignItems: 'center', gap: '25px' }}>
-              {/* MEGA MENU */}
+              {/* MEGA MENU WRAPPER */}
               <div 
                 onMouseEnter={() => setShowMegaMenu(true)} 
                 onMouseLeave={() => setShowMegaMenu(false)}
@@ -53,25 +37,37 @@ export default function HomePage() {
 
                 <AnimatePresence>
                   {showMegaMenu && (
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} style={megaMenuPanel}>
-                      <div style={{ display: 'flex', height: '350px' }}>
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      style={megaMenuPanel}
+                    >
+                      <div style={{ display: 'flex', height: '400px' }}>
+                        {/* LEFT SIDE: CATEGORIES */}
                         <div style={megaLeft}>
                           {categories.map(cat => (
                             <div 
                               key={cat.id}
                               onMouseEnter={() => setActiveCategory(cat.id)}
-                              style={{ ...categoryItem, background: activeCategory === cat.id ? '#fff' : 'transparent' }}
+                              style={{
+                                ...categoryItem,
+                                background: activeCategory === cat.id ? '#fff' : 'transparent',
+                                boxShadow: activeCategory === cat.id ? '0 4px 15px rgba(0,0,0,0.05)' : 'none'
+                              }}
                             >
                               <b style={{ display: 'block', fontSize: '14px' }}>{cat.title}</b>
                               <small style={{ color: '#888' }}>{cat.sub}</small>
                             </div>
                           ))}
                         </div>
+
+                        {/* RIGHT SIDE: SPECIFIC COURSES */}
                         <div style={megaRight}>
                           {categories.find(c => c.id === activeCategory)?.items.map(item => (
-                            <Link href={item.href} key={item.name} style={{ textDecoration: 'none' }}>
-                              <motion.div whileHover={{ y: -3, background: '#f8f9ff' }} style={courseCardMini}>
-                                {item.name}
+                            <Link href="/neet" key={item} style={{ textDecoration: 'none' }}>
+                              <motion.div whileHover={{ y: -3, background: '#f8f9ff' }} style={courseCard}>
+                                {item}
                               </motion.div>
                             </Link>
                           ))}
@@ -82,95 +78,61 @@ export default function HomePage() {
                 </AnimatePresence>
               </div>
 
-              {isOwner && <Link href="/neet" style={navLink}>Live Dashboard</Link>}
               <Link href="#" style={navLink}>Books</Link>
               <Link href="#" style={navLink}>Results</Link>
             </nav>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             {session ? (
-              <div style={{ position: 'relative' }}>
-                <div style={profileTrigger} onClick={() => setShowProfileMenu(!showProfileMenu)}>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '14px', fontWeight: '800' }}>Hi, {displayName}</div>
-                    <div style={roleBadge}>{isOwner ? 'FACULTY' : 'STUDENT'}</div>
-                  </div>
-                  <img src={profilePic || session.user?.image || `https://ui-avatars.com/api/?name=${displayName}`} style={navAvatar} />
-                </div>
-                <AnimatePresence>
-                  {showProfileMenu && (
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={dropdownMenu}>
-                      <Link href="/profile" style={dropdownItem}>👤 My Profile</Link>
-                      <button onClick={() => signOut()} style={dropdownLogoutBtn}>🚪 Logout</button>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                 <span style={{ fontWeight: '700', fontSize: '14px' }}>Hi, {session.user?.name?.split(' ')[0]}</span>
+                 <button onClick={() => signOut()} style={logoutBtn}>Logout</button>
+               </div>
             ) : (
-              <button style={loginBtn} onClick={() => signIn('google')}>Login / Register</button>
+               <Link href="/login" style={loginBtn}>Login/Register</Link>
             )}
           </div>
         </div>
       </header>
 
-      {/* HERO SECTION */}
-      <main style={{ paddingTop: '80px' }}>
-        <div style={heroSection}>
-          <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ flex: 1 }}>
-              <motion.h1 initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} style={{ fontSize: '50px', fontWeight: '900', color: '#fff' }}>
-                {session ? (isOwner ? `Welcome, Faculty ${displayName}!` : `Welcome back, ${displayName}!`) : "Crack NEET, JEE & Boards"}
-              </motion.h1>
-              <p style={{ fontSize: '18px', color: 'rgba(255,255,255,0.9)', margin: '20px 0 30px' }}>
-                {isOwner ? "Manage your batches and start your live interactions." : "Free notes, MCQs, mock tests and revision for Class 11 & 12."}
-              </p>
-              <button style={heroBtn} onClick={() => session ? window.location.href='/neet' : signIn('google')}>
-                {session ? "Go to Dashboard" : "Start Learning"}
-              </button>
-            </div>
-            <motion.img animate={{ y: [0, -15, 0] }} transition={{ repeat: Infinity, duration: 4 }} src="https://cdn-icons-png.flaticon.com/512/3135/3135755.png" style={{ width: '350px' }} />
-          </div>
+      {/* HERO SECTION (AS SEEN IN YOUR SS) */}
+      <main style={{ paddingTop: '120px' }}>
+        <div style={heroBanner}>
+          <h2 style={{ fontSize: '42px', fontWeight: '900', textAlign: 'center' }}>Popular Courses</h2>
         </div>
 
-        {/* POPULAR COURSES */}
-        <section style={{ padding: '80px 20px', maxWidth: '1200px', margin: '0 auto' }}>
-          <h2 style={{ textAlign: 'center', fontSize: '32px', fontWeight: '900', marginBottom: '50px' }}>Popular Courses</h2>
-          <div style={courseGrid}>
-            {['Class 11', 'Class 12', 'NEET'].map((title) => (
-              <div key={title} style={popularCard}>
-                <h3 style={{ color: '#5b6cfd', fontWeight: '800' }}>{title}</h3>
-                <p style={{ color: '#666', margin: '15px 0' }}>{title === 'NEET' ? 'MCQs & Mock Tests' : 'Boards Preparation'}</p>
-                <Link href="/neet" style={cardBtn}>Explore</Link>
-              </div>
-            ))}
-          </div>
-        </section>
+        <div style={courseGrid}>
+          {['Class 11', 'Class 12', 'NEET'].map((title) => (
+            <div key={title} style={popularCard}>
+               <h3 style={{ color: '#5b6cfd', fontWeight: '800' }}>{title}</h3>
+               <p style={{ color: '#666', fontSize: '14px', margin: '15px 0' }}>
+                 {title === 'NEET' ? 'MCQs, PYQs and Mock Tests' : 'Boards + Competitive Prep'}
+               </p>
+               <Link href="/neet">
+                <button style={exploreBtn}>Explore</button>
+               </Link>
+            </div>
+          ))}
+        </div>
       </main>
     </div>
   )
 }
 
-// --- STYLES ---
-const headerWrapper: any = { position:'fixed', top:0, left:0, width:'100%', background:'rgba(255,255,255,0.9)', backdropFilter:'blur(10px)', zIndex: 1000, height: '80px', borderBottom: '1px solid #f0f0f0' };
+// --- STYLE DEFINITIONS ---
+const headerWrapper: any = { position: 'fixed', top: 0, left: 0, width: '100%', background: '#fff', zIndex: 1000, height: '80px', borderBottom: '1px solid #f0f0f0' };
 const headerInner: any = { maxWidth: '1300px', margin: '0 auto', height: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 40px' };
-const allCoursesBtn: any = { border: '2px solid #5b6cfd', padding: '8px 16px', borderRadius: '12px', color: '#5b6cfd', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' };
+const allCoursesBtn: any = { border: '2px solid #5b6cfd', padding: '10px 20px', borderRadius: '14px', color: '#5b6cfd', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' };
 const navLink: any = { textDecoration: 'none', color: '#444', fontWeight: '600', fontSize: '15px' };
-const megaMenuPanel: any = { position: 'absolute', top: '100%', left: 0, width: '700px', background: '#fff', borderRadius: '20px', boxShadow: '0 20px 50px rgba(0,0,0,0.1)', overflow: 'hidden' };
-const megaLeft: any = { width: '40%', background: '#f8f9fb', padding: '20px' };
-const megaRight: any = { width: '60%', padding: '25px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' };
-const categoryItem: any = { padding: '15px', borderRadius: '12px', cursor: 'pointer', marginBottom: '8px' };
-const courseCardMini: any = { padding: '15px', borderRadius: '12px', border: '1px solid #f0f0f0', fontWeight: '700', color: '#1c252e', textAlign: 'center' };
-const navAvatar: any = { width: '40px', height: '40px', borderRadius: '50%', border: '2px solid #5b6cfd' };
-const profileTrigger: any = { display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' };
-const roleBadge: any = { fontSize: '9px', fontWeight: '900', color: '#5b6cfd', background: '#f0f3ff', padding: '2px 6px', borderRadius: '5px' };
-const heroSection: any = { background: 'linear-gradient(135deg, #6a1b9a, #ff4ecd)', padding: '100px 40px 140px', borderRadius: '0 0 80px 80px' };
-const heroBtn: any = { padding: '16px 35px', background: '#fff', color: '#6a1b9a', border: 'none', borderRadius: '12px', fontWeight: '900', cursor: 'pointer' };
-const courseGrid: any = { display: 'flex', gap: '30px' };
-const popularCard: any = { flex: 1, background: '#fff', padding: '40px', borderRadius: '30px', textAlign: 'center', boxShadow: '0 10px 30px rgba(0,0,0,0.05)', border: '1px solid #f0f0f0' };
-const cardBtn: any = { display: 'inline-block', padding: '10px 25px', background: '#5b6cfd', color: '#fff', borderRadius: '10px', textDecoration: 'none', fontWeight: '700' };
-const loginBtn: any = { background: '#5b6cfd', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '10px', fontWeight: '700', cursor: 'pointer' };
-const dropdownMenu: any = { position: 'absolute', top: '60px', right: '0', background: '#fff', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', borderRadius: '15px', padding: '10px', minWidth: '160px' };
-const dropdownItem: any = { display: 'block', padding: '10px', textDecoration: 'none', color: '#333', fontWeight: '700', fontSize: '14px' };
-const dropdownLogoutBtn: any = { width: '100%', textAlign: 'left', padding: '10px', background: 'none', border: 'none', color: '#ff4757', fontWeight: '800', cursor: 'pointer' };
-const backBtnCircle: any = { color:'#333', background:'#f5f5f5', width:'35px', height:'35px', borderRadius:'10px', display:'flex', alignItems:'center', justifyContent:'center', cursor: 'pointer' };
+const megaMenuPanel: any = { position: 'absolute', top: '100%', left: 0, width: '800px', background: '#fff', borderRadius: '20px', boxShadow: '0 20px 50px rgba(0,0,0,0.15)', overflow: 'hidden', zIndex: 2000 };
+const megaLeft: any = { width: '35%', background: '#f8f9fb', padding: '20px' };
+const megaRight: any = { width: '65%', padding: '30px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', overflowY: 'auto' };
+const categoryItem: any = { padding: '15px', borderRadius: '12px', cursor: 'pointer', marginBottom: '8px', transition: '0.2s' };
+const courseCard: any = { padding: '18px', borderRadius: '15px', border: '1px solid #f0f0f0', fontWeight: '700', color: '#1c252e' };
+const loginBtn: any = { background: '#5b6cfd', color: '#fff', padding: '10px 25px', borderRadius: '12px', fontWeight: '700', textDecoration: 'none' };
+const logoutBtn: any = { background: '#ff5b5b', color: '#fff', border: 'none', padding: '8px 18px', borderRadius: '10px', fontWeight: '700', cursor: 'pointer' };
+const heroBanner: any = { background: 'linear-gradient(to right, #9c42f5, #ff5b84)', height: '240px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', borderRadius: '0 0 100px 100px', marginBottom: '60px' };
+const courseGrid: any = { display: 'flex', justifyContent: 'center', gap: '30px', maxWidth: '1200px', margin: '0 auto', padding: '0 20px' };
+const popularCard: any = { background: '#fff', padding: '40px', borderRadius: '30px', textAlign: 'center', boxShadow: '0 10px 30px rgba(0,0,0,0.05)', flex: 1, border: '1px solid #f0f0f0' };
+const exploreBtn: any = { background: '#7c72ff', color: '#fff', border: 'none', padding: '10px 30px', borderRadius: '10px', fontWeight: '700', cursor: 'pointer' };
