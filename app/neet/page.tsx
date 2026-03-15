@@ -1,6 +1,6 @@
 "use client";
 import { useSession, signOut } from "next-auth/react"
-import { redirect } from "next/navigation"
+import { redirect, useRouter } from "next/navigation"
 import Link from "next/link"
 import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@supabase/supabase-js'
@@ -8,6 +8,7 @@ import { motion } from 'framer-motion'
 
 export default function NeetPage() {
   const { data: session, status } = useSession()
+  const router = useRouter();
   const [mounted, setMounted] = useState(false)
   const [enrolledBatches, setEnrolledBatches] = useState<string[]>([])
   const [activeFilter, setActiveFilter] = useState("All");
@@ -58,8 +59,6 @@ export default function NeetPage() {
       <style dangerouslySetInnerHTML={{ __html: `
         .nav-link { text-decoration: none; color: #444; font-weight: 600; font-size: 15px; transition: 0.2s; }
         .nav-link:hover { color: #5b6cfd; }
-        .resource-card { flex: 1; padding: 25px; border-radius: 20px; display: flex; align-items: center; justify-content: space-between; text-decoration: none; transition: 0.3s; border: 1px solid rgba(0,0,0,0.03); }
-        .resource-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
         .filter-btn { background: none; border: none; padding: 8px 15px; cursor: pointer; font-weight: 600; color: #888; transition: 0.2s; border-radius: 8px; }
         .filter-btn.active { color: #5b6cfd; background: #f0f3ff; }
       `}} />
@@ -79,52 +78,62 @@ export default function NeetPage() {
           </nav>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <img src={session?.user?.image || ""} style={avatarStyle} />
+            {/* LINKED PROFILE SECTION */}
+            <Link href="/profile" style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <img src={session?.user?.image || `https://ui-avatars.com/api/?name=${displayName}`} style={avatarStyle} />
               <div style={{ lineHeight: '1.2' }}>
                 <div style={{ fontWeight: '800', fontSize: '14px' }}>Hi, {displayName}</div>
                 <div style={{ fontSize: '10px', color: '#5b6cfd', fontWeight: 'bold' }}>{isOwner ? 'FACULTY' : 'STUDENT'}</div>
               </div>
-            </div>
+            </Link>
             <button onClick={() => signOut()} style={logoutBtn}>Logout</button>
           </div>
         </div>
       </header>
 
       <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 20px' }}>
-        {/* BREADCRUMB */}
-        <div style={{ color: '#888', fontSize: '14px', marginBottom: '20px' }}>
-          🏠 &nbsp; / &nbsp; NEET
+        {/* BACK BUTTON */}
+        <div style={{ marginBottom: '30px' }}>
+          <button onClick={() => router.back()} style={backBtnCircle}>
+            ←
+          </button>
         </div>
 
         {/* TITLE SECTION */}
         <div style={{ marginBottom: '40px' }}>
-          <h1 style={{ fontSize: '36px', fontWeight: '800', color: '#1c252e', marginBottom: '15px' }}>
-            NEET 2026 Online Preparation
-          </h1>
-          <p style={{ color: '#666', maxWidth: '800px', lineHeight: '1.6' }}>
-            StudyHub brings together dedicated courses for every stage, thousands of practice questions and mock tests, and flexible learning through live and recorded classes for NEET 2026 aspirants.
+          <motion.h1 
+            initial={{ opacity: 0, x: -20 }} 
+            animate={{ opacity: 1, x: 0 }}
+            style={{ fontSize: '42px', fontWeight: '900', color: '#1c252e', marginBottom: '15px' }}
+          >
+            NEET Online Preparation
+          </motion.h1>
+          <p style={{ color: '#666', maxWidth: '800px', lineHeight: '1.6', fontSize: '17px' }}>
+            StudyHub brings together dedicated courses for every stage, thousands of practice questions and mock tests, and flexible learning through live and recorded classes.
           </p>
         </div>
 
-        {/* RESOURCE CARDS */}
+        {/* ANIMATED RESOURCE CARDS */}
         <div style={{ display: 'flex', gap: '20px', marginBottom: '60px', flexWrap: 'wrap' }}>
-          <div style={{ ...resourceBox, background: '#f0f4ff' }}>
-            <div><b style={{display:'block'}}>Blogs</b><small style={{color:'#666'}}>Read our latest updates</small></div>
-            <span style={arrowIcon}>→</span>
-          </div>
-          <div style={{ ...resourceBox, background: '#fff0f3' }}>
-            <div><b style={{display:'block'}}>PDF Bank</b><small style={{color:'#666'}}>Access free notes</small></div>
-            <span style={arrowIcon}>→</span>
-          </div>
-          <div style={{ ...resourceBox, background: '#eefcf1' }}>
-            <div><b style={{display:'block'}}>Test Series</b><small style={{color:'#666'}}>Practice with Mocks</small></div>
-            <span style={arrowIcon}>→</span>
-          </div>
-          <div style={{ ...resourceBox, background: '#f0f8ff' }}>
-            <div><b style={{display:'block'}}>Books</b><small style={{color:'#666'}}>Find NEET reference</small></div>
-            <span style={arrowIcon}>→</span>
-          </div>
+          {[
+            { label: 'Blogs', sub: 'Read our latest updates', bg: '#f0f4ff' },
+            { label: 'PDF Bank', sub: 'Access free notes', bg: '#fff0f3' },
+            { label: 'Test Series', sub: 'Practice with Mocks', bg: '#eefcf1' },
+            { label: 'Books', sub: 'Find NEET reference', bg: '#f0f8ff' }
+          ].map((item, index) => (
+            <motion.div 
+              key={item.label}
+              whileHover={{ y: -8, scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              style={{ ...resourceBox, background: item.bg }}
+            >
+              <div>
+                <b style={{display:'block', fontSize: '18px'}}>{item.label}</b>
+                <small style={{color:'#666'}}>{item.sub}</small>
+              </div>
+              <span style={arrowIcon}>→</span>
+            </motion.div>
+          ))}
         </div>
 
         {/* FILTERS */}
@@ -170,10 +179,11 @@ export default function NeetPage() {
 // --- STYLES ---
 const headerStyle: any = { position: 'sticky', top: 0, zIndex: 100, background: '#fff', borderBottom: '1px solid #eee' };
 const headerInner: any = { maxWidth: '1200px', margin: '0 auto', padding: '15px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' };
-const avatarStyle: any = { width: '40px', height: '40px', borderRadius: '50%', border: '2px solid #5b6cfd' };
+const avatarStyle: any = { width: '40px', height: '40px', borderRadius: '50%', border: '2px solid #5b6cfd', objectFit: 'cover' };
 const logoutBtn: any = { background: '#ff4757', color: '#fff', border: 'none', padding: '8px 18px', borderRadius: '10px', fontWeight: '700', cursor: 'pointer' };
-const resourceBox: any = { flex: '1', minWidth: '200px', padding: '20px', borderRadius: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' };
-const arrowIcon: any = { background: '#fff', width: '30px', height: '30px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' };
+const backBtnCircle: any = { color:'#333', background:'#f5f5f5', width:'40px', height:'40px', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', border:'none', fontSize:'20px', cursor: 'pointer', transition: '0.2s' };
+const resourceBox: any = { flex: '1', minWidth: '240px', padding: '25px', borderRadius: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' };
+const arrowIcon: any = { background: '#fff', width: '35px', height: '35px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' };
 const cardStyle: any = { background: '#fff', borderRadius: '25px', overflow: 'hidden', boxShadow: '0 10px 30px rgba(0,0,0,0.05)', border: '1px solid #f0f0f0' };
 const badgeStyle: any = { position: 'absolute', top: '15px', left: '25px', background: 'rgba(255,255,255,0.2)', padding: '4px 10px', borderRadius: '5px', fontSize: '10px', fontWeight: 'bold' };
 const actionBtn: any = { width: '100%', padding: '15px', borderRadius: '12px', fontWeight: '900', border: 'none', cursor: 'pointer', transition: '0.2s' };
