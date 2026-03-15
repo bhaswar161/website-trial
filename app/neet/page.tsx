@@ -53,8 +53,12 @@ export default function NeetPage() {
   const displayName = customName || session?.user?.name?.split(' ')[0] || "Student";
 
   const handleEnroll = async (batchId: string, batchName: string) => {
-    if (!session?.user?.email) return;
+    if (!session?.user?.email) {
+        alert("Please login to enroll!");
+        return;
+    }
 
+    // Immediate UI feedback
     const { error } = await supabase
       .from('enrollments')
       .insert([{ 
@@ -64,9 +68,13 @@ export default function NeetPage() {
         batch_name: batchName 
       }]);
     
+    // Check for success or if already enrolled (error 23505)
     if (!error || (error as any).code === '23505') {
       setEnrolledBatches(prev => [...prev, batchId]);
-      alert(`Success! You have enrolled in ${batchName}`);
+      alert(`🎉 Successfully enrolled in ${batchName}!`);
+    } else {
+      console.error("Enrollment failed:", error.message);
+      alert("Enrollment failed. Please check if your database table has 'student_name' and 'batch_name' columns.");
     }
   };
 
@@ -114,7 +122,6 @@ export default function NeetPage() {
 
   return (
     <div style={{ background: theme.bg, minHeight: '100vh', fontFamily: 'sans-serif', transition: 'background 0.4s ease' }}>
-      {/* Global CSS to fix the "White Beam" margin issue */}
       <style dangerouslySetInnerHTML={{ __html: `
         body { margin: 0; padding: 0; overflow-x: hidden; }
         header {
@@ -125,33 +132,55 @@ export default function NeetPage() {
           background: ${theme.header};
           border-bottom: 1px solid ${theme.border};
           position: sticky; top: 0; z-index: 1000; height: 80px;
-          transition: background 0.4s ease, border-color 0.4s ease;
         }
         .nav-center ul { display: flex; gap: 20px; list-style: none; align-items: center; margin: 0; padding: 0; }
         .btn-outline-blue { border: 2px solid #5b6cfd; color: #5b6cfd; padding: 8px 25px; border-radius: 12px; font-weight: 800; text-decoration: none; font-size: 16px; transition: 0.2s; }
         .btn-outline-red { border: 2px solid #ff4757; color: #ff4757; padding: 8px 25px; border-radius: 12px; font-weight: 800; text-decoration: none; font-size: 16px; transition: 0.2s; }
         .nav-link-standard { text-decoration: none; color: ${theme.subtext}; font-weight: 600; font-size: 14px; }
+        
         .filter-btn { background: ${theme.card}; border: 1px solid ${theme.border}; padding: 10px 20px; cursor: pointer; font-weight: 600; color: ${theme.subtext}; border-radius: 10px; text-transform: uppercase; font-size: 12px; transition: 0.2s; }
         .filter-btn.active { color: #fff; background: #5b6cfd; border-color: #5b6cfd; }
+
+        /* BLUE SPARK ANIMATION */
+        .batch-card {
+            background: ${theme.card}; 
+            border-radius: 24px; 
+            overflow: hidden; 
+            border: 1px solid ${theme.border}; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+        }
+        .batch-card:hover {
+            transform: translateY(-12px);
+            border-color: #5b6cfd;
+            box-shadow: 0 0 20px rgba(91, 108, 253, 0.4);
+        }
+        .batch-card::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            border-radius: 24px;
+            border: 2px solid #5b6cfd;
+            opacity: 0;
+            transition: 0.3s;
+            pointer-events: none;
+        }
+        .batch-card:hover::after {
+            opacity: 1;
+            animation: spark-pulse 1.5s infinite;
+        }
+        @keyframes spark-pulse {
+            0% { box-shadow: 0 0 0 0px rgba(91, 108, 253, 0.7); }
+            100% { box-shadow: 0 0 0 15px rgba(91, 108, 253, 0); }
+        }
+
         .resource-card { flex: 1; minWidth: 240px; padding: 25px; border-radius: 20px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; border: 1px solid ${theme.border}; background: ${theme.card}; position: relative; overflow: hidden; transition: 0.3s; color: ${theme.text}; }
         .resource-card:hover { transform: translateY(-8px); box-shadow: 0 12px 25px rgba(0,0,0,0.15); }
         .price-container { display: flex; align-items: center; gap: 12px; margin: 15px 0; }
         .discount-badge { background: #eefcf1; color: #10b981; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 800; border: 1px solid #d1fae5; display: flex; align-items: center; gap: 4px; }
         
-        .cute-toggle {
-          background: ${isDarkMode ? '#334155' : '#e2e8f0'};
-          border: none;
-          width: 50px;
-          height: 50px;
-          border-radius: 15px;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-          box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        }
-        .cute-toggle:hover { transform: scale(1.1) rotate(5deg); }
+        .cute-toggle { background: ${isDarkMode ? '#334155' : '#e2e8f0'}; border: none; width: 50px; height: 50px; border-radius: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.3s; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         .cute-toggle img { width: 32px; height: 32px; }
       `}} />
 
@@ -172,21 +201,9 @@ export default function NeetPage() {
           </ul>
         </nav>
         <div style={{ display: 'flex', alignItems: 'center', gap: 15, justifySelf: 'end' }}>
-          
-          {/* Cuter Theme Toggle with Icons */}
-          <motion.button 
-            whileTap={{ scale: 0.8 }}
-            onClick={toggleTheme} 
-            className="cute-toggle"
-          >
-            <img 
-              src={isDarkMode 
-                ? "https://cdn-icons-png.flaticon.com/512/606/606807.png" 
-                : "https://cdn-icons-png.flaticon.com/512/869/869869.png"} 
-              alt="theme icon" 
-            />
-          </motion.button>
-
+          <button onClick={toggleTheme} className="cute-toggle">
+            <img src={isDarkMode ? "https://cdn-icons-png.flaticon.com/512/606/606807.png" : "https://cdn-icons-png.flaticon.com/512/869/869869.png"} alt="theme" />
+          </button>
           <Link href="/profile" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 12 }}>
             <img src={profilePic || session?.user?.image || ""} style={{ width: '42px', height: '42px', borderRadius: '50%', border: '2px solid #5b6cfd', objectFit: 'cover' }} />
             <div style={{ textAlign: 'left' }}>
@@ -199,43 +216,17 @@ export default function NeetPage() {
       </header>
 
       <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 20px' }}>
-        <motion.button 
-          initial={{ x: -20, opacity: 0 }}
-          animate={{ x: 0, opacity: 1 }}
-          onClick={() => router.back()} 
-          style={{ background: theme.card, border: `1px solid ${theme.border}`, color: theme.text, width: '42px', height: '42px', borderRadius: '50%', cursor: 'pointer', marginBottom: '30px', fontSize: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        >
-          ←
-        </motion.button>
+        <button onClick={() => router.back()} style={{ background: theme.card, border: `1px solid ${theme.border}`, color: theme.text, width: '42px', height: '42px', borderRadius: '50%', cursor: 'pointer', marginBottom: '30px', fontSize: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>←</button>
 
-        <motion.h1 
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          style={{ fontSize: '42px', fontWeight: '900', color: theme.text, marginBottom: '10px', letterSpacing: '-1px' }}
-        >
-          NEET Online Preparation
-        </motion.h1>
-        <motion.p 
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.1 }}
-          style={{ color: theme.subtext, marginBottom: '40px', fontSize: '18px', maxWidth: '850px', lineHeight: '1.6' }}
-        >
+        <h1 style={{ fontSize: '42px', fontWeight: '900', color: theme.text, marginBottom: '10px', letterSpacing: '-1px' }}>NEET Online Preparation</h1>
+        <p style={{ color: theme.subtext, marginBottom: '40px', fontSize: '18px', maxWidth: '850px', lineHeight: '1.6' }}>
             Access StudyHub's premium courses and resources for NEET aspirants. Master concepts with top faculty and high-yield study material.
-        </motion.p>
+        </p>
 
         {/* RESOURCE BOXES */}
         <div style={{ display: 'flex', gap: '20px', marginBottom: '60px', flexWrap: 'wrap' }}>
             {['Blogs', 'PDF Bank', 'Test Series', 'Books'].map((item, idx) => (
-              <motion.div 
-                key={item} 
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: idx * 0.1 }}
-                whileHover={{ y: -8 }} 
-                className="resource-card" 
-                style={{ borderLeft: `6px solid ${['#5b6cfd', '#ff4ecd', '#10b981', '#3b82f6'][idx]}` }}
-              >
+              <motion.div key={item} whileHover={{ y: -8 }} className="resource-card" style={{ borderLeft: `6px solid ${['#5b6cfd', '#ff4ecd', '#10b981', '#3b82f6'][idx]}` }}>
                 <div><b style={{fontSize:'18px'}}>{item}</b><br/><small style={{color: theme.subtext}}>Access {item}</small></div>
                 <div style={{fontSize:'18px'}}>➔</div>
               </motion.div>
@@ -243,22 +234,13 @@ export default function NeetPage() {
         </div>
 
         <div style={{ display: 'flex', gap: '12px', marginBottom: '40px', flexWrap: 'wrap', borderBottom: `1px solid ${theme.border}`, paddingBottom: '25px' }}>
-          {["#all", "#class 11", "#class 12", "#dropper"].map((tag, idx) => (
-            <motion.button 
-              key={tag} 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
-              transition={{ delay: 0.4 + (idx * 0.1) }}
-              onClick={() => setActiveFilter(tag)} 
-              className={`filter-btn ${activeFilter === tag ? 'active' : ''}`}
-            >
-              {tag.replace('#', '')}
-            </motion.button>
+          {["#all", "#class 11", "#class 12", "#dropper"].map(tag => (
+            <button key={tag} onClick={() => setActiveFilter(tag)} className={`filter-btn ${activeFilter === tag ? 'active' : ''}`}>{tag.replace('#', '')}</button>
           ))}
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '35px' }}>
-          <AnimatePresence mode="popLayout">
+          <AnimatePresence>
             {filteredBatches.map((batch) => {
               const isEnrolled = enrolledBatches.includes(batch.id);
               const canExplore = isOwner || isEnrolled;
@@ -266,12 +248,10 @@ export default function NeetPage() {
               return (
                 <motion.div 
                   layout
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  whileHover={{ y: -10 }}
                   key={batch.id} 
-                  style={{ background: theme.card, borderRadius: '24px', overflow: 'hidden', border: `1px solid ${theme.border}`, boxShadow: '0 10px 30px rgba(0,0,0,0.08)' }}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="batch-card"
                 >
                   <div style={{ height: '210px', position: 'relative' }}>
                     <img src={batch.banner} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="banner" />
@@ -287,9 +267,7 @@ export default function NeetPage() {
                       </div>
                     </div>
 
-                    <div style={{ color: theme.subtext, fontSize: '14px', display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '15px' }}>
-                      <div>👥 For NEET Aspirants | 📅 Starts: 13 Apr, 2026</div>
-                    </div>
+                    <div style={{ color: theme.subtext, fontSize: '14px', marginBottom: '15px' }}>👥 For NEET Aspirants | 📅 Starts: 13 Apr, 2026</div>
 
                     <div className="price-container">
                       <span style={{ fontSize: '28px', fontWeight: '900', color: '#5b6cfd' }}>₹0</span>
@@ -300,19 +278,17 @@ export default function NeetPage() {
                     <div style={{ display: 'flex', gap: '12px' }}>
                       {canExplore ? (
                         <Link href={`/neet/${batch.id}`} style={{ flex: 1 }}>
-                          <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} style={{ width: '100%', padding: '15px', borderRadius: '14px', fontWeight: '900', background: batch.color, color: '#fff', border: 'none', cursor: 'pointer' }}>EXPLORE</motion.button>
+                          <button style={{ width: '100%', padding: '15px', borderRadius: '14px', fontWeight: '900', background: batch.color, color: '#fff', border: 'none', cursor: 'pointer' }}>EXPLORE</button>
                         </Link>
                       ) : (
                         <>
                           <button style={{ flex: 1, padding: '15px', borderRadius: '14px', fontWeight: '900', background: theme.border, border: `1px solid ${theme.border}`, color: theme.subtext, opacity: 0.5, cursor: 'not-allowed' }}>EXPLORE</button>
-                          <motion.button 
-                            whileHover={{ scale: 1.02 }} 
-                            whileTap={{ scale: 0.98 }} 
+                          <button 
                             onClick={() => handleEnroll(batch.id, batch.name)} 
                             style={{ flex: 1, padding: '15px', borderRadius: '14px', fontWeight: '900', background: batch.color, color: '#fff', border: 'none', cursor: 'pointer' }}
                           >
                             ENROLL NOW
-                          </motion.button>
+                          </button>
                         </>
                       )}
                     </div>
