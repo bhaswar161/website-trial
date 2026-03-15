@@ -62,8 +62,8 @@ export default function BatchDashboard({ params }: PageProps) {
         setStudySeconds(0);
         setIsStreakAchieved(false);
         localStorage.setItem("lastStudyDate", today);
+        localStorage.setItem("studySecondsToday", "0");
       } else {
-          // If already hit 10 mins today, lock it
           const savedSeconds = parseInt(localStorage.getItem("studySecondsToday") || "0");
           setStudySeconds(savedSeconds);
           if (savedSeconds >= 600) setIsStreakAchieved(true);
@@ -76,7 +76,7 @@ export default function BatchDashboard({ params }: PageProps) {
 
     const interval = setInterval(() => {
       setStudySeconds(s => {
-        if (s < 600) {
+        if (s < 600) { // Goal is 10 mins (600s)
             const ns = s + 1;
             localStorage.setItem("studySecondsToday", ns.toString());
             if (ns >= 600 && !isStreakAchieved) {
@@ -87,7 +87,7 @@ export default function BatchDashboard({ params }: PageProps) {
             }
             return ns;
         }
-        return s; // Timer stops at 600 (10 mins)
+        return s; // Timer stops here if goal reached today
       });
     }, 1000);
 
@@ -102,7 +102,7 @@ export default function BatchDashboard({ params }: PageProps) {
     setEvents(eData?.filter((ev: any) => !ev.is_done) || []);
   };
 
-  // --- EVENT ACTIONS ---
+  // --- ACTIONS ---
   const handleSaveEvent = async () => {
     if (!eventTitle || !eventDate) return;
     try {
@@ -127,7 +127,7 @@ export default function BatchDashboard({ params }: PageProps) {
 
   const handleDoneDismiss = async (ev: any) => {
     await supabase.from('events').update({ is_done: true }).eq('id', ev.id);
-    await supabase.from('notices').insert([{ batch_id: batchId, title: "✅ Mission Accomplished", content: `Excellent! The task "${ev.title}" is finished.` }]);
+    await supabase.from('notices').insert([{ batch_id: batchId, title: "✅ Mission AccomplISHED", content: `The task "${ev.title}" has been successfully completed!` }]);
     fetchData();
   };
 
@@ -167,7 +167,14 @@ export default function BatchDashboard({ params }: PageProps) {
       <header style={headerWrapper}>
         <div style={headerInner}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-            <Link href="/" style={{ textDecoration: 'none' }}><motion.div whileHover={{x:-3}} style={backBtnCircle}>←</motion.div></Link>
+            {/* BACK BUTTON TO PREVIOUS PAGE */}
+            <motion.div 
+              whileHover={{x:-3}} 
+              style={backBtnCircle} 
+              onClick={() => window.history.back()}
+            >
+              ←
+            </motion.div>
             <Link href="/" style={{ textDecoration: 'none' }}><h1 style={{ fontSize: '22px', fontWeight: '900', color: '#5b6cfd', margin: 0, cursor: 'pointer' }}>StudyHub</h1></Link>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
@@ -226,7 +233,7 @@ export default function BatchDashboard({ params }: PageProps) {
           </div>
         </section>
 
-        {/* EVENTS */}
+        {/* EVENTS SECTION */}
         <div style={dashboardGrid}>
           <div style={{ flex: 1 }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: '15px' }}>
@@ -283,7 +290,7 @@ export default function BatchDashboard({ params }: PageProps) {
               {isOwner && (
                 <div style={adminPanelNotifUI}>
                    <input value={noticeSubject} onChange={(e)=>setNoticeSubject(e.target.value)} placeholder="Subject..." style={subjectInputUI} />
-                   <textarea value={newNotice} onChange={e => setNewNotice(e.target.value)} placeholder="Write message..." style={notifInputUI} />
+                   <textarea value={newNotice} onChange={e => setNewNotice(e.target.value)} placeholder="Message..." style={notifInputUI} />
                    <button onClick={handlePostNotice} style={notifSendBtn}>{editingNotif ? 'Update Notice' : 'Post Notice'}</button>
                 </div>
               )}
@@ -334,8 +341,7 @@ export default function BatchDashboard({ params }: PageProps) {
                     <h2 style={{margin:0, fontWeight:'900'}}>Daily Streak!</h2>
                     <div style={{display:'flex', justifyContent:'space-between', fontSize:'11px', color:'#888', marginTop:'15px'}}>
                         <span>{Math.floor(studySeconds/60)}m done</span>
-                        {/* TIME LEFT CALCULATION */}
-                        <span style={{color:'#5b6cfd', fontWeight:'700'}}>{studySeconds < 600 ? `${10 - Math.floor(studySeconds/60)}m left` : 'Goal hit!'}</span>
+                        <span style={{color:'#5b6cfd', fontWeight:'700'}}>{studySeconds < 600 ? `${10 - Math.floor(studySeconds/60)}m left` : 'Goal Hit!'}</span>
                     </div>
                     <div style={progressBarBg}><motion.div animate={{width: `${(Math.min(studySeconds, 600)/600)*100}%`}} style={progressBarFill} /></div>
                 </div>
@@ -391,7 +397,7 @@ const customDateWrapper: any = { position: 'relative', width: '100%', cursor: 'p
 const hiddenDateInput: any = { position: 'absolute', top: 0, left: 0, width: '1px', height: '1px', opacity: 0, pointerEvents: 'none' };
 const dateDisplayFake: any = { padding: '16px', borderRadius: '18px', border: '1.5px solid #eee', background: '#f9f9fb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#333', fontSize: '15px' };
 const emptyBox: any = { padding: '40px', textAlign: 'center', color: '#aaa', fontSize: '14px' };
-const dropdownMenu: any = { position: 'absolute', top: '75px', right: '0', background: '#fff', boxShadow: '0 15px 35px rgba(0,0,0,0.1)', borderRadius: '20px', padding: '10px', zIndex: 100, minWidth: '180px', border: '1px solid #f0f0f0' };
+const dropdownMenu: any = { position: 'absolute', top: '75px', right: '0', background: '#fff', boxShadow: '0 15px 35px rgba(0,0,0,0.12)', borderRadius: '20px', padding: '10px', zIndex: 100, minWidth: '180px', border: '1px solid #f0f0f0' };
 const dropdownItem: any = { display:'block', padding:'12px 15px', textDecoration:'none', color:'#333', fontWeight: '700', fontSize: '14px' };
 const dropdownLogoutBtn: any = { width:'100%', textAlign:'left', padding:'12px 15px', background:'none', border:'none', color:'#ef4444', fontWeight: '800', cursor:'pointer' };
 const streakCardPremium: any = { width:'400px', background:'#fff', borderRadius:'40px', overflow:'hidden', position:'relative', textAlign:'center', boxShadow:'0 30px 60px rgba(0,0,0,0.3)' };
