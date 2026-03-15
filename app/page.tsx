@@ -47,7 +47,7 @@ export default function HomePage() {
     { 
       id: "School", 
       title: "School Prep", 
-      sub: "Board Excellence", 
+      sub: "Class 11 & 12 Boards", 
       items: [
         { name: "Class 11 Boards", href: "#" },
         { name: "Class 12 Boards", href: "#" }
@@ -90,32 +90,46 @@ export default function HomePage() {
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: `
-        * { margin:0; padding:0; box-sizing:border-box; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+        * { margin:0; padding:0; box-sizing:border-box; font-family: 'Segoe UI', Roboto, sans-serif; }
         body { background:#fcfdfe; overflow-x: hidden; scroll-behavior: smooth; }
 
+        /* CENTERED HEADER LOGIC */
         header {
-          display:flex; align-items:center; justify-content:space-between;
-          padding:0 5%; background:rgba(255, 255, 255, 0.85);
-          backdrop-filter: blur(12px); border-bottom: 1px solid rgba(0,0,0,0.05);
-          position: sticky; top: 0; z-index: 1000; height: 80px;
+          display: grid;
+          grid-template-columns: 1fr auto 1fr;
+          align-items: center;
+          padding: 0 5%;
+          background: rgba(255, 255, 255, 0.85);
+          backdrop-filter: blur(12px);
+          border-bottom: 1px solid rgba(0,0,0,0.05);
+          position: sticky;
+          top: 0;
+          z-index: 1000;
+          height: 80px;
         }
 
-        .logo { font-weight:900; font-size:24px; color:#5b6cfd; text-decoration:none; letter-spacing: -0.8px; }
+        .logo { font-weight:900; font-size:24px; color:#5b6cfd; text-decoration:none; letter-spacing: -0.8px; justify-self: start; }
+
+        .nav-center { justify-self: center; }
+        .nav-center ul { display: flex; align-items: center; gap: 30px; list-style: none; }
+        .nav-center li { cursor: pointer; color: #444; font-weight: 600; font-size: 15px; }
+
+        .auth-section { justify-self: end; display: flex; align-items: center; gap: 15px; }
 
         .all-courses-btn { border:2px solid #5b6cfd; padding:8px 16px; border-radius:12px; color:#5b6cfd; font-weight:700; display:flex; align-items:center; gap:8px; cursor: pointer; }
         
         .mega-menu { 
-          position:absolute; top:75px; left:0; width: 550px; background:white; 
+          position:absolute; top:75px; left: 50%; transform: translateX(-50%); width: 550px; background:white; 
           border-radius:24px; box-shadow:0 25px 60px rgba(0,0,0,0.12); 
           overflow:hidden; z-index: 2000; border: 1px solid #f0f0f0;
         }
         
         .mega-container { display:flex; height: 320px; }
         .mega-left { width:40%; background:#f9fafb; padding:20px; border-right: 1px solid #f1f1f1; }
-        .mega-left div { padding:12px; border-radius:12px; margin-bottom:8px; cursor:pointer; transition: 0.2s; }
+        .mega-left div { padding:14px; border-radius:12px; margin-bottom:8px; cursor:pointer; }
         .mega-right { width:60%; padding:20px; display:grid; grid-template-columns: 1fr; gap:10px; overflow-y: auto; }
         
-        .course-item { padding:12px; border-radius:12px; font-weight:700; text-decoration:none; color:#1c252e; border: 1px solid #f0f0f0; transition: 0.2s; text-align: center; background: #fff; }
+        .course-item { padding:12px; border-radius:12px; font-weight:700; text-decoration:none; color:#1c252e; border: 1px solid #f0f0f0; text-align: center; background: #fff; }
         .course-item:hover { background:#5b6cfd; color:#fff; border-color: #5b6cfd; }
 
         .hero { 
@@ -130,12 +144,14 @@ export default function HomePage() {
         .sketch-asset { position: absolute; pointer-events: none; z-index: 1; opacity: 0.35; filter: brightness(0) invert(1); }
         .sketch-text-asset { position: absolute; font-family: 'Comic Sans MS', cursive; color: white; opacity: 0.25; font-weight: bold; pointer-events: none; z-index: 1; }
 
-        .hero h1 { font-size: clamp(32px, 5vw, 58px); font-weight: 900; line-height: 1.1; position: relative; zIndex: 10; margin-bottom: 20px; text-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        .hero-btn { padding: 18px 45px; border: none; border-radius: 16px; background: white; color: #6a1b9a; font-weight: 900; font-size: 18px; cursor: pointer; box-shadow: 0 15px 30px rgba(0,0,0,0.2); transition: 0.3s; position: relative; zIndex: 10; }
-        .hero-btn:hover { transform: translateY(-5px); box-shadow: 0 20px 40px rgba(0,0,0,0.3); }
+        .hero h1 { font-size: clamp(32px, 5vw, 58px); font-weight: 900; line-height: 1.1; position: relative; z-index: 10; margin-bottom: 20px; }
+        .hero-btn { padding: 18px 45px; border: none; border-radius: 16px; background: white; color: #6a1b9a; font-weight: 900; font-size: 18px; cursor: pointer; box-shadow: 0 15px 30px rgba(0,0,0,0.2); position: relative; z-index: 10; transition: 0.3s; }
+        .hero-btn:hover { transform: scale(1.05); }
 
         .section { padding: 100px 8%; text-align: center; }
-        .section-title { font-size: 42px; font-weight: 900; color: #1c252e; margin-bottom: 60px; letter-spacing: -1px; }
+        .section-title { font-size: 48px; font-weight: 950; color: #1c252e; margin-bottom: 10px; letter-spacing: -1.5px; }
+        .section-sub { color: #666; font-size: 18px; margin-bottom: 60px; max-width: 700px; margin-left: auto; margin-right: auto; line-height: 1.6; }
+
         .category-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 40px; }
         
         .cat-card { 
@@ -145,84 +161,68 @@ export default function HomePage() {
             transition: 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); cursor: pointer;
         }
         .cat-card:hover { transform: translateY(-15px); border-color: #5b6cfd; box-shadow: 0 25px 60px rgba(91, 108, 253, 0.15); }
-        .cat-card::after { content: ""; position: absolute; top: 0; right: -15%; width: 200px; height: 200px; background: #fff1f5; border-radius: 50%; z-index: 0; transition: 0.5s ease; }
-        .cat-card:hover::after { background: #f0f3ff; transform: scale(1.3); }
+        .cat-card::after { content: ""; position: absolute; top: 0; right: -15%; width: 200px; height: 200px; background: #fff1f5; border-radius: 50%; z-index: 0; }
 
-        .pill { padding: 10px 20px; border: 1px solid #eee; border-radius: 50px; font-size: 14px; font-weight: 700; color: #5b6cfd; background: #f4f6ff; margin: 0 10px 10px 0; display: inline-block; }
-        
+        .pill { padding: 10px 20px; border: 1px solid #eee; border-radius: 50px; font-size: 13px; font-weight: 700; color: #5b6cfd; background: #f4f6ff; margin: 0 10px 10px 0; display: inline-block; }
         .cat-icon { position: absolute; right: 30px; bottom: 50px; width: 95px; height: 95px; z-index: 1; transition: 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        .cat-card:hover .cat-icon { transform: scale(1.2) rotate(-15deg) translateY(-12px); filter: drop-shadow(0 20px 30px rgba(91, 108, 253, 0.3)); }
 
-        .profile-link-area { display: flex; align-items: center; gap: 14px; cursor: pointer; text-decoration: none; padding: 5px 10px; border-radius: 12px; transition: 0.2s; }
+        .profile-link-area { display: flex; align-items: center; gap: 12px; cursor: pointer; text-decoration: none; color: inherit; }
         .logout-btn { background:#ff4757; color:white; padding:10px 20px; border-radius:10px; cursor:pointer; border:none; font-weight:700; }
-        .login-btn { background:#5b6cfd; color:white; padding:12px 24px; border-radius:14px; cursor:pointer; border:none; font-weight:700; transition: 0.3s; }
+        .login-btn { background:#5b6cfd; color:white; padding:12px 24px; border-radius:14px; cursor:pointer; border:none; font-weight:700; }
 
-        /* DEVICE ADAPTABILITY (RESPONSIVE) */
-        @media (max-width: 1024px) {
-          header nav { display: none; }
-          .hero { flex-direction: column; text-align: center; padding: 100px 5% 80px; }
-          .hero img { width: 300px !important; margin-top: 40px; }
+        /* RESPONSIVE FIXES */
+        @media (max-width: 1100px) {
+          header { grid-template-columns: 1fr 1fr; }
+          .nav-center { display: none; }
+          .hero { flex-direction: column; text-align: center; }
+          .hero img { width: 320px !important; margin-top: 50px; }
           .hero-text { margin: 0 auto; }
-          .mega-menu { width: 90vw; left: 5vw; }
         }
         @media (max-width: 600px) {
-          .section { padding: 60px 5%; }
-          .category-grid { grid-template-columns: 1fr; }
-          .section-title { font-size: 30px; }
-          header { padding: 0 15px; }
+          .section-title { font-size: 32px; }
+          .cat-card { padding: 30px; }
           .logo { font-size: 20px; }
         }
       ` }} />
 
       <header>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '30px' }}>
-          <Link href="/" className="logo">StudyHub</Link>
-          <nav>
-            <ul style={{ display: 'flex', gap: '25px', listStyle: 'none', alignItems: 'center' }}>
-              <li className="mega-wrapper" onMouseEnter={() => setShowMegaMenu(true)} onMouseLeave={() => setShowMegaMenu(false)}>
-                <div className="all-courses-btn">All Courses <motion.div animate={{ rotate: showMegaMenu ? 180 : 0 }} style={{width:0, height:0, borderLeft:'5px solid transparent', borderRight:'5px solid transparent', borderTop:'6px solid #5b6cfd'}}></motion.div></div>
-                <AnimatePresence>
-                  {showMegaMenu && (
-                    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 15 }} className="mega-menu">
-                      <div className="mega-container">
-                        <div className="mega-left">
-                          {megaMenuData.map(cat => (
-                            <div 
-                              key={cat.id} 
-                              onMouseEnter={() => setActiveCategory(cat.id)}
-                              style={{ 
-                                background: activeCategory === cat.id ? 'white' : 'transparent', 
-                                color: activeCategory === cat.id ? '#5b6cfd' : '#444',
-                                boxShadow: activeCategory === cat.id ? '0 10px 20px rgba(0,0,0,0.04)' : 'none'
-                              }}
-                            >
-                              <b style={{fontSize: '15px'}}>{cat.title}</b><br/>
-                              <small style={{opacity: 0.6}}>{cat.sub}</small>
-                            </div>
-                          ))}
-                        </div>
-                        <div className="mega-right">
-                          {megaMenuData.find(c => c.id === activeCategory)?.items.map(item => (
-                            <Link href={item.href} key={item.name} className="course-item">{item.name}</Link>
-                          ))}
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </li>
-              {isOwner && <li><Link href="/neet" style={{color: '#5b6cfd', fontWeight: '800', textDecoration: 'none'}}>Dashboard</Link></li>}
-              <li style={{fontWeight: 600, color: '#444'}}>Books</li>
-              <li style={{fontWeight: 600, color: '#444'}}>Results</li>
-            </ul>
-          </nav>
-        </div>
+        <Link href="/" className="logo">StudyHub</Link>
 
-        <div className="auth-btns">
+        <nav className="nav-center">
+          <ul>
+            <li className="mega-wrapper" onMouseEnter={() => setShowMegaMenu(true)} onMouseLeave={() => setShowMegaMenu(false)}>
+              <div className="all-courses-btn">All Courses <motion.div animate={{ rotate: showMegaMenu ? 180 : 0 }} style={{width:0, height:0, borderLeft:'5px solid transparent', borderRight:'5px solid transparent', borderTop:'6px solid #5b6cfd'}}></motion.div></div>
+              <AnimatePresence>
+                {showMegaMenu && (
+                  <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 15 }} className="mega-menu">
+                    <div className="mega-container">
+                      <div className="mega-left">
+                        {megaMenuData.map(cat => (
+                          <div key={cat.id} onMouseEnter={() => setActiveCategory(cat.id)} style={{ background: activeCategory === cat.id ? 'white' : 'transparent', color: activeCategory === cat.id ? '#5b6cfd' : '#444', boxShadow: activeCategory === cat.id ? '0 10px 20px rgba(0,0,0,0.04)' : 'none' }}>
+                            <b style={{fontSize: '15px'}}>{cat.title}</b><br/><small style={{opacity: 0.6}}>{cat.sub}</small>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mega-right">
+                        {categories.find(c => c.id === activeCategory)?.items.map(item => (
+                          <Link href={item.href} key={item.name} className="course-item">{item.name}</Link>
+                        ))}
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </li>
+            {isOwner && <li><Link href="/neet" style={{color: '#5b6cfd', fontWeight: '800', textDecoration: 'none'}}>Dashboard</Link></li>}
+            <li style={{fontWeight: 600, color: '#444'}}>Books</li>
+            <li style={{fontWeight: 600, color: '#444'}}>Results</li>
+          </ul>
+        </nav>
+
+        <div className="auth-section">
           {session ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
               <Link href="/profile" className="profile-link-area">
-                {/* PROFILE PIC BEFORE NAME */}
                 <img src={profilePic || session.user?.image || ""} style={{width:'45px', height:'45px', borderRadius:'50%', border:'2px solid #5b6cfd', objectFit: 'cover'}} />
                 <div style={{textAlign: 'left'}}>
                    <div style={{fontWeight:'800', fontSize:'15px', color: '#1c252e'}}>Hi, {displayName}</div>
@@ -246,7 +246,7 @@ export default function HomePage() {
             animate={{ y: [0, -30, 0], rotate: [0, 12, -12, 0], opacity: el.type === 'text' ? [0.2, 0.4, 0.2] : [0.3, 0.6, 0.3] }}
             transition={{ duration: 6 + i, repeat: Infinity, ease: "easeInOut" }}
           >
-            {el.type === 'img' ? <img src={el.src} style={{width: '100%', opacity: 1}} alt="science" /> : el.content}
+            {el.type === 'img' ? <img src={el.src} style={{width: '100%'}} alt="science" /> : el.content}
           </motion.div>
         ))}
 
@@ -259,26 +259,21 @@ export default function HomePage() {
             {session ? "Start Learning Now" : "Join StudyHub Today"}
           </button>
         </div>
-        
-        <motion.img 
-          animate={{ y: [0, -25, 0] }} 
-          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-          src="https://cdn-icons-png.flaticon.com/512/3135/3135755.png" 
-          alt="Hero" 
-          style={{width:'440px', position: 'relative', zIndex: 6, filter: 'drop-shadow(0 20px 50px rgba(0,0,0,0.2))'}} 
-        />
+        <motion.img animate={{ y: [0, -25, 0] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }} src="https://cdn-icons-png.flaticon.com/512/3135/3135755.png" style={{width:'440px', position: 'relative', zIndex: 6}} />
       </div>
 
       <div className="section" id="categories" ref={examSectionRef}>
         <h2 className="section-title">Explore Your Path</h2>
+        <p className="section-sub">Choose your target exam category and get access to the most high-yield study materials, live lectures, and performance analytics designed for your success.</p>
+        
         <div className="category-grid">
           {examCategories.map((cat, idx) => (
             <motion.div whileHover={{ scale: 1.02 }} key={idx} className="cat-card" onClick={() => window.location.href = cat.href}>
               <div className="cat-content">
-                <h3 className="cat-title" style={{fontWeight: 900, fontSize: '28px', marginBottom: '15px'}}>{cat.title}</h3>
+                <h3 className="cat-title" style={{fontWeight: 950, fontSize: '32px', marginBottom: '15px'}}>{cat.title}</h3>
                 <div>{cat.pills.map((pill, pIdx) => (<span key={pIdx} className="pill">{pill}</span>))}</div>
-                <div style={{fontWeight: '800', marginTop: '20px', display: 'flex', alignItems:'center', gap: '8px', color: '#1c252e'}}>
-                   Explore Category <span>➔</span>
+                <div style={{fontWeight: '800', marginTop: '25px', display: 'flex', alignItems:'center', gap: '8px', color: '#1c252e'}}>
+                   Explore Category ➔
                 </div>
               </div>
               <img src={cat.icon} className="cat-icon" alt="icon" />
@@ -287,8 +282,8 @@ export default function HomePage() {
         </div>
       </div>
 
-      <footer style={{padding:'60px 20px', textAlign:'center', background:'#1c252e', color:'white'}}>
-        <p style={{opacity: 0.5, fontSize: '15px'}}>© 2026 StudyHub | Made for Future Doctors | By Bhaswar Ray</p>
+      <footer style={{padding:'50px 20px', textAlign:'center', background:'#1c252e', color:'white'}}>
+        <p style={{opacity: 0.5, fontSize: '15px'}}>© 2026 StudyHub | Made for future doctors | By Bhaswar Ray</p>
       </footer>
     </>
   )
