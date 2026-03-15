@@ -58,7 +58,10 @@ export default function NeetPage() {
         return;
     }
 
-    // Attempt 1: Full enrollment (Requires student_name and batch_name columns in Supabase)
+    // AUTH FIX: Ensure Supabase session is active to prevent 401
+    await supabase.auth.getSession();
+
+    // Primary Enrollment Attempt
     const { error } = await supabase
       .from('enrollments')
       .insert([{ 
@@ -72,17 +75,17 @@ export default function NeetPage() {
       setEnrolledBatches(prev => [...prev, batchId]);
       alert(`🎉 Successfully enrolled in ${batchName}!`);
     } else {
-      // Fallback: Basic enrollment (Only email and batch_id) if columns are missing
+      // Fallback: If student_name column is missing
       const { error: fallbackError } = await supabase
         .from('enrollments')
         .insert([{ student_email: session.user.email, batch_id: batchId }]);
 
       if (!fallbackError) {
         setEnrolledBatches(prev => [...prev, batchId]);
-        alert("🎉 Enrolled! (Note: Add 'student_name' and 'batch_name' columns to Supabase for better tracking)");
+        alert("🎉 Enrolled! (Using basic tracking)");
       } else {
-        console.error("Enrollment failed:", fallbackError.message);
-        alert("Enrollment failed. Ensure your Supabase RLS 'INSERT' policy is enabled for authenticated users.");
+        console.error("Critical Enrollment Error:", fallbackError.message);
+        alert(`Failed: ${fallbackError.message}. Check RLS INSERT policy.`);
       }
     }
   };
@@ -146,11 +149,10 @@ export default function NeetPage() {
         .btn-outline-blue { border: 2px solid #5b6cfd; color: #5b6cfd; padding: 8px 25px; border-radius: 12px; font-weight: 800; text-decoration: none; font-size: 16px; transition: 0.2s; }
         .btn-outline-red { border: 2px solid #ff4757; color: #ff4757; padding: 8px 25px; border-radius: 12px; font-weight: 800; text-decoration: none; font-size: 16px; transition: 0.2s; }
         .nav-link-standard { text-decoration: none; color: ${theme.subtext}; font-weight: 600; font-size: 14px; }
-        
         .filter-btn { background: ${theme.card}; border: 1px solid ${theme.border}; padding: 10px 20px; cursor: pointer; font-weight: 600; color: ${theme.subtext}; border-radius: 10px; text-transform: uppercase; font-size: 12px; transition: 0.2s; }
         .filter-btn.active { color: #fff; background: #5b6cfd; border-color: #5b6cfd; }
 
-        /* BATCH CARD WITH BLUE SPARK */
+        /* BLUE SPARK HOVER EFFECT */
         .batch-card {
             background: ${theme.card}; 
             border-radius: 24px; 
@@ -163,7 +165,7 @@ export default function NeetPage() {
         .batch-card:hover {
             transform: translateY(-12px);
             border-color: #5b6cfd;
-            box-shadow: 0 0 25px rgba(91, 108, 253, 0.5);
+            box-shadow: 0 0 25px rgba(91, 108, 253, 0.4);
         }
         .batch-card::after {
             content: '';
