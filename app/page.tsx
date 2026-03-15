@@ -103,7 +103,7 @@ export default function HomePage() {
           border-bottom: 1px solid rgba(0,0,0,0.05);
           position: sticky;
           top: 0;
-          zIndex: 1000;
+          z-index: 1000;
           height: 80px;
         }
 
@@ -120,7 +120,7 @@ export default function HomePage() {
         .mega-menu { 
           position:absolute; top:75px; left: 50%; transform: translateX(-50%); width: 550px; background:white; 
           border-radius:24px; box-shadow:0 25px 60px rgba(0,0,0,0.12); 
-          overflow:hidden; zIndex: 2000; border: 1px solid #f0f0f0;
+          overflow:hidden; z-index: 2000; border: 1px solid #f0f0f0;
         }
         
         .mega-container { display:flex; height: 320px; }
@@ -140,11 +140,11 @@ export default function HomePage() {
 
         @keyframes gradientShift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
 
-        .sketch-asset { position: absolute; pointer-events: none; zIndex: 1; opacity: 0.35; filter: brightness(0) invert(1); }
-        .sketch-text-asset { position: absolute; font-family: 'Comic Sans MS', cursive; color: white; opacity: 0.25; font-weight: bold; pointer-events: none; zIndex: 1; }
+        .sketch-asset { position: absolute; pointer-events: none; z-index: 1; opacity: 0.35; filter: brightness(0) invert(1); }
+        .sketch-text-asset { position: absolute; font-family: 'Comic Sans MS', cursive; color: white; opacity: 0.25; font-weight: bold; pointer-events: none; z-index: 1; }
 
-        .hero h1 { font-size: clamp(32px, 5vw, 58px); font-weight: 900; line-height: 1.1; position: relative; zIndex: 10; margin-bottom: 20px; text-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        .hero-btn { padding: 18px 45px; border: none; border-radius: 16px; background: white; color: #6a1b9a; font-weight: 900; font-size: 18px; cursor: pointer; box-shadow: 0 15px 30px rgba(0,0,0,0.2); transition: 0.3s; position: relative; zIndex: 10; }
+        .hero h1 { font-size: clamp(32px, 5vw, 58px); font-weight: 900; line-height: 1.1; position: relative; z-index: 10; margin-bottom: 20px; }
+        .hero-btn { padding: 18px 45px; border: none; border-radius: 16px; background: white; color: #6a1b9a; font-weight: 900; font-size: 18px; cursor: pointer; box-shadow: 0 15px 30px rgba(0,0,0,0.2); position: relative; z-index: 10; }
 
         .section { padding: 100px 8%; text-align: center; }
         .section-title { font-size: 48px; font-weight: 950; color: #1c252e; margin-bottom: 10px; letter-spacing: -1.5px; }
@@ -157,23 +157,25 @@ export default function HomePage() {
             text-align: left; position: relative; overflow: hidden; 
             border: 1px solid #f0f0f0; box-shadow: 0 10px 40px rgba(0,0,0,0.04); 
             transition: 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); cursor: pointer;
+            z-index: 1;
         }
         .cat-card:hover { transform: translateY(-15px); border-color: #5b6cfd; box-shadow: 0 25px 60px rgba(91, 108, 253, 0.15); }
         
-        /* FIX BALLOON BEHIND WRITING */
-        .cat-card::after { 
-            content: ""; position: absolute; top: 0; right: -15%; 
+        /* THE BALLOON - FIXED BEHIND TEXT */
+        .balloon-bg { 
+            position: absolute; top: 0; right: -15%; 
             width: 200px; height: 200px; background: #fff1f5; 
-            border-radius: 50%; zIndex: 0; /* Behind content */
+            border-radius: 50%; z-index: 0; 
+            transition: 0.5s ease;
             pointer-events: none;
         }
+        .cat-card:hover .balloon-bg { background: #f0f3ff; transform: scale(1.3); }
 
-        .cat-content { position: relative; zIndex: 2; } /* Above balloon */
+        .cat-content { position: relative; z-index: 2; } 
 
-        .pill { padding: 10px 20px; border: 1px solid #eee; border-radius: 50px; font-size: 13px; font-weight: 700; color: #5b6cfd; background: #f4f6ff; margin: 0 10px 10px 0; display: inline-block; position: relative; zIndex: 2; }
+        .pill { padding: 10px 20px; border: 1px solid #eee; border-radius: 50px; font-size: 13px; font-weight: 700; color: #5b6cfd; background: #f4f6ff; margin: 0 10px 10px 0; display: inline-block; position: relative; z-index: 2; }
         
-        /* ANIMATED ICON HOVER TRIGGER */
-        .cat-icon { position: absolute; right: 30px; bottom: 50px; width: 95px; height: 95px; zIndex: 1; transition: 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .cat-icon { position: absolute; right: 30px; bottom: 50px; width: 95px; height: 95px; z-index: 1; transition: 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         .cat-card:hover .cat-icon { transform: scale(1.2) rotate(-15deg) translateY(-12px); filter: drop-shadow(0 20px 30px rgba(91, 108, 253, 0.3)); }
 
         .profile-link-area { display: flex; align-items: center; gap: 12px; cursor: pointer; text-decoration: none; color: inherit; }
@@ -183,7 +185,7 @@ export default function HomePage() {
         @media (max-width: 1100px) {
           header { grid-template-columns: 1fr auto; padding: 0 15px; }
           .nav-center { display: none; }
-          .hero { flex-direction: column; text-align: center; }
+          .hero { flex-direction: column; text-align: center; padding: 100px 5% 80px; }
           .hero img { width: 320px !important; margin-top: 50px; }
         }
         @media (max-width: 600px) {
@@ -191,6 +193,8 @@ export default function HomePage() {
           .cat-card { padding: 30px; }
           .cat-title { font-size: 26px !important; }
           .logo { font-size: 20px; }
+          /* Ensure balloon doesn't block text on small screens */
+          .balloon-bg { width: 140px; height: 140px; right: -20%; }
         }
       ` }} />
 
@@ -213,8 +217,8 @@ export default function HomePage() {
                         ))}
                       </div>
                       <div className="mega-right">
-                        {megaMenuData.find(c => c.id === activeCategory)?.items.map(item => (
-                          <Link href={item.href} key={item.name} className="course-item">{item.name}</Link>
+                        {megaMenuData.find(c => c.id === activeCategory)?.items.map((item, idx) => (
+                          <Link href={item.href} key={idx} className="course-item">{item.name}</Link>
                         ))}
                       </div>
                     </div>
@@ -264,9 +268,16 @@ export default function HomePage() {
             {session ? `Welcome back, ${displayName}!` : "Crack NEET, JEE & Boards"}
           </motion.h1>
           <p style={{fontSize: '18px', lineHeight: '1.6', marginBottom: '30px'}}>Master complex concepts with premium notes and daily interactive classes from top faculty.</p>
-          <button className="hero-btn" onClick={handleStartLearning}>
+          <motion.button 
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            animate={{ boxShadow: ["0 0 0px rgba(255,255,255,0)", "0 0 20px rgba(255,255,255,0.4)", "0 0 0px rgba(255,255,255,0)"] }}
+            transition={{ repeat: Infinity, duration: 2 }}
+            className="hero-btn" 
+            onClick={handleStartLearning}
+          >
             {session ? "Start Learning Now" : "Join StudyHub Today"}
-          </button>
+          </motion.button>
         </div>
         <motion.img animate={{ y: [0, -25, 0] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }} src="https://cdn-icons-png.flaticon.com/512/3135/3135755.png" style={{width:'440px', position: 'relative', zIndex: 6}} />
       </div>
@@ -277,11 +288,12 @@ export default function HomePage() {
         
         <div className="category-grid">
           {examCategories.map((cat, idx) => (
-            <motion.div whileHover={{ scale: 1.02 }} key={idx} className="cat-card" onClick={() => window.location.href = cat.href}>
+            <motion.div whileHover="hover" key={idx} className="cat-card" onClick={() => window.location.href = cat.href}>
+              <div className="balloon-bg" />
               <div className="cat-content">
                 <h3 className="cat-title" style={{fontWeight: 950, fontSize: '32px', marginBottom: '15px'}}>{cat.title}</h3>
                 <div>{cat.pills.map((pill, pIdx) => (<span key={pIdx} className="pill">{pill}</span>))}</div>
-                <div style={{fontWeight: '800', marginTop: '20px', display: 'flex', alignItems:'center', gap: '8px', color: '#1c252e'}}>
+                <div style={{fontWeight: '800', marginTop: '25px', display: 'flex', alignItems:'center', gap: '8px', color: '#1c252e'}}>
                    Explore Category <span>➔</span>
                 </div>
               </div>
