@@ -1,28 +1,21 @@
 "use client";
 import { useSession, signOut } from "next-auth/react"
-import { useState, useEffect, useMemo, useRef } from 'react' 
+import { useState, useEffect, useMemo, useRef, use } from 'react' 
 import { createClient } from '@supabase/supabase-js'
 import { motion, AnimatePresence } from "framer-motion"
 import Link from "next/link"
 import html2canvas from 'html2canvas'
 import { saveAs } from 'file-saver'
 
-export default function BatchDashboard({ params }: any) {
-  // Safe params handling
-  const [batchId, setBatchId] = useState<string>("");
-  useEffect(() => { 
-    if (params instanceof Promise) {
-      params.then((p: any) => setBatchId(p.batchId));
-    } else {
-      setBatchId(params.batchId);
-    }
-  }, [params]);
+type PageProps = { params: Promise<{ batchId: string }> };
 
+export default function BatchDashboard({ params }: PageProps) {
+  const { batchId } = use(params);
   const { data: session, status } = useSession()
   const [mounted, setMounted] = useState(false)
   const badgeRef = useRef<HTMLDivElement>(null);
   
-  // Profile & Streak
+  // Profile & Streak States
   const [localName, setLocalName] = useState("");
   const [localPic, setLocalPic] = useState("");
   const [studySeconds, setStudySeconds] = useState(0);
@@ -41,7 +34,7 @@ export default function BatchDashboard({ params }: any) {
   const [showEventModal, setShowEventModal] = useState(false)
   const [showStreakModal, setShowStreakModal] = useState(false)
 
-  // Admin Inputs
+  // Admin Input States
   const [newNotice, setNewNotice] = useState("")
   const [noticeSubject, setNoticeSubject] = useState("")
   const [eventTitle, setEventTitle] = useState("")
@@ -57,10 +50,8 @@ export default function BatchDashboard({ params }: any) {
       setLocalName(localStorage.getItem("userFirstName") || "");
       setLocalPic(localStorage.getItem("userProfilePic") || "");
       setStreak(parseInt(localStorage.getItem("userStreak") || "0"));
-      if(batchId) {
-        const saved = localStorage.getItem(`last_read_${batchId}`);
-        if(saved) setLastReadTime(parseInt(saved));
-      }
+      const saved = localStorage.getItem(`last_read_${batchId}`);
+      if (saved) setLastReadTime(parseInt(saved));
     };
     syncProfile();
 
@@ -79,20 +70,26 @@ export default function BatchDashboard({ params }: any) {
         return s;
       });
     }, 1000);
-    if (session?.user?.email && batchId) fetchData();
+
+    if (session?.user?.email) fetchData();
     return () => clearInterval(interval);
   }, [batchId, session, isStreakAchieved, streak]);
 
   const fetchData = async () => {
-    supabase.from('student_stats').select('*').eq('email', session?.user?.email).single().then(({data}) => setUserProfile(data));
-    supabase.from('notices').select('*').eq('batch_id', batchId).order('created_at', { ascending: false }).then(({data}) => setNotices(data || []));
-    
-    // Fetch Events: Fetch ALL first to debug, then filter in code
-    const { data: evData } = await supabase.from('events').select('*').eq('batch_id', batchId).order('event_time', { ascending: true });
-    setEvents(evData?.filter((ev: any) => ev.is_done !== true) || []);
+    // 1. Fetch Profile
+    const { data: profile } = await supabase.from('student_stats').select('*').eq('email', session?.user?.email).single();
+    if (profile) setUserProfile(profile);
+
+    // 2. Fetch Notifications
+    const { data: nData } = await supabase.from('notices').select('*').eq('batch_id', batchId).order('created_at', { ascending: false });
+    setNotices(nData || []);
+
+    // 3. Fetch Events (FORCE FETCH - NO FILTERS)
+    const { data: eData } = await supabase.from('events').select('*').eq('batch_id', batchId).order('event_time', { ascending: true });
+    // Filter locally to ensure we only hide if is_done is strictly true
+    setEvents(eData?.filter(ev => ev.is_done !== true) || []);
   };
 
-  // --- ADMIN ACTIONS ---
   const handlePostNotice = async () => {
     if (!newNotice.trim() || !noticeSubject.trim()) return;
     if (editingNotif) {
@@ -106,12 +103,10 @@ export default function BatchDashboard({ params }: any) {
   const handleSaveEvent = async () => {
     if (!eventTitle || !eventDate) return;
     // 1. Create Event
-    const { data: savedEvent } = await supabase.from('events').insert([{ batch_id: batchId, title: eventTitle, event_time: eventDate, is_done: false }]).select();
-    // 2. Auto-Post Notice
-    await supabase.from('notices').insert([{ batch_id: batchId, title: "📅 New Event Scheduled", content: `${eventTitle} - ${new Date(eventDate).toLocaleString()}` }]);
-    
-    setShowEventModal(false); setEventTitle(""); setEventDate(""); 
-    fetchData(); // Refresh both lists
+    await supabase.from('events').insert([{ batch_id: batchId, title: eventTitle, event_time: eventDate, is_done: false }]);
+    // 2. Auto-Notify
+    await supabase.from('notices').insert([{ batch_id: batchId, title: "📅 New Event Scheduled", content: `${eventTitle} on ${new Date(eventDate).toLocaleString()}` }]);
+    setShowEventModal(false); setEventTitle(""); setEventDate(""); fetchData();
   };
 
   const handleDismissDone = async (ev: any) => {
@@ -136,7 +131,7 @@ export default function BatchDashboard({ params }: any) {
   return (
     <div style={{ background: '#fcfdfe', minHeight: '100vh', fontFamily: 'sans-serif' }}>
       
-      {/* HEADER */}
+      {/* HEADER WITH DEPTH SHADES */}
       <header style={headerWrapper}>
         <div style={headerInner}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
@@ -148,9 +143,9 @@ export default function BatchDashboard({ params }: any) {
                 <motion.div whileHover={{ scale: 1.05 }} style={streakPill} onClick={() => setShowStreakModal(true)}>
                     <motion.span animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 2 }} style={{display:'inline-block'}}>🔥</motion.span> {streak}
                 </motion.div>
-                <motion.div whileHover={{ scale: 1.1 }} style={bellContainer} onClick={() => setShowNotifs(true)}>
+                <div style={bellContainer} onClick={() => setShowNotifs(true)}>
                     <span>🔔</span>{unreadCount > 0 && <span style={bellBadge}>{unreadCount}</span>}
-                </motion.div>
+                </div>
             </div>
             
             <div style={{ position: 'relative' }}>
@@ -175,13 +170,13 @@ export default function BatchDashboard({ params }: any) {
       </header>
 
       <main style={contentArea}>
-        {/* TOP BANNER */}
-        <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} style={batchBanner}>
+        {/* GAP FIXED BANNER */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={batchBanner}>
           <div style={bannerDots} />
           <div style={{ position: 'relative', zIndex: 1 }}>
             <small style={{ opacity: 0.8, fontWeight: '700' }}>YOUR BATCH</small>
             <h2 style={{ fontSize: '42px', fontWeight: '900', margin: '15px 0' }}>{batchId.toUpperCase()} MISSION...</h2>
-            <div style={studyGoalText}>Session: <b>{Math.floor(studySeconds/60)}m / 10m</b></div>
+            <div style={studyGoalText}>Goal: 10 mins | Studied: <b>{Math.floor(studySeconds/60)}m</b></div>
           </div>
         </motion.div>
 
@@ -226,13 +221,13 @@ export default function BatchDashboard({ params }: any) {
         </div>
       </main>
 
-      {/* NOTIFICATION DRAWER */}
+      {/* NOTIFICATION DRAWER (EDIT ENABLED) */}
       <AnimatePresence>
         {showNotifs && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={modalOverlay} onClick={() => setShowNotifs(false)}>
             <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} style={drawerUI} onClick={e => e.stopPropagation()}>
               <div style={drawerHeaderUI}>
-                 <div style={{fontSize:'22px', fontWeight:'900'}}>Notifications</div>
+                 <div style={{fontSize:'20px', fontWeight:'800'}}>Notifications</div>
                  <div style={{display:'flex', gap:'10px'}}>
                     <motion.button whileTap={{scale:0.9}} onClick={() => {setLastReadTime(Date.now()); localStorage.setItem(`last_read_${batchId}`, Date.now().toString())}} style={markReadBtnUI}>Read All</motion.button>
                     <motion.button whileTap={{scale:0.9}} onClick={() => setShowNotifs(false)} style={{...markReadBtnUI, background:'#eee', color:'#333'}}>Close</motion.button>
@@ -240,9 +235,9 @@ export default function BatchDashboard({ params }: any) {
               </div>
               <div style={{padding: '0 20px', flex: 1, overflowY: 'auto'}}>
                 {notices.map(n => (
-                    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} key={n.id} style={notifCardUI}>
+                    <div key={n.id} style={notifCardUI}>
                       <div style={{flex: 1}}>
-                         <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                         <div style={{display:'flex', justifyContent:'space-between'}}>
                             <div style={{fontWeight:'800', color:'#5b6cfd'}}>{n.title}</div>
                             <div style={{fontSize:'10px', color:'#aaa'}}>{new Date(n.created_at).toLocaleString()}</div>
                          </div>
@@ -254,13 +249,13 @@ export default function BatchDashboard({ params }: any) {
                              </div>
                          )}
                       </div>
-                    </motion.div>
+                    </div>
                 ))}
               </div>
               {isOwner && (
                 <div style={adminPanelNotifUI}>
                    <input value={noticeSubject} onChange={(e)=>setNoticeSubject(e.target.value)} placeholder="Subject..." style={subjectInputUI} />
-                   <textarea value={newNotice} onChange={e => setNewNotice(e.target.value)} placeholder="Message..." style={notifInputUI} />
+                   <textarea value={newNotice} onChange={e => setNewNotice(e.target.value)} placeholder="Message student..." style={notifInputUI} />
                    <button onClick={handlePostNotice} style={notifSendBtn}>{editingNotif ? 'Update' : 'Post'}</button>
                 </div>
               )}
@@ -269,7 +264,7 @@ export default function BatchDashboard({ params }: any) {
         )}
       </AnimatePresence>
 
-      {/* MAGIC STREAK MODAL */}
+      {/* MAGIC STREAK MODAL (WITH TIME BAR) */}
       <AnimatePresence>
         {showStreakModal && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={modalOverlay} onClick={() => setShowStreakModal(false)}>
@@ -285,7 +280,7 @@ export default function BatchDashboard({ params }: any) {
                     <h2 style={{margin:0, fontWeight:'900'}}>Daily Streak!</h2>
                     <div style={{display:'flex', justifyContent:'space-between', fontSize:'11px', color:'#888', marginTop:'15px'}}>
                         <span>Goal: 10 mins</span>
-                        <span style={{color:'#5b6cfd', fontWeight:'700'}}>{studySeconds < 600 ? `${10 - Math.floor(studySeconds/60)}m left` : 'Goal Met!'}</span>
+                        <span style={{color:'#5b6cfd', fontWeight:'700'}}>{studySeconds < 600 ? `${10 - Math.floor(studySeconds/60)}m left` : 'Completed!'}</span>
                     </div>
                     <div style={progressBarBg}><motion.div animate={{width: `${(studySeconds/600)*100}%`}} style={progressBarFill} /></div>
                 </div>
@@ -314,24 +309,24 @@ export default function BatchDashboard({ params }: any) {
 }
 
 // --- ALL STYLE DEFINITIONS ---
-const headerWrapper: any = { position:'fixed', top:0, left:0, width:'100%', background:'#fff', borderBottom:'1px solid #f0f0f0', zIndex: 1000, height: '80px', boxShadow:'0 2px 15px rgba(0,0,0,0.03)' };
+const headerWrapper: any = { position:'fixed', top:0, left:0, width:'100%', background:'#fff', borderBottom:'1px solid #f0f0f0', zIndex: 1000, height: '80px', boxShadow:'0 2px 10px rgba(0,0,0,0.03)' };
 const headerInner: any = { maxWidth:'1300px', margin:'0 auto', display:'flex', justifyContent:'space-between', alignItems:'center', height:'100%', padding:'0 25px' };
 const contentArea: any = { paddingTop:'180px', maxWidth:'1200px', margin:'0 auto', paddingBottom:'60px' };
 const statPillGroup: any = { display: 'flex', gap: '12px', alignItems: 'center' };
 const streakPill: any = { background: '#fff5f5', border: '1px solid #ffdcdc', padding: '10px 18px', borderRadius: '14px', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer' };
 const bellContainer: any = { position: 'relative', background: '#f8f9ff', padding: '10px', borderRadius: '14px', cursor: 'pointer', border: '1px solid #eee' };
-const bellBadge: any = { position: 'absolute', top: '-4px', right: '-4px', background: '#ef4444', color: '#fff', fontSize: '10px', fontWeight: '900', padding: '2px 6px', borderRadius: '10px', border: '2px solid #fff' };
+const bellBadge: any = { position: 'absolute', top: '-4px', right: '-4px', background: '#ef4444', color: '#fff', fontSize: '10px', fontWeight: '900', padding: '2px 6px', borderRadius: '10px' };
 const profileTrigger: any = { display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' };
 const navAvatar: any = { width: '45px', height: '45px', borderRadius: '50%', border: '2.5px solid #5b6cfd', objectFit: 'cover' };
 const nameWrapper: any = { display: 'flex', flexDirection: 'column' };
 const navNameText: any = { fontSize: '15px', fontWeight: '800', color: '#5b6cfd' };
 const navRoleText: any = { fontSize: '10px', fontWeight: '700', color: '#888' };
 const backBtnCircle: any = { color:'#333', background:'#f5f5f5', width:'35px', height:'35px', borderRadius:'10px', display:'flex', alignItems:'center', justifyContent:'center', cursor: 'pointer' };
-const batchBanner: any = { background:'#1c252e', color:'#fff', padding:'80px 60px', borderRadius:'30px 30px 100px 30px', marginBottom:'50px', position: 'relative', overflow: 'hidden', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' };
+const batchBanner: any = { background:'#1c252e', color:'#fff', padding:'80px 60px', borderRadius:'30px 30px 100px 30px', marginBottom:'50px', position: 'relative', overflow: 'hidden', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' };
 const bannerDots: any = { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.05) 1px, transparent 0)', backgroundSize: '24px 24px' };
 const studyGoalText: any = { marginTop:'20px', background:'rgba(255,255,255,0.1)', padding:'8px 16px', borderRadius:'10px', display:'inline-block', fontSize:'13px' };
 const offeringGrid: any = { display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(260px, 1fr))', gap:'20px' };
-const offeringItem: any = { padding:'30px', background:'#fff', borderRadius:'30px', border:'1px solid #f0f0f0', display:'flex', justifyContent:'space-between', alignItems:'center', cursor: 'pointer', boxShadow: '0 8px 20px rgba(0,0,0,0.03)' };
+const offeringItem: any = { padding:'30px', background:'#fff', borderRadius:'30px', border:'1px solid #f0f0f0', display:'flex', justifyContent:'space-between', alignItems:'center', cursor: 'pointer' };
 const arrowCircle: any = { width: '32px', height: '32px', borderRadius: '50%', background: '#f5f7ff', color: '#5b6cfd', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' };
 const sectionTitle: any = { fontSize:'22px', fontWeight:'900', margin:'0 0 25px' };
 const dashboardGrid: any = { display:'flex', gap:'40px' };
