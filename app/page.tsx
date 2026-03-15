@@ -51,14 +51,16 @@ export default function HomePage() {
     }
   ];
 
-  // Decoration elements for the banner
-  const floatingElements = [
-    { icon: "E=mc²", top: "15%", left: "10%", delay: 0 },
-    { icon: "π", top: "20%", left: "45%", delay: 2 },
-    { icon: "⚛️", top: "60%", left: "5%", delay: 1 },
-    { icon: "H₂O", top: "70%", left: "40%", delay: 3 },
-    { icon: "∫dx", top: "15%", left: "80%", delay: 1.5 },
-    { icon: "🧬", top: "50%", left: "85%", delay: 0.5 },
+  // Science Sketch Decorations
+  const sketchElements = [
+    { type: 'text', content: "ax² + bx + c = 0", top: "15%", left: "5%", rotate: -15 },
+    { type: 'text', content: "E = mc²", top: "70%", left: "80%", rotate: 10 },
+    { type: 'text', content: "sin θ = opp/hyp", top: "10%", left: "75%", rotate: 5 },
+    { type: 'text', content: "P = m × g", top: "60%", left: "15%", rotate: -5 },
+    { type: 'icon', content: "🧬", top: "45%", left: "85%", rotate: 20 },
+    { type: 'icon', content: "⚛️", top: "25%", left: "40%", rotate: 0 },
+    { type: 'icon', content: "🧲", top: "80%", left: "45%", rotate: -20 },
+    { type: 'pencil', content: "✏️", top: "20%", left: "20%", rotate: 45 },
   ];
 
   return (
@@ -84,7 +86,7 @@ export default function HomePage() {
         nav ul li { cursor: pointer; color: #444; font-weight: 600; font-size: 15px; }
 
         .mega-wrapper { position:relative; padding-bottom:15px; margin-bottom: -15px; }
-        .all-courses-btn { border:2px solid #5b6cfd; padding:8px 16px; border-radius:12px; color:#5b6cfd; font-weight:700; display:flex; align-items:center; gap:8px; }
+        .all-courses-btn { border:2px solid #5b6cfd; padding:8px 18px; border-radius:12px; color:#5b6cfd; font-weight:700; display:flex; align-items:center; gap:8px; }
         .arrow { width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; border-top:6px solid #5b6cfd; transition:0.3s; }
         .mega-wrapper:hover .arrow { transform:rotate(180deg); }
         .mega-menu { position:absolute; top:100%; left:0; width: 600px; background:white; border-radius:20px; box-shadow:0 20px 50px rgba(0,0,0,0.1); display:none; overflow:hidden; }
@@ -115,18 +117,8 @@ export default function HomePage() {
           100% { background-position: 0% 50%; }
         }
 
-        .floating-blob {
-          position: absolute;
-          width: 200px;
-          height: 200px;
-          background: rgba(255,255,255,0.1);
-          filter: blur(40px);
-          border-radius: 50%;
-          z-index: 1;
-        }
-
-        .hero h1 { font-size: 52px; font-weight: 900; line-height: 1.1; position: relative; z-index: 2; }
-        .hero p { margin: 20px 0 30px; font-size: 18px; opacity: 0.9; position: relative; z-index: 2; max-width: 500px;}
+        .hero h1 { font-size: 52px; font-weight: 900; line-height: 1.1; position: relative; z-index: 5; text-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+        .hero p { margin: 20px 0 30px; font-size: 18px; opacity: 0.9; position: relative; z-index: 5; max-width: 500px;}
         .hero-btn { 
           padding: 16px 40px; 
           border: none; 
@@ -138,98 +130,53 @@ export default function HomePage() {
           box-shadow: 0 10px 25px rgba(0,0,0,0.15); 
           transition: 0.3s;
           position: relative;
-          z-index: 2;
-        }
-        .hero-btn:hover { transform: scale(1.05); background: #f8f8f8; }
-
-        .section { padding: 80px 8% 100px; text-align: center; }
-        .section-title { font-size: 36px; font-weight: 900; color: #1c252e; margin-bottom: 15px; }
-        .section-sub { color: #666; font-size: 16px; margin-bottom: 50px; max-width: 600px; margin-left: auto; margin-right: auto; }
-
-        .category-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 30px; }
-        
-        .cat-card { 
-            background: white; 
-            border-radius: 24px; 
-            padding: 35px; 
-            text-align: left; 
-            position: relative; 
-            overflow: hidden; 
-            border: 1px solid #f0f0f0; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.03); 
-            transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            cursor: pointer;
-        }
-        
-        .cat-card:hover { transform: translateY(-10px); border-color: #5b6cfd; }
-
-        .cat-card::after {
-            content: "";
-            position: absolute;
-            top: 5%;
-            right: -10%;
-            width: 160px;
-            height: 160px;
-            background: #fff5f8;
-            border-radius: 50%;
-            z-index: 0;
-            transition: 0.4s ease;
-        }
-        .cat-card:hover::after { background: #f4f6ff; transform: scale(1.2); }
-
-        .cat-content { position: relative; z-index: 2; }
-        .cat-title { font-size: 24px; font-weight: 900; color: #1c252e; margin-bottom: 20px; }
-        
-        .pill-group { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 30px; }
-        .pill { 
-            padding: 8px 16px; 
-            border: 1px solid #eee; 
-            border-radius: 50px; 
-            font-size: 13px; 
-            font-weight: 600; 
-            color: #666; 
-            background: #fafafa;
+          z-index: 5;
         }
 
-        .explore-link { 
-            display: flex; 
-            align-items: center; 
-            gap: 10px; 
-            text-decoration: none; 
-            color: #1c252e; 
-            font-weight: 800; 
-            font-size: 15px; 
-        }
-
-        .cat-icon {
-            position: absolute;
-            right: 20px;
-            bottom: 40px;
-            width: 80px;
-            height: 80px;
-            z-index: 1;
-            transition: 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-
-        .cat-card:hover .cat-icon {
-            transform: scale(1.1) rotate(-15deg) translateY(-10px);
-            filter: drop-shadow(0 15px 20px rgba(91, 108, 253, 0.2));
-        }
-
-        .login-btn { background:#5b6cfd; color:white; padding:10px 22px; border-radius:12px; cursor:pointer; border:none; font-weight:700; }
-        .logout-btn { background:#ff4757; color:white; padding:10px 20px; border-radius:10px; cursor:pointer; border:none; font-weight:700; }
-        
-        .profile-link-area { display: flex; align-items: center; gap: 10px; cursor: pointer; text-decoration: none; color: inherit; }
-        
-        .floating-math {
+        /* SKETCH DECORATIONS STYLE */
+        .sketch-item {
           position: absolute;
-          font-weight: bold;
-          font-size: 24px;
-          color: rgba(255, 255, 255, 0.3);
+          font-family: 'Comic Sans MS', cursive, sans-serif;
+          color: rgba(255,255,255,0.25);
           user-select: none;
           pointer-events: none;
           z-index: 1;
         }
+        .sketch-text { font-size: 22px; font-weight: bold; border-bottom: 1px dashed rgba(255,255,255,0.2); }
+        .sketch-icon { font-size: 32px; filter: grayscale(1) brightness(2); }
+
+        .section { padding: 80px 8% 100px; text-align: center; }
+        .section-title { font-size: 36px; font-weight: 900; color: #1c252e; margin-bottom: 15px; }
+        .category-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 30px; }
+        
+        .cat-card { 
+            background: white; 
+            border-radius: 24px; padding: 35px; 
+            text-align: left; position: relative; overflow: hidden; 
+            border: 1px solid #f0f0f0; box-shadow: 0 10px 30px rgba(0,0,0,0.03); 
+            transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            cursor: pointer;
+        }
+        .cat-card:hover { transform: translateY(-10px); border-color: #5b6cfd; }
+        .cat-card::after {
+            content: ""; position: absolute; top: 5%; right: -10%;
+            width: 160px; height: 160px; background: #fff5f8;
+            border-radius: 50%; z-index: 0; transition: 0.4s ease;
+        }
+        .cat-card:hover::after { background: #f4f6ff; transform: scale(1.2); }
+        .cat-content { position: relative; z-index: 2; }
+        .cat-title { font-size: 24px; font-weight: 900; color: #1c252e; margin-bottom: 20px; }
+        
+        .pill-group { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 30px; }
+        .pill { padding: 8px 16px; border: 1px solid #eee; border-radius: 50px; font-size: 13px; font-weight: 600; color: #666; background: #fafafa; }
+        .explore-link { display: flex; align-items: center; gap: 10px; text-decoration: none; color: #1c252e; font-weight: 800; font-size: 15px; }
+
+        .cat-icon { position: absolute; right: 20px; bottom: 40px; width: 80px; height: 80px; z-index: 1; transition: 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        .cat-card:hover .cat-icon { transform: scale(1.1) rotate(-15deg) translateY(-10px); filter: drop-shadow(0 15px 20px rgba(91, 108, 253, 0.2)); }
+
+        .login-btn { background:#5b6cfd; color:white; padding:10px 22px; border-radius:12px; cursor:pointer; border:none; font-weight:700; }
+        .logout-btn { background:#ff4757; color:white; padding:10px 20px; border-radius:10px; cursor:pointer; border:none; font-weight:700; }
+        .profile-link-area { display: flex; align-items: center; gap: 10px; cursor: pointer; text-decoration: none; color: inherit; }
       ` }} />
 
       <header>
@@ -275,29 +222,25 @@ export default function HomePage() {
         </div>
       </header>
 
+      {/* HERO SECTION WITH SCIENCE SKETCHES */}
       <div className="hero">
-        {/* Floating Background Blobs */}
-        <motion.div animate={{ x: [0, 50, 0], y: [0, 30, 0] }} transition={{ duration: 8, repeat: Infinity }} className="floating-blob" style={{top: '10%', right: '15%'}} />
-        
-        {/* Floating Math/Physics Symbols */}
-        {floatingElements.map((el, i) => (
+        {sketchElements.map((el, i) => (
           <motion.div
             key={i}
-            className="floating-math"
-            style={{ top: el.top, left: el.left }}
+            className={`sketch-item ${el.type === 'text' ? 'sketch-text' : 'sketch-icon'}`}
+            style={{ top: el.top, left: el.left, rotate: el.rotate }}
             animate={{ 
-              y: [0, -20, 0], 
-              rotate: [0, 10, -10, 0],
-              opacity: [0.2, 0.4, 0.2]
+              y: [0, -15, 0], 
+              x: el.type === 'pencil' ? [0, 10, 0] : 0,
+              rotate: [el.rotate, el.rotate + 5, el.rotate] 
             }}
             transition={{ 
-              duration: 5 + i, 
+              duration: 4 + i, 
               repeat: Infinity, 
-              delay: el.delay,
               ease: "easeInOut" 
             }}
           >
-            {el.icon}
+            {el.content}
           </motion.div>
         ))}
 
@@ -305,7 +248,7 @@ export default function HomePage() {
           <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
             {session ? `Welcome back, ${displayName}!` : "Crack NEET, JEE & Boards"}
           </motion.h1>
-          <p>The platform built for the future of students. Get premium revision notes, interactive mock tests, and faculty guidance.</p>
+          <p>Hand-crafted platform for the thinkers of tomorrow. Dive into premium notes and interactive classes.</p>
           <button className="hero-btn" onClick={handleStartLearning}>
             {session ? "Start Learning Now" : "Join StudyHub Now"}
           </button>
@@ -316,20 +259,17 @@ export default function HomePage() {
           transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
           src="https://cdn-icons-png.flaticon.com/512/3135/3135755.png" 
           alt="Hero" 
-          style={{width:'420px', position: 'relative', zIndex: 2}} 
+          style={{width:'420px', position: 'relative', zIndex: 6}} 
         />
       </div>
 
       <div className="section" id="categories" ref={examSectionRef}>
         <h2 className="section-title">Exam Categories</h2>
-        <p className="section-sub">We prepare students for 35+ categories. Find the one you are preparing for.</p>
-        
         <div className="category-grid">
           {examCategories.map((cat, idx) => (
             <motion.div 
               whileHover={{ scale: 1.02 }}
-              key={idx} 
-              className="cat-card" 
+              key={idx} className="cat-card" 
               onClick={() => window.location.href = cat.href}
             >
               <div className="cat-content">
@@ -339,9 +279,7 @@ export default function HomePage() {
                     <span key={pIdx} className="pill">{pill}</span>
                   ))}
                 </div>
-                <div className="explore-link">
-                  Explore Category <span>➔</span>
-                </div>
+                <div className="explore-link">Explore Category <span>➔</span></div>
               </div>
               <img src={cat.icon} className="cat-icon" alt="icon" />
             </motion.div>
@@ -350,7 +288,7 @@ export default function HomePage() {
       </div>
 
       <footer style={{padding:'40px', textAlign:'center', background:'#1c252e', color:'white'}}>
-        <p style={{opacity: 0.6, fontSize: '14px'}}>© 2026 StudyHub | Made for students | Made by Bhaswar Ray</p>
+        <p style={{opacity: 0.6, fontSize: '14px'}}>© 2026 StudyHub | Faculty: Bhaswar Ray | Built for Future Geniuses</p>
       </footer>
     </>
   )
