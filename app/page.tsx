@@ -93,7 +93,6 @@ export default function HomePage() {
         * { margin:0; padding:0; box-sizing:border-box; font-family: 'Segoe UI', Roboto, sans-serif; }
         body { background:#fcfdfe; overflow-x: hidden; scroll-behavior: smooth; }
 
-        /* CENTERED HEADER LOGIC */
         header {
           display: grid;
           grid-template-columns: 1fr auto 1fr;
@@ -145,8 +144,7 @@ export default function HomePage() {
         .sketch-text-asset { position: absolute; font-family: 'Comic Sans MS', cursive; color: white; opacity: 0.25; font-weight: bold; pointer-events: none; z-index: 1; }
 
         .hero h1 { font-size: clamp(32px, 5vw, 58px); font-weight: 900; line-height: 1.1; position: relative; z-index: 10; margin-bottom: 20px; }
-        .hero-btn { padding: 18px 45px; border: none; border-radius: 16px; background: white; color: #6a1b9a; font-weight: 900; font-size: 18px; cursor: pointer; box-shadow: 0 15px 30px rgba(0,0,0,0.2); position: relative; z-index: 10; transition: 0.3s; }
-        .hero-btn:hover { transform: scale(1.05); }
+        .hero-btn { padding: 18px 45px; border: none; border-radius: 16px; background: white; color: #6a1b9a; font-weight: 900; font-size: 18px; cursor: pointer; box-shadow: 0 15px 30px rgba(0,0,0,0.2); transition: 0.3s; position: relative; z-index: 10; }
 
         .section { padding: 100px 8%; text-align: center; }
         .section-title { font-size: 48px; font-weight: 950; color: #1c252e; margin-bottom: 10px; letter-spacing: -1.5px; }
@@ -170,7 +168,6 @@ export default function HomePage() {
         .logout-btn { background:#ff4757; color:white; padding:10px 20px; border-radius:10px; cursor:pointer; border:none; font-weight:700; }
         .login-btn { background:#5b6cfd; color:white; padding:12px 24px; border-radius:14px; cursor:pointer; border:none; font-weight:700; }
 
-        /* RESPONSIVE FIXES */
         @media (max-width: 1100px) {
           header { grid-template-columns: 1fr 1fr; }
           .nav-center { display: none; }
@@ -204,7 +201,7 @@ export default function HomePage() {
                         ))}
                       </div>
                       <div className="mega-right">
-                        {categories.find(c => c.id === activeCategory)?.items.map(item => (
+                        {megaMenuData.find(c => c.id === activeCategory)?.items.map(item => (
                           <Link href={item.href} key={item.name} className="course-item">{item.name}</Link>
                         ))}
                       </div>
@@ -264,7 +261,7 @@ export default function HomePage() {
 
       <div className="section" id="categories" ref={examSectionRef}>
         <h2 className="section-title">Explore Your Path</h2>
-        <p className="section-sub">Choose your target exam category and get access to the most high-yield study materials, live lectures, and performance analytics designed for your success.</p>
+        <p className="section-sub">Choose your target exam category and get access to high-yield study materials, live lectures, and performance analytics designed specifically for medical and engineering success.</p>
         
         <div className="category-grid">
           {examCategories.map((cat, idx) => (
@@ -283,7 +280,7 @@ export default function HomePage() {
       </div>
 
       <footer style={{padding:'50px 20px', textAlign:'center', background:'#1c252e', color:'white'}}>
-        <p style={{opacity: 0.5, fontSize: '15px'}}>© 2026 StudyHub | Made for future doctors | By Bhaswar Ray</p>
+        <p style={{opacity: 0.5, fontSize: '15px'}}>© 2026 StudyHub | Made for Future Doctors | By Bhaswar Ray</p>
       </footer>
     </>
   )
