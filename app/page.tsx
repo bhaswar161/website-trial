@@ -2,6 +2,7 @@
 import Link from 'next/link'
 import { useSession, signIn, signOut } from 'next-auth/react'
 import { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
 
 export default function HomePage() {
   const { data: session } = useSession();
@@ -76,12 +77,57 @@ export default function HomePage() {
         .course-item { padding:12px; border-radius:10px; font-weight:700; text-decoration:none; color:#333; border: 1px solid #eee; }
         .course-item:hover { background:#f4f6ff; color:#5b6cfd; border-color: #5b6cfd; }
 
-        /* HERO */
-        .hero { display: flex; align-items: center; justify-content: space-between; padding: 100px 10% 140px; background: linear-gradient(135deg,#6a1b9a,#ff4ecd); border-radius: 0 0 80px 80px; color: white; }
-        .hero h1 { font-size: 52px; font-weight: 900; line-height: 1.1; }
-        .hero p { margin: 20px 0 30px; font-size: 18px; opacity: 0.9; }
-        .hero-btn { padding: 16px 40px; border: none; border-radius: 14px; background: white; color: #6a1b9a; font-weight: 900; cursor: pointer; box-shadow: 0 10px 20px rgba(0,0,0,0.1); transition: 0.3s; }
-        .hero-btn:hover { transform: translateY(-3px); }
+        /* HERO IMPROVED */
+        .hero { 
+          display: flex; 
+          align-items: center; 
+          justify-content: space-between; 
+          padding: 100px 10% 140px; 
+          background: linear-gradient(135deg,#6a1b9a,#ff4ecd); 
+          border-radius: 0 0 80px 80px; 
+          color: white; 
+          position: relative;
+          overflow: hidden;
+        }
+
+        /* Hero Background Decorative Elements */
+        .hero::before {
+          content: "";
+          position: absolute;
+          width: 400px;
+          height: 400px;
+          background: rgba(255,255,255,0.05);
+          border-radius: 50%;
+          top: -100px;
+          left: -100px;
+        }
+
+        .floating-blob {
+          position: absolute;
+          width: 200px;
+          height: 200px;
+          background: rgba(255,255,255,0.1);
+          filter: blur(40px);
+          border-radius: 50%;
+          z-index: 1;
+        }
+
+        .hero h1 { font-size: 52px; font-weight: 900; line-height: 1.1; position: relative; z-index: 2; }
+        .hero p { margin: 20px 0 30px; font-size: 18px; opacity: 0.9; position: relative; z-index: 2; }
+        .hero-btn { 
+          padding: 16px 40px; 
+          border: none; 
+          border-radius: 14px; 
+          background: white; 
+          color: #6a1b9a; 
+          font-weight: 900; 
+          cursor: pointer; 
+          box-shadow: 0 10px 25px rgba(0,0,0,0.15); 
+          transition: 0.3s;
+          position: relative;
+          z-index: 2;
+        }
+        .hero-btn:hover { transform: scale(1.05); background: #f8f8f8; }
 
         /* EXAM CATEGORIES SECTION */
         .section { padding: 80px 8% 100px; text-align: center; }
@@ -103,22 +149,21 @@ export default function HomePage() {
             cursor: pointer;
         }
         
-        .cat-card:hover { transform: translateY(-10px); box-shadow: 0 20px 40px rgba(91, 108, 253, 0.1); }
+        .cat-card:hover { transform: translateY(-10px); border-color: #5b6cfd; }
 
-        /* Background Circle */
         .cat-card::after {
             content: "";
             position: absolute;
-            top: 10%;
-            right: -15%;
-            width: 180px;
-            height: 180px;
+            top: 5%;
+            right: -10%;
+            width: 160px;
+            height: 160px;
             background: #fff5f8;
             border-radius: 50%;
             z-index: 0;
             transition: 0.4s ease;
         }
-        .cat-card:hover::after { transform: scale(1.1); background: #f4f6ff; }
+        .cat-card:hover::after { background: #f4f6ff; transform: scale(1.2); }
 
         .cat-content { position: relative; z-index: 2; }
         .cat-title { font-size: 24px; font-weight: 900; color: #1c252e; margin-bottom: 20px; }
@@ -142,25 +187,22 @@ export default function HomePage() {
             color: #1c252e; 
             font-weight: 800; 
             font-size: 15px; 
-            transition: 0.2s;
         }
-        .explore-link:hover { color: #5b6cfd; gap: 15px; }
 
-        /* ANIMATED ICON */
+        /* HOVER ICON ANIMATION */
         .cat-icon {
             position: absolute;
-            right: 25px;
-            bottom: 45px;
-            width: 70px;
-            height: 70px;
+            right: 20px;
+            bottom: 40px;
+            width: 80px;
+            height: 80px;
             z-index: 1;
             transition: 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            filter: drop-shadow(0 5px 10px rgba(0,0,0,0.1));
         }
 
         .cat-card:hover .cat-icon {
-            transform: scale(1.2) rotate(-10deg) translateX(-5px);
-            filter: drop-shadow(0 10px 15px rgba(91, 108, 253, 0.2));
+            transform: scale(1.1) rotate(-15deg) translateY(-10px);
+            filter: drop-shadow(0 15px 20px rgba(91, 108, 253, 0.2));
         }
 
         .login-btn { background:#5b6cfd; color:white; padding:10px 22px; border-radius:12px; cursor:pointer; border:none; font-weight:700; }
@@ -210,22 +252,42 @@ export default function HomePage() {
         </div>
       </header>
 
+      {/* HERO SECTION WITH ANIMATED BLOBS */}
       <div className="hero">
+        <motion.div 
+          animate={{ x: [0, 50, 0], y: [0, 30, 0] }} 
+          transition={{ duration: 8, repeat: Infinity }} 
+          className="floating-blob" style={{top: '10%', right: '15%'}} 
+        />
         <div className="hero-text">
-          <h1>{session ? `Welcome back, ${displayName}!` : "Crack NEET, JEE & Boards"}</h1>
-          <p>Get access to premium notes, MCQs, and real-time interaction with faculty.</p>
-          <button className="hero-btn" onClick={() => window.location.href='/neet'}>Start Learning</button>
+          <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+            {session ? `Welcome back, ${displayName}!` : "Crack NEET, JEE & Boards"}
+          </motion.h1>
+          <p>The only platform built by doctors for future doctors. Get premium revision notes, interactive mock tests, and faculty guidance.</p>
+          <button className="hero-btn" onClick={() => window.location.href='/neet'}>Start Learning Now</button>
         </div>
-        <img src="https://cdn-icons-png.flaticon.com/512/3135/3135755.png" alt="Hero" style={{width:'380px'}} />
+        
+        <motion.img 
+          animate={{ y: [0, -20, 0] }} 
+          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+          src="https://cdn-icons-png.flaticon.com/512/3135/3135755.png" 
+          alt="Hero" 
+          style={{width:'420px', position: 'relative', zIndex: 2}} 
+        />
       </div>
 
       <div className="section">
         <h2 className="section-title">Exam Categories</h2>
-        <p className="section-sub">StudyHub is preparing students for the country's most competitive exams. Find your path below.</p>
+        <p className="section-sub">We prepare students for 35+ categories. Find the one you are preparing for.</p>
         
         <div className="category-grid">
           {examCategories.map((cat, idx) => (
-            <div key={idx} className="cat-card" onClick={() => window.location.href = cat.href}>
+            <motion.div 
+              whileHover={{ scale: 1.02 }}
+              key={idx} 
+              className="cat-card" 
+              onClick={() => window.location.href = cat.href}
+            >
               <div className="cat-content">
                 <h3 className="cat-title">{cat.title}</h3>
                 <div className="pill-group">
@@ -238,7 +300,7 @@ export default function HomePage() {
                 </div>
               </div>
               <img src={cat.icon} className="cat-icon" alt="icon" />
-            </div>
+            </motion.div>
           ))}
         </div>
       </div>
