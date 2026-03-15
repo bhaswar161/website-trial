@@ -17,14 +17,12 @@ export default function BatchDashboard({ params }: PageProps) {
   const badgeRef = useRef<HTMLDivElement>(null);
   const dateInputRef = useRef<HTMLInputElement>(null);
   
-  // Logic & Profile Sync States
+  // States
   const [localName, setLocalName] = useState("");
   const [localPic, setLocalPic] = useState("");
   const [studySeconds, setStudySeconds] = useState(0);
   const [streak, setStreak] = useState(0);
   const [isStreakAchieved, setIsStreakAchieved] = useState(false);
-
-  // Data States
   const [notices, setNotices] = useState<any[]>([])
   const [events, setEvents] = useState<any[]>([])
   const [userProfile, setUserProfile] = useState<any>(null)
@@ -81,22 +79,21 @@ export default function BatchDashboard({ params }: PageProps) {
   const fetchData = async () => {
     supabase.from('student_stats').select('*').eq('email', session?.user?.email).single().then(({data}) => setUserProfile(data));
     supabase.from('notices').select('*').eq('batch_id', batchId).order('created_at', { ascending: false }).then(({data}) => setNotices(data || []));
-    
     const { data: eData } = await supabase.from('events').select('*').eq('batch_id', batchId).order('event_time', { ascending: true });
     setEvents(eData?.filter((ev: any) => !ev.is_done) || []);
   };
 
-  // --- AUTO-NOTIFY LOGIC FOR EVENTS ---
+  // --- EVENT ACTIONS WITH AUTO-NOTIFICATIONS ---
   const handleSaveEvent = async () => {
     if (!eventTitle || !eventDate) return;
     try {
         const evPayload = { batch_id: batchId, title: eventTitle, event_time: eventDate, is_done: false };
         if (editingEvent) {
           await supabase.from('events').update(evPayload).eq('id', editingEvent.id);
-          await supabase.from('notices').insert([{ batch_id: batchId, title: "🔄 Event Rescheduled", content: `"${eventTitle}" is now set for ${new Date(eventDate).toLocaleString()}` }]);
+          await supabase.from('notices').insert([{ batch_id: batchId, title: "🔄 Event Updated", content: `"${eventTitle}" has been rescheduled for ${new Date(eventDate).toLocaleString()}` }]);
         } else {
           await supabase.from('events').insert([evPayload]);
-          await supabase.from('notices').insert([{ batch_id: batchId, title: "📅 New Event Added", content: `${eventTitle} scheduled for ${new Date(eventDate).toLocaleString()}` }]);
+          await supabase.from('notices').insert([{ batch_id: batchId, title: "📅 New Event Added", content: `${eventTitle} is scheduled for ${new Date(eventDate).toLocaleString()}` }]);
         }
         setShowEventModal(false); setEventTitle(""); setEventDate(""); setEditingEvent(null); fetchData();
     } catch (err: any) { alert("Error: " + err.message); }
@@ -111,14 +108,14 @@ export default function BatchDashboard({ params }: PageProps) {
 
   const handleDoneDismiss = async (ev: any) => {
     await supabase.from('events').update({ is_done: true }).eq('id', ev.id);
-    await supabase.from('notices').insert([{ batch_id: batchId, title: "✅ Event Completed", content: `Mission Accomplished: "${ev.title}" is finished!` }]);
+    await supabase.from('notices').insert([{ batch_id: batchId, title: "✅ Mission AccomplISHED", content: `The task "${ev.title}" has been successfully completed!` }]);
     fetchData();
   };
 
   const handleDeleteEvent = async (ev: any) => {
     if(confirm("Delete this event?")) {
         await supabase.from('events').delete().eq('id', ev.id);
-        await supabase.from('notices').insert([{ batch_id: batchId, title: "🚫 Event Deleted", content: `The event "${ev.title}" has been removed from the schedule.` }]);
+        await supabase.from('notices').insert([{ batch_id: batchId, title: "🚫 Event Cancelled", content: `The event "${ev.title}" was removed from the schedule.` }]);
         fetchData();
     }
   };
@@ -132,17 +129,10 @@ export default function BatchDashboard({ params }: PageProps) {
     setNewNotice(""); setNoticeSubject(""); setEditingNotif(null); fetchData();
   };
 
-  const handleDeleteNotice = async (id: any) => {
-    await supabase.from('notices').delete().eq('id', id);
-    fetchData();
-  };
-
-  // --- STREAK BADGE DOWNLOAD ---
   const handleDownloadBadge = async () => {
     if (badgeRef.current) {
-      const canvas = await html2canvas(badgeRef.current, { scale: 3, backgroundColor: '#ffffff', useCORS: true });
-      const imgData = canvas.toDataURL('image/png');
-      saveAs(imgData, `StudyHub_Streak_${streak}Days.png`);
+      const canvas = await html2canvas(badgeRef.current, { scale: 3, backgroundColor: '#ffffff' });
+      canvas.toBlob((blob) => { if (blob) saveAs(blob, `Streak_${streak}Days.png`); });
     }
   };
 
@@ -160,26 +150,24 @@ export default function BatchDashboard({ params }: PageProps) {
         <div style={headerInner}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <Link href="/" style={{ textDecoration: 'none' }}><motion.div whileHover={{x:-3}} style={backBtnCircle}>←</motion.div></Link>
-            <h1 style={{ fontSize: '22px', fontWeight: '900', color: '#5b6cfd', margin: 0 }}>StudyHub</h1>
+            {/* CLICK LOGO TO HOMEPAGE */}
+            <Link href="/" style={{ textDecoration: 'none' }}>
+               <h1 style={{ fontSize: '22px', fontWeight: '900', color: '#5b6cfd', margin: 0, cursor: 'pointer' }}>StudyHub</h1>
+            </Link>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
             <div style={statPillGroup}>
-                {/* WORKING STREAK BUTTON */}
                 <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} style={streakPill} onClick={() => setShowStreakModal(true)}>🔥 {streak}</motion.div>
-                
                 <motion.div whileHover={{ rotate: [0,-10,10,0] }} style={bellContainer} onClick={() => setShowNotifs(true)}>
                     <span>🔔</span>{unreadCount > 0 && <span style={bellBadge}>{unreadCount}</span>}
                 </motion.div>
             </div>
-            
-            <div style={{ position: 'relative' }}>
-              <div style={profileTrigger} onClick={() => setShowProfileMenu(!showProfileMenu)}>
+            <div style={profileTrigger} onClick={() => setShowProfileMenu(!showProfileMenu)}>
                 <motion.img animate={{ boxShadow: ['0 0 0px #5b6cfd', '0 0 10px #5b6cfd', '0 0 0px #5b6cfd'] }} transition={{ repeat: Infinity, duration: 3 }} src={finalDisplayPic} style={navAvatar} />
                 <div style={nameWrapper}>
                   <span style={navNameText}>Hi, {finalDisplayName}</span>
                   <span style={navRoleText}>{isOwner ? 'FACULTY' : 'STUDENT'}</span>
                 </div>
-              </div>
             </div>
           </div>
         </div>
@@ -188,11 +176,7 @@ export default function BatchDashboard({ params }: PageProps) {
       <main style={contentArea}>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={batchBanner}>
           <div style={bannerDots} />
-          <div style={{ position: 'relative', zIndex: 1 }}>
-            <small style={{ opacity: 0.8, fontWeight: '700' }}>YOUR BATCH</small>
-            <h2 style={{ fontSize: '42px', fontWeight: '900', margin: '15px 0' }}>{batchId.toUpperCase()} MISSION...</h2>
-            <div style={studyGoalText}>Daily Goal: 10m | Studied: <b>{Math.floor(studySeconds/60)}m</b></div>
-          </div>
+          <h2 style={{ fontSize: '42px', fontWeight: '900', margin: 0, position: 'relative' }}>{batchId.toUpperCase()} MISSION</h2>
         </motion.div>
 
         {/* OFFERINGS */}
@@ -211,16 +195,15 @@ export default function BatchDashboard({ params }: PageProps) {
           </div>
         </section>
 
-        {/* EVENTS SECTION */}
+        {/* EVENTS */}
         <div style={dashboardGrid}>
           <div style={{ flex: 1 }}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: '25px' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: '15px' }}>
               <h3 style={sectionTitle}>Upcoming Events</h3>
               {isOwner && <motion.button whileHover={{ scale: 1.05 }} onClick={() => {setEditingEvent(null); setEventTitle(""); setEventDate(""); setShowEventModal(true)}} style={addBtn}>+ Create Event</motion.button>}
             </div>
-            
             <AnimatePresence>
-                {events.length === 0 ? <div style={emptyBox}>🕒 No upcoming events scheduled.</div> : events.map(ev => (
+                {events.length === 0 ? <div style={emptyBox}>🕒 No events scheduled.</div> : events.map(ev => (
                 <motion.div layout initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, scale: 0.9 }} key={ev.id} style={dataRow}>
                     <div style={{ flex: 1 }}>
                         <div style={{ fontWeight: '800', color: '#1c252e', fontSize: '16px' }}>{ev.title}</div>
@@ -240,6 +223,47 @@ export default function BatchDashboard({ params }: PageProps) {
         </div>
       </main>
 
+      {/* NOTIFICATION DRAWER */}
+      <AnimatePresence>
+        {showNotifs && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={modalOverlay} onClick={() => setShowNotifs(false)}>
+            <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} style={drawerUI} onClick={e => e.stopPropagation()}>
+              <div style={drawerHeaderUI}>
+                 <div style={{fontSize:'22px', fontWeight:'900'}}>Notifications</div>
+                 <div style={{display:'flex', gap:'10px'}}>
+                    <motion.button whileTap={{scale:0.95}} onClick={() => {setLastReadTime(Date.now()); localStorage.setItem(`last_read_${batchId}`, Date.now().toString())}} style={markReadBtnUI}>Mark All Read</motion.button>
+                    <button onClick={() => setShowNotifs(false)} style={{...markReadBtnUI, background:'#eee', color:'#333'}}>Close</button>
+                 </div>
+              </div>
+              <div style={{padding: '0 20px', flex: 1, overflowY: 'auto'}}>
+                {notices.map(n => (
+                    <motion.div key={n.id} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} style={notifCardUI}>
+                       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                          <div style={{fontWeight:'800', color:'#5b6cfd'}}>{n.title}</div>
+                          <div style={{fontSize:'10px', color:'#aaa'}}>{new Date(n.created_at).toLocaleString()}</div>
+                       </div>
+                       <div style={{fontSize:'14px', marginTop:'4px'}}>{n.content}</div>
+                       {isOwner && (
+                         <div style={{display:'flex', gap:'10px', marginTop:'10px'}}>
+                            <button onClick={() => {setEditingNotif(n); setNoticeSubject(n.title); setNewNotice(n.content)}} style={textActionBtn}>Edit</button>
+                            <button onClick={() => {if(confirm("Delete notice?")) supabase.from('notices').delete().eq('id', n.id).then(()=>fetchData())}} style={textActionBtnRed}>Delete</button>
+                         </div>
+                       )}
+                    </motion.div>
+                ))}
+              </div>
+              {isOwner && (
+                <div style={adminPanelNotifUI}>
+                   <input value={noticeSubject} onChange={(e)=>setNoticeSubject(e.target.value)} placeholder="Subject..." style={subjectInputUI} />
+                   <textarea value={newNotice} onChange={e => setNewNotice(e.target.value)} placeholder="Message..." style={notifInputUI} />
+                   <button onClick={handlePostNotice} style={notifSendBtn}>{editingNotif ? 'Update Notice' : 'Post Notice'}</button>
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* EVENT MODAL */}
       <AnimatePresence>
         {showEventModal && (
@@ -248,7 +272,7 @@ export default function BatchDashboard({ params }: PageProps) {
                <h2 style={{margin: '0 0 10px', fontWeight: '900'}}>{editingEvent ? 'Update Event' : 'Schedule Event'}</h2>
                <div style={{marginBottom: '20px'}}>
                   <label style={inputLabel}>Event Title</label>
-                  <input placeholder="Ex: Biology MCQ" value={eventTitle} onChange={e => setEventTitle(e.target.value)} style={modalInput} />
+                  <input placeholder="Ex: Physics Test" value={eventTitle} onChange={e => setEventTitle(e.target.value)} style={modalInput} />
                </div>
                <div style={{marginBottom: '30px'}}>
                   <label style={inputLabel}>Date & Time</label>
@@ -266,45 +290,7 @@ export default function BatchDashboard({ params }: PageProps) {
         )}
       </AnimatePresence>
 
-      {/* NOTIFICATION DRAWER */}
-      <AnimatePresence>
-        {showNotifs && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={modalOverlay} onClick={() => setShowNotifs(false)}>
-            <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} style={drawerUI} onClick={e => e.stopPropagation()}>
-              <div style={drawerHeaderUI}>
-                 <div style={{fontSize:'22px', fontWeight:'900'}}>Notifications</div>
-                 <button onClick={() => setShowNotifs(false)} style={{...markReadBtnUI, background:'#eee', color:'#333'}}>Close</button>
-              </div>
-              <div style={{padding: '0 20px', flex: 1, overflowY: 'auto'}}>
-                {notices.map(n => (
-                    <motion.div key={n.id} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} style={notifCardUI}>
-                       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                          <div style={{fontWeight:'800', color:'#5b6cfd'}}>{n.title}</div>
-                          <div style={{fontSize:'10px', color:'#aaa'}}>{new Date(n.created_at).toLocaleString()}</div>
-                       </div>
-                       <div style={{fontSize:'14px', marginTop:'4px'}}>{n.content}</div>
-                       {isOwner && (
-                         <div style={{display:'flex', gap:'10px', marginTop:'10px'}}>
-                            <button onClick={() => {setEditingNotif(n); setNoticeSubject(n.title); setNewNotice(n.content)}} style={textActionBtn}>Edit</button>
-                            <button onClick={() => handleDeleteNotice(n.id)} style={textActionBtnRed}>Delete</button>
-                         </div>
-                       )}
-                    </motion.div>
-                ))}
-              </div>
-              {isOwner && (
-                <div style={adminPanelNotifUI}>
-                   <input value={noticeSubject} onChange={e=>setNoticeSubject(e.target.value)} placeholder="Subject..." style={subjectInputUI} />
-                   <textarea value={newNotice} onChange={e => setNewNotice(e.target.value)} placeholder="Message..." style={notifInputUI} />
-                   <button onClick={handlePostNotice} style={notifSendBtn}>{editingNotif ? 'Update Notice' : 'Post Notice'}</button>
-                </div>
-              )}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* STREAK MODAL (WORKING) */}
+      {/* PREMIUM STREAK MODAL */}
       <AnimatePresence>
         {showStreakModal && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={modalOverlay} onClick={() => setShowStreakModal(false)}>
@@ -376,7 +362,7 @@ const customDateWrapper: any = { position: 'relative', width: '100%', cursor: 'p
 const hiddenDateInput: any = { position: 'absolute', top: 0, left: 0, width: '1px', height: '1px', opacity: 0, pointerEvents: 'none' };
 const dateDisplayFake: any = { padding: '16px', borderRadius: '18px', border: '1.5px solid #eee', background: '#f9f9fb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#333', fontSize: '15px' };
 const emptyBox: any = { padding: '40px', textAlign: 'center', color: '#aaa', fontSize: '14px' };
-const dropdownMenu: any = { position: 'absolute', top: '75px', right: '0', background: '#fff', boxShadow: '0 15px 35px rgba(0,0,0,0.12)', borderRadius: '20px', padding: '10px', zIndex: 100, minWidth: '180px', border: '1px solid #f0f0f0' };
+const dropdownMenu: any = { position: 'absolute', top: '75px', right: '0', background: '#fff', boxShadow: '0 15px 35px rgba(0,0,0,0.1)', borderRadius: '20px', padding: '10px', zIndex: 100, minWidth: '180px', border: '1px solid #f0f0f0' };
 const dropdownItem: any = { display:'block', padding:'12px 15px', textDecoration:'none', color:'#333', fontWeight: '700', fontSize: '14px' };
 const dropdownLogoutBtn: any = { width:'100%', textAlign:'left', padding:'12px 15px', background:'none', border:'none', color:'#ef4444', fontWeight: '800', cursor:'pointer' };
 const streakCardPremium: any = { width:'400px', background:'#fff', borderRadius:'40px', overflow:'hidden', position:'relative', textAlign:'center', boxShadow:'0 30px 60px rgba(0,0,0,0.3)' };
