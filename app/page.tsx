@@ -2,13 +2,16 @@
 import Link from 'next/link'
 import { useSession, signIn, signOut } from 'next-auth/react'
 import { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 
 export default function HomePage() {
   const { data: session } = useSession();
   const [customName, setCustomName] = useState("");
   const [profilePic, setProfilePic] = useState("");
+  const [showMegaMenu, setShowMegaMenu] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [activeCategory, setActiveCategory] = useState("Competitive");
 
-  // Check if the current user is the owner (you)
   const isOwner = session?.user?.email === "bhaswarray@gmail.com";
 
   useEffect(() => {
@@ -16,168 +19,158 @@ export default function HomePage() {
       setCustomName(localStorage.getItem("userFirstName") || "");
       setProfilePic(localStorage.getItem("userProfilePic") || "");
     };
-
     updateProfile(); 
-    window.addEventListener('storage', updateProfile);
-    return () => window.removeEventListener('storage', updateProfile);
   }, []);
 
   const displayName = customName || session?.user?.name?.split(' ')[0] || "Student";
 
+  const categories = [
+    { id: "Competitive", title: "Competitive Exams", sub: "JEE, NEET, GATE", items: [{name: "NEET", href: "/neet"}, {name: "IIT JEE", href: "#"}] },
+    { id: "School", title: "School Preparation", sub: "Class 9-12", items: [{name: "Class 12", href: "#"}, {name: "Class 11", href: "#"}] },
+  ];
+
   return (
-    <>
-      <style dangerouslySetInnerHTML={{ __html: `
-        * { margin:0; padding:0; box-sizing:border-box; font-family: Arial, sans-serif; }
-        body { background:#f5f7fb; overflow-x: hidden; }
-
-        header {
-          display:flex;
-          align-items:center;
-          justify-content:space-between;
-          padding:15px 5%;
-          background:white;
-          box-shadow:0 2px 10px rgba(0,0,0,0.1);
-          position: sticky;
-          top: 0;
-          z-index: 1000;
-        }
-
-        .logo { font-weight:bold; font-size:24px; color:#6c63ff; text-decoration:none; }
-        nav ul { display:flex; gap:25px; list-style:none; align-items:center; }
-        nav ul li { cursor: pointer; color: #444; font-weight: 500; font-size: 15px; }
-
-        /* MEGA MENU */
-        .mega-wrapper { position:relative; padding-bottom:15px; margin-bottom: -15px; }
-        .all-courses-btn { border:2px solid #6c63ff; padding:8px 16px; border-radius:12px; color:#6c63ff; font-weight:600; display:flex; align-items:center; gap:8px; }
-        .arrow { width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; border-top:6px solid #6c63ff; transition:0.3s; }
-        .mega-wrapper:hover .arrow { transform:rotate(180deg); }
-        .mega-menu { position:absolute; top:100%; left:0; width: 800px; background:white; border-radius:12px; box-shadow:0 15px 40px rgba(0,0,0,0.2); display:none; overflow:hidden; }
-        .mega-wrapper:hover .mega-menu { display:block; }
-        .mega-container { display:flex; }
-        .mega-left { width:35%; background:#f8f9fa; padding:20px; }
-        .mega-left div { padding:10px; border-radius:8px; margin-bottom:5px; cursor:pointer; }
-        .mega-left div:hover { background:white; color:#6c63ff; }
-        .mega-right { width:65%; padding:20px; display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
-        .course-item { background:#fafafa; padding:12px; border-radius:8px; font-weight:600; text-decoration:none; color:#333; text-align:center; border: 1px solid #eee; }
-        .course-item:hover { background:#6c63ff; color:white; }
-
-        /* HERO SECTION */
-        .hero { display: flex; align-items: center; justify-content: space-between; padding: 60px 8%; background: linear-gradient(135deg,#6a1b9a,#ff4ecd); border-radius: 0 0 40px 40px; color: white; }
-        .hero-text { flex: 1; }
-        .hero h1 { font-size: clamp(30px, 5vw, 48px); line-height: 1.2; }
-        .hero p { margin-top: 20px; font-size: 18px; opacity: 0.9; }
-        .hero-btn { margin-top: 30px; padding: 15px 35px; border: none; border-radius: 8px; background: white; color: #6a1b9a; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        .hero-btn:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
-        .hero img { width: clamp(200px, 30vw, 400px); transform: rotate(-5deg); }
-
-        /* ADMIN BADGE */
-        .admin-badge { background: #FFD700; color: #000; padding: 5px 10px; border-radius: 5px; font-size: 12px; font-weight: bold; margin-left: 10px; }
-
-        .section { padding: 60px 5%; text-align: center; }
-        .courses-grid { display: flex; justify-content: center; flex-wrap: wrap; gap: 25px; margin-top: 40px; }
-        .card { background: white; padding: 30px; width: 280px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.08); }
-        .card h3 { color: #6a1b9a; margin-bottom: 10px; }
-        .card-btn { display: inline-block; margin-top: 15px; padding: 10px 20px; background: #6c63ff; color: white; border-radius: 8px; text-decoration: none; font-weight: bold; }
-
-        .auth-btns { display: flex; align-items: center; gap: 15px; }
-        .login-btn { background:#6c63ff; color:white; padding:10px 20px; border-radius:8px; cursor:pointer; border:none; font-weight:600; }
-
-        @media (max-width: 900px) {
-          nav ul li:not(.mega-wrapper) { display: none; }
-          .mega-menu { width: 90vw; left: -10px; }
-          .hero { flex-direction: column; text-align: center; }
-          .hero img { margin-top: 30px; width: 70%; }
-        }
-      ` }} />
-
-      <header>
-        <Link href="/" className="logo">StudyHub</Link>
-        <nav>
-          <ul>
-            <li className="mega-wrapper">
-              <div className="all-courses-btn">All Courses <div className="arrow"></div></div>
-              <div className="mega-menu">
-                <div className="mega-container">
-                  <div className="mega-left">
-                    <div><b>Competitive Exams</b><br/><small>JEE, NEET, GATE</small></div>
-                    <div><b>School Preparation</b><br/><small>Class 9-12</small></div>
-                  </div>
-                  <div className="mega-right">
-                    <Link href="/neet" className="course-item">NEET</Link>
-                    <Link href="#" className="course-item">IIT JEE</Link>
-                    <Link href="#" className="course-item">Class 12</Link>
-                    <Link href="#" className="course-item">Class 11</Link>
-                  </div>
+    <div style={{ background: '#fcfdfe', minHeight: '100vh', fontFamily: 'sans-serif' }}>
+      
+      {/* PREMIUM HEADER */}
+      <header style={headerWrapper}>
+        <div style={headerInner}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '30px' }}>
+            <Link href="/" style={{ textDecoration: 'none' }}>
+              <h1 style={{ fontSize: '24px', fontWeight: '900', color: '#5b6cfd', margin: 0 }}>StudyHub</h1>
+            </Link>
+            
+            <nav style={{ display: 'flex', alignItems: 'center', gap: '25px' }}>
+              {/* MEGA MENU */}
+              <div 
+                onMouseEnter={() => setShowMegaMenu(true)} 
+                onMouseLeave={() => setShowMegaMenu(false)}
+                style={{ position: 'relative', padding: '10px 0' }}
+              >
+                <div style={allCoursesBtn}>
+                  All Courses <motion.span animate={{ rotate: showMegaMenu ? 180 : 0 }}>▾</motion.span>
                 </div>
-              </div>
-            </li>
-            {/* Special link for you */}
-            {isOwner && <li><Link href="/neet" style={{color: '#6c63ff', fontWeight: 'bold', textDecoration: 'none'}}>Live Dashboard</Link></li>}
-            <li>Books</li>
-            <li>Results</li>
-          </ul>
-        </nav>
 
-        <div className="auth-btns">
-          {session ? (
-            <>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ width: '38px', height: '38px', borderRadius: '50%', overflow: 'hidden', backgroundColor: '#6c63ff', border: '2px solid #6c63ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {profilePic ? (
-                    <img src={profilePic} alt="User" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  ) : (
-                    <span style={{ color: 'white', fontWeight: 'bold', fontSize: '14px' }}>{displayName[0].toUpperCase()}</span>
+                <AnimatePresence>
+                  {showMegaMenu && (
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} style={megaMenuPanel}>
+                      <div style={{ display: 'flex', height: '350px' }}>
+                        <div style={megaLeft}>
+                          {categories.map(cat => (
+                            <div 
+                              key={cat.id}
+                              onMouseEnter={() => setActiveCategory(cat.id)}
+                              style={{ ...categoryItem, background: activeCategory === cat.id ? '#fff' : 'transparent' }}
+                            >
+                              <b style={{ display: 'block', fontSize: '14px' }}>{cat.title}</b>
+                              <small style={{ color: '#888' }}>{cat.sub}</small>
+                            </div>
+                          ))}
+                        </div>
+                        <div style={megaRight}>
+                          {categories.find(c => c.id === activeCategory)?.items.map(item => (
+                            <Link href={item.href} key={item.name} style={{ textDecoration: 'none' }}>
+                              <motion.div whileHover={{ y: -3, background: '#f8f9ff' }} style={courseCardMini}>
+                                {item.name}
+                              </motion.div>
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    </motion.div>
                   )}
-                </div>
-                <div style={{display: 'flex', flexDirection: 'column'}}>
-                  <Link href="/profile" style={{fontWeight:'bold', color:'#6c63ff', textDecoration:'none'}}>Hi, {displayName}</Link>
-                  {isOwner && <span style={{fontSize: '10px', color: '#666', fontWeight: 'bold'}}>FACULTY</span>}
-                </div>
+                </AnimatePresence>
               </div>
-              <button className="login-btn" style={{background:'#ff4757'}} onClick={() => signOut()}>Logout</button>
-            </>
-          ) : (
-            <button className="login-btn" onClick={() => signIn('google')}>Login / Register</button>
-          )}
+
+              {isOwner && <Link href="/neet" style={navLink}>Live Dashboard</Link>}
+              <Link href="#" style={navLink}>Books</Link>
+              <Link href="#" style={navLink}>Results</Link>
+            </nav>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+            {session ? (
+              <div style={{ position: 'relative' }}>
+                <div style={profileTrigger} onClick={() => setShowProfileMenu(!showProfileMenu)}>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '14px', fontWeight: '800' }}>Hi, {displayName}</div>
+                    <div style={roleBadge}>{isOwner ? 'FACULTY' : 'STUDENT'}</div>
+                  </div>
+                  <img src={profilePic || session.user?.image || `https://ui-avatars.com/api/?name=${displayName}`} style={navAvatar} />
+                </div>
+                <AnimatePresence>
+                  {showProfileMenu && (
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} style={dropdownMenu}>
+                      <Link href="/profile" style={dropdownItem}>👤 My Profile</Link>
+                      <button onClick={() => signOut()} style={dropdownLogoutBtn}>🚪 Logout</button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            ) : (
+              <button style={loginBtn} onClick={() => signIn('google')}>Login / Register</button>
+            )}
+          </div>
         </div>
       </header>
 
-      <div className="hero">
-        <div className="hero-text">
-          <h1>{session ? (isOwner ? `Welcome, Faculty ${displayName}!` : `Welcome back, ${displayName}!`) : "Crack NEET, JEE & Boards"}</h1>
-          <p>{isOwner ? "Manage your batches and start your live interactions for today." : "Free notes, MCQs, mock tests and revision for Class 11 & 12 students."}</p>
-          
-          <button className="hero-btn" onClick={() => session ? window.location.href='/neet' : signIn('google')}>
-            {session ? (isOwner ? "🚀 Start Live Classes" : "Go to My Courses") : "Start Learning"}
-          </button>
-        </div>
-        <img src="https://cdn-icons-png.flaticon.com/512/3135/3135755.png" alt="Hero" />
-      </div>
-
-      <div className="section">
-        <h2>Popular Courses</h2>
-        <div className="courses-grid">
-          <div className="card">
-            <h3>Class 11</h3>
-            <p>Physics, Chemistry, Biology & Maths</p>
-            <Link href="#" className="card-btn">Explore</Link>
-          </div>
-          <div className="card">
-            <h3>Class 12</h3>
-            <p>Boards + Competitive Prep</p>
-            <Link href="#" className="card-btn">Explore</Link>
-          </div>
-          <div className="card">
-            <h3>NEET</h3>
-            <p>MCQs, PYQs and Mock Tests</p>
-            <Link href="/neet" className="card-btn">Explore</Link>
+      {/* HERO SECTION */}
+      <main style={{ paddingTop: '80px' }}>
+        <div style={heroSection}>
+          <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ flex: 1 }}>
+              <motion.h1 initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} style={{ fontSize: '50px', fontWeight: '900', color: '#fff' }}>
+                {session ? (isOwner ? `Welcome, Faculty ${displayName}!` : `Welcome back, ${displayName}!`) : "Crack NEET, JEE & Boards"}
+              </motion.h1>
+              <p style={{ fontSize: '18px', color: 'rgba(255,255,255,0.9)', margin: '20px 0 30px' }}>
+                {isOwner ? "Manage your batches and start your live interactions." : "Free notes, MCQs, mock tests and revision for Class 11 & 12."}
+              </p>
+              <button style={heroBtn} onClick={() => session ? window.location.href='/neet' : signIn('google')}>
+                {session ? "Go to Dashboard" : "Start Learning"}
+              </button>
+            </div>
+            <motion.img animate={{ y: [0, -15, 0] }} transition={{ repeat: Infinity, duration: 4 }} src="https://cdn-icons-png.flaticon.com/512/3135/3135755.png" style={{ width: '350px' }} />
           </div>
         </div>
-      </div>
 
-      <footer style={{padding:'25px', textAlign:'center', background:'#6a1b9a', color:'white'}}>
-        © 2026 StudyHub | Faculty: Bhaswar Ray | Made for Future Doctors
-      </footer>
-    </>
+        {/* POPULAR COURSES */}
+        <section style={{ padding: '80px 20px', maxWidth: '1200px', margin: '0 auto' }}>
+          <h2 style={{ textAlign: 'center', fontSize: '32px', fontWeight: '900', marginBottom: '50px' }}>Popular Courses</h2>
+          <div style={courseGrid}>
+            {['Class 11', 'Class 12', 'NEET'].map((title) => (
+              <div key={title} style={popularCard}>
+                <h3 style={{ color: '#5b6cfd', fontWeight: '800' }}>{title}</h3>
+                <p style={{ color: '#666', margin: '15px 0' }}>{title === 'NEET' ? 'MCQs & Mock Tests' : 'Boards Preparation'}</p>
+                <Link href="/neet" style={cardBtn}>Explore</Link>
+              </div>
+            ))}
+          </div>
+        </section>
+      </main>
+    </div>
   )
 }
+
+// --- STYLES ---
+const headerWrapper: any = { position:'fixed', top:0, left:0, width:'100%', background:'rgba(255,255,255,0.9)', backdropFilter:'blur(10px)', zIndex: 1000, height: '80px', borderBottom: '1px solid #f0f0f0' };
+const headerInner: any = { maxWidth: '1300px', margin: '0 auto', height: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 40px' };
+const allCoursesBtn: any = { border: '2px solid #5b6cfd', padding: '8px 16px', borderRadius: '12px', color: '#5b6cfd', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' };
+const navLink: any = { textDecoration: 'none', color: '#444', fontWeight: '600', fontSize: '15px' };
+const megaMenuPanel: any = { position: 'absolute', top: '100%', left: 0, width: '700px', background: '#fff', borderRadius: '20px', boxShadow: '0 20px 50px rgba(0,0,0,0.1)', overflow: 'hidden' };
+const megaLeft: any = { width: '40%', background: '#f8f9fb', padding: '20px' };
+const megaRight: any = { width: '60%', padding: '25px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' };
+const categoryItem: any = { padding: '15px', borderRadius: '12px', cursor: 'pointer', marginBottom: '8px' };
+const courseCardMini: any = { padding: '15px', borderRadius: '12px', border: '1px solid #f0f0f0', fontWeight: '700', color: '#1c252e', textAlign: 'center' };
+const navAvatar: any = { width: '40px', height: '40px', borderRadius: '50%', border: '2px solid #5b6cfd' };
+const profileTrigger: any = { display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' };
+const roleBadge: any = { fontSize: '9px', fontWeight: '900', color: '#5b6cfd', background: '#f0f3ff', padding: '2px 6px', borderRadius: '5px' };
+const heroSection: any = { background: 'linear-gradient(135deg, #6a1b9a, #ff4ecd)', padding: '100px 40px 140px', borderRadius: '0 0 80px 80px' };
+const heroBtn: any = { padding: '16px 35px', background: '#fff', color: '#6a1b9a', border: 'none', borderRadius: '12px', fontWeight: '900', cursor: 'pointer' };
+const courseGrid: any = { display: 'flex', gap: '30px' };
+const popularCard: any = { flex: 1, background: '#fff', padding: '40px', borderRadius: '30px', textAlign: 'center', boxShadow: '0 10px 30px rgba(0,0,0,0.05)', border: '1px solid #f0f0f0' };
+const cardBtn: any = { display: 'inline-block', padding: '10px 25px', background: '#5b6cfd', color: '#fff', borderRadius: '10px', textDecoration: 'none', fontWeight: '700' };
+const loginBtn: any = { background: '#5b6cfd', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '10px', fontWeight: '700', cursor: 'pointer' };
+const dropdownMenu: any = { position: 'absolute', top: '60px', right: '0', background: '#fff', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', borderRadius: '15px', padding: '10px', minWidth: '160px' };
+const dropdownItem: any = { display: 'block', padding: '10px', textDecoration: 'none', color: '#333', fontWeight: '700', fontSize: '14px' };
+const dropdownLogoutBtn: any = { width: '100%', textAlign: 'left', padding: '10px', background: 'none', border: 'none', color: '#ff4757', fontWeight: '800', cursor: 'pointer' };
+const backBtnCircle: any = { color:'#333', background:'#f5f5f5', width:'35px', height:'35px', borderRadius:'10px', display:'flex', alignItems:'center', justifyContent:'center', cursor: 'pointer' };
