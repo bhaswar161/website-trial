@@ -1,13 +1,14 @@
 'use client'
 import Link from 'next/link'
 import { useSession, signIn, signOut } from 'next-auth/react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 
 export default function HomePage() {
   const { data: session } = useSession();
   const [customName, setCustomName] = useState("");
   const [profilePic, setProfilePic] = useState("");
+  const examSectionRef = useRef<HTMLDivElement>(null);
 
   const isOwner = session?.user?.email === "bhaswarray@gmail.com";
 
@@ -20,6 +21,15 @@ export default function HomePage() {
   }, []);
 
   const displayName = customName || session?.user?.name?.split(' ')[0] || "Student";
+
+  const handleStartLearning = () => {
+    if (!session) {
+      signIn('google');
+    } else {
+      // Smooth scroll to categories section
+      examSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
 
   const examCategories = [
     {
@@ -77,29 +87,25 @@ export default function HomePage() {
         .course-item { padding:12px; border-radius:10px; font-weight:700; text-decoration:none; color:#333; border: 1px solid #eee; }
         .course-item:hover { background:#f4f6ff; color:#5b6cfd; border-color: #5b6cfd; }
 
-        /* HERO IMPROVED */
+        /* HERO IMPROVED WITH DYNAMIC COLOR */
         .hero { 
           display: flex; 
           align-items: center; 
           justify-content: space-between; 
           padding: 100px 10% 140px; 
-          background: linear-gradient(135deg,#6a1b9a,#ff4ecd); 
+          background: linear-gradient(135deg, #6a1b9a, #ff4ecd, #5b6cfd); 
+          background-size: 400% 400%;
+          animation: gradientShift 15s ease infinite;
           border-radius: 0 0 80px 80px; 
           color: white; 
           position: relative;
           overflow: hidden;
         }
 
-        /* Hero Background Decorative Elements */
-        .hero::before {
-          content: "";
-          position: absolute;
-          width: 400px;
-          height: 400px;
-          background: rgba(255,255,255,0.05);
-          border-radius: 50%;
-          top: -100px;
-          left: -100px;
+        @keyframes gradientShift {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
         }
 
         .floating-blob {
@@ -207,6 +213,8 @@ export default function HomePage() {
 
         .login-btn { background:#5b6cfd; color:white; padding:10px 22px; border-radius:12px; cursor:pointer; border:none; font-weight:700; }
         .logout-btn { background:#ff4757; color:white; padding:10px 20px; border-radius:10px; cursor:pointer; border:none; font-weight:700; }
+        
+        .profile-link-area { display: flex; alignItems: center; gap: 10px; cursor: pointer; text-decoration: none; color: inherit; }
       ` }} />
 
       <header>
@@ -237,13 +245,14 @@ export default function HomePage() {
         <div className="auth-btns" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
           {session ? (
             <>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              {/* CLICK NAME OR PIC TO GO TO PROFILE */}
+              <Link href="/profile" className="profile-link-area" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <img src={profilePic || session.user?.image || ""} style={{width:'40px', height:'40px', borderRadius:'50%', border:'2px solid #5b6cfd'}} />
                 <div style={{display:'flex', flexDirection:'column'}}>
-                  <span style={{fontWeight:'800', fontSize:'14px'}}>Hi, {displayName}</span>
+                  <span style={{fontWeight:'800', fontSize:'14px', color: '#1c252e'}}>Hi, {displayName}</span>
                   <span style={{fontSize:'10px', fontWeight:'900', color:'#5b6cfd'}}>{isOwner ? 'FACULTY' : 'STUDENT'}</span>
                 </div>
-              </div>
+              </Link>
               <button className="logout-btn" onClick={() => signOut()}>Logout</button>
             </>
           ) : (
@@ -252,7 +261,7 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* HERO SECTION WITH ANIMATED BLOBS */}
+      {/* HERO SECTION WITH ANIMATED BLOBS & DYNAMIC COLOR */}
       <div className="hero">
         <motion.div 
           animate={{ x: [0, 50, 0], y: [0, 30, 0] }} 
@@ -264,7 +273,10 @@ export default function HomePage() {
             {session ? `Welcome back, ${displayName}!` : "Crack NEET, JEE & Boards"}
           </motion.h1>
           <p>The only platform built by doctors for future doctors. Get premium revision notes, interactive mock tests, and faculty guidance.</p>
-          <button className="hero-btn" onClick={() => window.location.href='/neet'}>Start Learning Now</button>
+          {/* SMART BUTTON LOGIC */}
+          <button className="hero-btn" onClick={handleStartLearning}>
+            {session ? "Start Learning Now" : "Join StudyHub Now"}
+          </button>
         </div>
         
         <motion.img 
@@ -276,7 +288,8 @@ export default function HomePage() {
         />
       </div>
 
-      <div className="section">
+      {/* ADDED ID FOR SMOOTH SCROLL */}
+      <div className="section" id="categories" ref={examSectionRef}>
         <h2 className="section-title">Exam Categories</h2>
         <p className="section-sub">We prepare students for 35+ categories. Find the one you are preparing for.</p>
         
