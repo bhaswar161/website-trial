@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import Link from "next/link"
 import html2canvas from 'html2canvas'
 import { saveAs } from 'file-saver'
+import { useRouter } from "next/navigation" // Added for explicit navigation
 
 type PageProps = { params: Promise<{ batchId: string }> };
 
@@ -13,6 +14,7 @@ export default function BatchDashboard({ params }: PageProps) {
   const resolvedParams = use(params);
   const batchId = resolvedParams.batchId;
   const { data: session, status } = useSession()
+  const router = useRouter(); // Initialize router
   const [mounted, setMounted] = useState(false)
   const badgeRef = useRef<HTMLDivElement>(null);
   const dateInputRef = useRef<HTMLInputElement>(null);
@@ -54,7 +56,6 @@ export default function BatchDashboard({ params }: PageProps) {
       setLocalPic(localStorage.getItem("userProfilePic") || "");
       setStreak(parseInt(localStorage.getItem("userStreak") || "0"));
       
-      // DAILY RESET LOGIC
       const today = new Date().toDateString();
       const lastStudyDate = localStorage.getItem("lastStudyDate");
       
@@ -68,7 +69,6 @@ export default function BatchDashboard({ params }: PageProps) {
           setStudySeconds(savedSeconds);
           if (savedSeconds >= 600) setIsStreakAchieved(true);
       }
-
       const saved = localStorage.getItem(`last_read_${batchId}`);
       if (saved) setLastReadTime(parseInt(saved));
     };
@@ -76,7 +76,7 @@ export default function BatchDashboard({ params }: PageProps) {
 
     const interval = setInterval(() => {
       setStudySeconds(s => {
-        if (s < 600) { // Goal is 10 mins (600s)
+        if (s < 600) { 
             const ns = s + 1;
             localStorage.setItem("studySecondsToday", ns.toString());
             if (ns >= 600 && !isStreakAchieved) {
@@ -87,7 +87,7 @@ export default function BatchDashboard({ params }: PageProps) {
             }
             return ns;
         }
-        return s; // Timer stops here if goal reached today
+        return s;
       });
     }, 1000);
 
@@ -102,7 +102,6 @@ export default function BatchDashboard({ params }: PageProps) {
     setEvents(eData?.filter((ev: any) => !ev.is_done) || []);
   };
 
-  // --- ACTIONS ---
   const handleSaveEvent = async () => {
     if (!eventTitle || !eventDate) return;
     try {
@@ -127,7 +126,7 @@ export default function BatchDashboard({ params }: PageProps) {
 
   const handleDoneDismiss = async (ev: any) => {
     await supabase.from('events').update({ is_done: true }).eq('id', ev.id);
-    await supabase.from('notices').insert([{ batch_id: batchId, title: "✅ Mission AccomplISHED", content: `The task "${ev.title}" has been successfully completed!` }]);
+    await supabase.from('notices').insert([{ batch_id: batchId, title: "✅ Mission AccomplISHED", content: `Excellent! The task "${ev.title}" is finished.` }]);
     fetchData();
   };
 
@@ -167,15 +166,13 @@ export default function BatchDashboard({ params }: PageProps) {
       <header style={headerWrapper}>
         <div style={headerInner}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-            {/* BACK BUTTON TO PREVIOUS PAGE */}
-            <motion.div 
-              whileHover={{x:-3}} 
-              style={backBtnCircle} 
-              onClick={() => window.history.back()}
-            >
-              ←
-            </motion.div>
-            <Link href="/" style={{ textDecoration: 'none' }}><h1 style={{ fontSize: '22px', fontWeight: '900', color: '#5b6cfd', margin: 0, cursor: 'pointer' }}>StudyHub</h1></Link>
+            {/* BACK BUTTON TO NEET BATCHES PAGE */}
+            <Link href="/neet-batches" style={{ textDecoration: 'none' }}>
+              <motion.div whileHover={{x:-3}} style={backBtnCircle}>←</motion.div>
+            </Link>
+            <Link href="/" style={{ textDecoration: 'none' }}>
+              <h1 style={{ fontSize: '22px', fontWeight: '900', color: '#5b6cfd', margin: 0, cursor: 'pointer' }}>StudyHub</h1>
+            </Link>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
             <div style={statPillGroup}>
@@ -185,7 +182,6 @@ export default function BatchDashboard({ params }: PageProps) {
                 </motion.div>
             </div>
             
-            {/* PROFILE DROPDOWN */}
             <div style={{ position: 'relative' }}>
               <div style={profileTrigger} onClick={() => setShowProfileMenu(!showProfileMenu)}>
                 <motion.img animate={{ boxShadow: ['0 0 0px #5b6cfd', '0 0 10px #5b6cfd', '0 0 0px #5b6cfd'] }} transition={{ repeat: Infinity, duration: 3 }} src={finalDisplayPic} style={navAvatar} />
@@ -217,15 +213,20 @@ export default function BatchDashboard({ params }: PageProps) {
           </div>
         </motion.div>
 
-        {/* OFFERINGS */}
+        {/* OFFERINGS - DYNAMIC BATCH ROUTES */}
         <section style={{ marginBottom: '40px' }}>
           <h3 style={sectionTitle}>Batch Offerings</h3>
           <div style={offeringGrid}>
-            {['All Classes', 'All Tests', 'My Doubts', 'Community'].map((item, idx) => (
-              <Link key={item} href={item === 'All Classes' ? `/neet/${batchId}/all-classes` : '#'} style={{ textDecoration: 'none' }}>
+            {[
+              { name: 'All Classes', slug: 'all-classes' },
+              { name: 'All Tests', slug: 'all-tests' },
+              { name: 'My Doubts', slug: 'doubts' },
+              { name: 'Community', slug: 'community' }
+            ].map((item, idx) => (
+              <Link key={item.name} href={`/neet/${batchId}/${item.slug}`} style={{ textDecoration: 'none' }}>
                 <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.1 }}
                    whileHover={{ y: -8, scale: 1.02, boxShadow: '0 15px 30px rgba(91, 108, 253, 0.1)' }} style={offeringItem}>
-                  <span style={{ fontWeight: '800', color: '#000', fontSize: '16px' }}>{item}</span>
+                  <span style={{ fontWeight: '800', color: '#000', fontSize: '16px' }}>{item.name}</span>
                   <div style={arrowCircle}>❯</div>
                 </motion.div>
               </Link>
@@ -299,33 +300,7 @@ export default function BatchDashboard({ params }: PageProps) {
         )}
       </AnimatePresence>
 
-      {/* EVENT MODAL */}
-      <AnimatePresence>
-        {showEventModal && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={modalOverlay} onClick={() => setShowEventModal(false)}>
-            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} style={modal} onClick={e => e.stopPropagation()}>
-               <h2 style={{margin: '0 0 10px', fontWeight: '900'}}>{editingEvent ? 'Update Event' : 'Schedule Event'}</h2>
-               <div style={{marginBottom: '20px'}}>
-                  <label style={inputLabel}>Event Title</label>
-                  <input placeholder="Ex: Physics Mock Test" value={eventTitle} onChange={e => setEventTitle(e.target.value)} style={modalInput} />
-               </div>
-               <div style={{marginBottom: '30px'}}>
-                  <label style={inputLabel}>Date & Time</label>
-                  <div style={customDateWrapper} onClick={() => dateInputRef.current?.showPicker()}>
-                    <input ref={dateInputRef} type="datetime-local" value={eventDate} onChange={e => setEventDate(e.target.value)} style={hiddenDateInput} />
-                    <div style={dateDisplayFake}>{eventDate ? new Date(eventDate).toLocaleString() : 'Select Date and Time'}<span>📅</span></div>
-                  </div>
-               </div>
-               <div style={{display: 'flex', gap: '12px'}}>
-                  <motion.button whileTap={{scale: 0.95}} onClick={handleSaveEvent} style={notifSendBtn}>{editingEvent ? 'Update' : 'Create'} Event</motion.button>
-                  <motion.button whileTap={{scale: 0.95}} onClick={() => setShowEventModal(false)} style={{...notifSendBtn, background: '#f5f5f5', color: '#333'}}>Cancel</motion.button>
-               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* STREAK MODAL WITH TIME LEFT & PROGRESS */}
+      {/* STREAK MODAL */}
       <AnimatePresence>
         {showStreakModal && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={modalOverlay} onClick={() => setShowStreakModal(false)}>
@@ -351,6 +326,26 @@ export default function BatchDashboard({ params }: PageProps) {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* EVENT MODAL */}
+      <AnimatePresence>
+        {showEventModal && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={modalOverlay} onClick={() => setShowEventModal(false)}>
+            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} style={modal} onClick={e => e.stopPropagation()}>
+               <h2 style={{margin: '0 0 10px', fontWeight: '900'}}>{editingEvent ? 'Update Event' : 'Schedule Event'}</h2>
+               <input placeholder="Event Title" value={eventTitle} onChange={e => setEventTitle(e.target.value)} style={modalInput} />
+               <div style={{marginTop: '20px'}} onClick={() => dateInputRef.current?.showPicker()}>
+                  <input ref={dateInputRef} type="datetime-local" value={eventDate} onChange={e => setEventDate(e.target.value)} style={hiddenDateInput} />
+                  <div style={dateDisplayFake}>{eventDate ? new Date(eventDate).toLocaleString() : 'Select Date & Time'}<span>📅</span></div>
+               </div>
+               <div style={{display: 'flex', gap: '12px', marginTop: '30px'}}>
+                  <motion.button whileTap={{scale: 0.95}} onClick={handleSaveEvent} style={notifSendBtn}>{editingEvent ? 'Update' : 'Create'} Event</motion.button>
+                  <button onClick={() => setShowEventModal(false)} style={{...notifSendBtn, background: '#f5f5f5', color: '#333'}}>Cancel</button>
+               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
@@ -359,6 +354,7 @@ export default function BatchDashboard({ params }: PageProps) {
 const headerWrapper: any = { position:'fixed', top:0, left:0, width:'100%', background:'#fff', borderBottom:'1px solid #f0f0f0', zIndex: 1000, height: '80px', boxShadow:'0 2px 15px rgba(0,0,0,0.03)' };
 const headerInner: any = { maxWidth:'1300px', margin:'0 auto', display:'flex', justifyContent:'space-between', alignItems:'center', height:'100%', padding:'0 25px' };
 const contentArea: any = { paddingTop:'180px', maxWidth:'1200px', margin:'0 auto', paddingBottom:'60px', paddingLeft:'20px', paddingRight:'20px' };
+const backBtnCircle: any = { color:'#333', background:'#f5f5f5', width:'35px', height:'35px', borderRadius:'10px', display:'flex', alignItems:'center', justifyContent:'center', cursor: 'pointer' };
 const statPillGroup: any = { display: 'flex', gap: '12px', alignItems: 'center' };
 const streakPill: any = { background: '#fff5f5', border: '1px solid #ffdcdc', padding: '10px 18px', borderRadius: '14px', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer' };
 const bellContainer: any = { position: 'relative', background: '#f8f9ff', padding: '10px', borderRadius: '14px', cursor: 'pointer', border: '1px solid #eee' };
@@ -368,7 +364,6 @@ const navAvatar: any = { width: '45px', height: '45px', borderRadius: '50%', bor
 const nameWrapper: any = { display: 'flex', flexDirection: 'column' };
 const navNameText: any = { fontSize: '15px', fontWeight: '800', color: '#5b6cfd' };
 const navRoleText: any = { fontSize: '10px', fontWeight: '700', color: '#888' };
-const backBtnCircle: any = { color:'#333', background:'#f5f5f5', width:'35px', height:'35px', borderRadius:'10px', display:'flex', alignItems:'center', justifyContent:'center', cursor: 'pointer' };
 const batchBanner: any = { background:'#1c252e', color:'#fff', padding:'80px 60px', borderRadius:'30px 30px 100px 30px', marginBottom:'50px', position: 'relative', overflow: 'hidden', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' };
 const bannerDots: any = { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.05) 1px, transparent 0)', backgroundSize: '24px 24px' };
 const studyGoalText: any = { marginTop:'20px', background:'rgba(255,255,255,0.1)', padding:'8px 16px', borderRadius:'10px', display:'inline-block', fontSize:'13px' };
@@ -391,7 +386,6 @@ const subjectInputUI: any = { width:'100%', padding:'12px', borderRadius:'12px',
 const notifInputUI: any = { width: '100%', padding: '15px', borderRadius: '15px', border: '1px solid #eee', fontSize: '14px', minHeight: '80px' };
 const notifSendBtn: any = { flex: 1, padding: '15px', background: '#111', color: '#fff', border: 'none', borderRadius: '16px', fontWeight: '900', cursor:'pointer' };
 const modal: any = { background:'#fff', padding:'40px', borderRadius:'40px', width:'450px', boxShadow: '0 25px 50px rgba(0,0,0,0.1)' };
-const inputLabel: any = { display: 'block', fontSize: '13px', fontWeight: '800', color: '#888', marginBottom: '8px', marginLeft: '5px' };
 const modalInput: any = { width:'100%', padding:'16px', borderRadius:'18px', border:'1.5px solid #eee', fontSize: '15px', outline: 'none' };
 const customDateWrapper: any = { position: 'relative', width: '100%', cursor: 'pointer' };
 const hiddenDateInput: any = { position: 'absolute', top: 0, left: 0, width: '1px', height: '1px', opacity: 0, pointerEvents: 'none' };
