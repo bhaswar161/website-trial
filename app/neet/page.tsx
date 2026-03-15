@@ -100,24 +100,20 @@ export default function NeetPage() {
         }
         .nav-center ul { display: flex; gap: 20px; list-style: none; align-items: center; }
         
-        /* PIC 1 STYLE BUTTONS */
         .btn-outline-blue {
           border: 2px solid #5b6cfd;
           color: #5b6cfd;
-          padding: 8px 20px;
+          padding: 8px 25px;
           border-radius: 12px;
           font-weight: 800;
           text-decoration: none;
           font-size: 16px;
-          display: flex;
-          align-items: center;
-          gap: 8px;
           transition: 0.2s;
         }
         .btn-outline-red {
           border: 2px solid #ff4757;
           color: #ff4757;
-          padding: 8px 20px;
+          padding: 8px 25px;
           border-radius: 12px;
           font-weight: 800;
           text-decoration: none;
@@ -141,9 +137,7 @@ export default function NeetPage() {
         <nav className="nav-center">
           <ul>
             <li>
-              <Link href="/" className="btn-outline-blue">
-                All Courses <span>▼</span>
-              </Link>
+              <Link href="/" className="btn-outline-blue">Home</Link>
             </li>
             {isOwner && (
               <li>
@@ -176,7 +170,7 @@ export default function NeetPage() {
             Access StudyHub's premium courses and resources for NEET aspirants. Master concepts with top faculty and high-yield study material.
         </p>
 
-        {/* RESOURCE BOXES FROM PIC 2 */}
+        {/* RESOURCE BOXES */}
         <div style={{ display: 'flex', gap: '20px', marginBottom: '60px', flexWrap: 'wrap' }}>
             <motion.div whileHover={{ y: -8 }} className="resource-card" style={{ borderLeft: '6px solid #5b6cfd' }}>
                 <div><b style={{fontSize:'18px'}}>Blogs</b><br/><small style={{color:'#666'}}>Read Our Latest Blogs</small></div>
