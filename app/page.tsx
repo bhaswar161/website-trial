@@ -19,7 +19,7 @@ export default function HomePage() {
       setCustomName(localStorage.getItem("userFirstName") || "");
       setProfilePic(localStorage.getItem("userProfilePic") || "");
     };
-    updateProfile();
+    updateProfile(); 
     window.addEventListener('storage', updateProfile);
     return () => window.removeEventListener('storage', updateProfile);
   }, []);
@@ -30,12 +30,10 @@ export default function HomePage() {
     if (!session) {
       signIn('google');
     } else {
-      // Smooth scroll to categories section
       examSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
-  // MEGA MENU STRUCTURE
   const categories = [
     { 
       id: "Competitive", 
@@ -78,7 +76,6 @@ export default function HomePage() {
     }
   ];
 
-  // BIGGER, ANIMATED SCIENCE ELEMENTS
   const floatingAssets = [
     { type: 'img', src: "https://cdn-icons-png.flaticon.com/512/1048/1048954.png", top: "12%", left: "6%", size: "110px" }, 
     { type: 'text', content: "E = mc²", top: "18%", left: "75%", rotate: 12, size: "42px" },
@@ -93,34 +90,33 @@ export default function HomePage() {
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: `
-        * { margin:0; padding:0; box-sizing:border-box; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+        * { margin:0; padding:0; box-sizing:border-box; font-family: 'Segoe UI', Roboto, sans-serif; }
         body { background:#fcfdfe; overflow-x: hidden; scroll-behavior: smooth; }
 
         header {
           display:flex; align-items:center; justify-content:space-between;
           padding:15px 5%; background:rgba(255, 255, 255, 0.85);
           backdrop-filter: blur(12px); border-bottom: 1px solid rgba(0,0,0,0.05);
-          position: sticky; top: 0; z-index: 1000;
+          position: sticky; top: 0; z-index: 1000; height: 80px;
         }
 
         .logo { font-weight:900; font-size:24px; color:#5b6cfd; text-decoration:none; letter-spacing: -0.8px; }
 
-        .all-courses-btn { border:2px solid #5b6cfd; padding:10px 20px; border-radius:14px; color:#5b6cfd; font-weight:700; display:flex; align-items:center; gap:8px; cursor: pointer; transition: 0.3s; }
-        .all-courses-btn:hover { background: #f4f6ff; }
+        .all-courses-btn { border:2px solid #5b6cfd; padding:8px 16px; border-radius:12px; color:#5b6cfd; font-weight:700; display:flex; align-items:center; gap:8px; cursor: pointer; }
         
         .mega-menu { 
-          position:absolute; top:110%; left:0; width: 680px; background:white; 
+          position:absolute; top:70px; left:0; width: 550px; background:white; 
           border-radius:24px; box-shadow:0 25px 60px rgba(0,0,0,0.12); 
           overflow:hidden; z-index: 2000; border: 1px solid #f0f0f0;
         }
         
-        .mega-container { display:flex; height: 380px; }
-        .mega-left { width:42%; background:#f9fafb; padding:25px; border-right: 1px solid #f1f1f1; }
-        .mega-left div { padding:16px; border-radius:15px; margin-bottom:10px; cursor:pointer; transition: 0.2s; border: 1px solid transparent; }
-        .mega-right { width:58%; padding:30px; display:grid; grid-template-columns: 1fr; gap:14px; overflow-y: auto; }
+        .mega-container { display:flex; height: 320px; }
+        .mega-left { width:40%; background:#f9fafb; padding:20px; border-right: 1px solid #f1f1f1; }
+        .mega-left div { padding:12px; border-radius:12px; margin-bottom:8px; cursor:pointer; }
+        .mega-right { width:60%; padding:20px; display:grid; grid-template-columns: 1fr; gap:10px; }
         
-        .course-item { padding:16px; border-radius:14px; font-weight:700; text-decoration:none; color:#1c252e; border: 1px solid #f0f0f0; transition: 0.2s; text-align: center; background: #fff; }
-        .course-item:hover { background:#5b6cfd; color:#fff; border-color: #5b6cfd; transform: scale(1.02); }
+        .course-item { padding:12px; border-radius:12px; font-weight:700; text-decoration:none; color:#1c252e; border: 1px solid #f0f0f0; text-align: center; background: #fff; }
+        .course-item:hover { background:#5b6cfd; color:#fff; border-color: #5b6cfd; }
 
         .hero { 
           display: flex; align-items: center; justify-content: space-between; 
@@ -134,12 +130,11 @@ export default function HomePage() {
         .sketch-asset { position: absolute; pointer-events: none; z-index: 1; opacity: 0.35; filter: brightness(0) invert(1); }
         .sketch-text-asset { position: absolute; font-family: 'Comic Sans MS', cursive; color: white; opacity: 0.25; font-weight: bold; pointer-events: none; z-index: 1; }
 
-        .hero h1 { font-size: 58px; font-weight: 900; line-height: 1.1; position: relative; zIndex: 10; margin-bottom: 20px; text-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        .hero-btn { padding: 18px 45px; border: none; border-radius: 16px; background: white; color: #6a1b9a; font-weight: 900; font-size: 18px; cursor: pointer; box-shadow: 0 15px 30px rgba(0,0,0,0.2); transition: 0.3s; position: relative; zIndex: 10; }
-        .hero-btn:hover { transform: translateY(-5px); box-shadow: 0 20px 40px rgba(0,0,0,0.3); }
+        .hero h1 { font-size: clamp(32px, 5vw, 58px); font-weight: 900; line-height: 1.1; position: relative; z-index: 10; margin-bottom: 20px; }
+        .hero-btn { padding: 18px 45px; border: none; border-radius: 16px; background: white; color: #6a1b9a; font-weight: 900; font-size: 18px; cursor: pointer; box-shadow: 0 15px 30px rgba(0,0,0,0.2); position: relative; z-index: 10; }
 
         .section { padding: 100px 8%; text-align: center; }
-        .section-title { font-size: 42px; font-weight: 900; color: #1c252e; margin-bottom: 60px; letter-spacing: -1px; }
+        .section-title { font-size: 36px; font-weight: 900; color: #1c252e; margin-bottom: 60px; }
         
         .category-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 40px; }
         
@@ -149,72 +144,75 @@ export default function HomePage() {
             border: 1px solid #f0f0f0; box-shadow: 0 15px 45px rgba(0,0,0,0.04); 
             transition: 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); cursor: pointer;
         }
-        .cat-card:hover { transform: translateY(-15px); border-color: #5b6cfd; box-shadow: 0 25px 60px rgba(91, 108, 253, 0.15); }
-        .cat-card::after { content: ""; position: absolute; top: 0; right: -15%; width: 200px; height: 200px; background: #fff1f5; border-radius: 50%; z-index: 0; transition: 0.5s ease; }
-        .cat-card:hover::after { background: #f0f3ff; transform: scale(1.3); }
+        .cat-card:hover { transform: translateY(-15px); border-color: #5b6cfd; }
+        .cat-card::after { content: ""; position: absolute; top: 0; right: -15%; width: 200px; height: 200px; background: #fff1f5; border-radius: 50%; z-index: 0; }
 
-        .pill { padding: 10px 20px; border: 1px solid #eee; border-radius: 50px; font-size: 14px; font-weight: 700; color: #5b6cfd; background: #f4f6ff; margin: 0 10px 10px 0; display: inline-block; }
-        
+        .pill { padding: 8px 18px; border: 1px solid #eee; border-radius: 50px; font-size: 13px; font-weight: 700; color: #5b6cfd; background: #f4f6ff; margin: 0 10px 10px 0; display: inline-block; }
         .cat-icon { position: absolute; right: 30px; bottom: 50px; width: 95px; height: 95px; z-index: 1; transition: 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        .cat-card:hover .cat-icon { transform: scale(1.2) rotate(-15deg) translateY(-12px); filter: drop-shadow(0 20px 30px rgba(91, 108, 253, 0.3)); }
 
-        .profile-link-area { display: flex; align-items: center; gap: 14px; cursor: pointer; text-decoration: none; padding: 5px 10px; border-radius: 12px; transition: 0.2s; }
+        .profile-link-area { display: flex; align-items: center; gap: 12px; cursor: pointer; text-decoration: none; color: inherit; }
         .logout-btn { background:#ff4757; color:white; padding:10px 20px; border-radius:10px; cursor:pointer; border:none; font-weight:700; }
-        .login-btn { background:#5b6cfd; color:white; padding:12px 24px; border-radius:14px; cursor:pointer; border:none; font-weight:700; transition: 0.3s; }
+        .login-btn { background:#5b6cfd; color:white; padding:12px 24px; border-radius:14px; cursor:pointer; border:none; font-weight:700; }
+
+        /* RESPONSIVE DESIGN */
+        @media (max-width: 1024px) {
+          header nav { display: none; }
+          .hero { flex-direction: column; text-align: center; padding: 100px 5% 80px; }
+          .hero img { width: 300px !important; margin-top: 40px; }
+          .hero-text { margin: 0 auto; }
+        }
+        @media (max-width: 600px) {
+          .section { padding: 60px 5%; }
+          .category-grid { grid-template-columns: 1fr; }
+          .mega-menu { width: 90vw; left: 5vw; }
+        }
       ` }} />
 
       <header>
-        <Link href="/" className="logo">StudyHub</Link>
-        <nav>
-          <ul style={{ display: 'flex', gap: '30px', listStyle: 'none' }}>
-            <li className="mega-wrapper" onMouseEnter={() => setShowMegaMenu(true)} onMouseLeave={() => setShowMegaMenu(false)}>
-              <div className="all-courses-btn">All Courses <motion.div animate={{ rotate: showMegaMenu ? 180 : 0 }} style={{width:0, height:0, borderLeft:'5px solid transparent', borderRight:'5px solid transparent', borderTop:'6px solid #5b6cfd'}}></motion.div></div>
-              
-              <AnimatePresence>
-                {showMegaMenu && (
-                  <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 15 }} className="mega-menu">
-                    <div className="mega-container">
-                      <div className="mega-left">
-                        {categories.map(cat => (
-                          <div 
-                            key={cat.id} 
-                            onMouseEnter={() => setActiveCategory(cat.id)}
-                            style={{ 
-                              background: activeCategory === cat.id ? 'white' : 'transparent', 
-                              color: activeCategory === cat.id ? '#5b6cfd' : '#444',
-                              boxShadow: activeCategory === cat.id ? '0 10px 20px rgba(0,0,0,0.04)' : 'none'
-                            }}
-                          >
-                            <b style={{fontSize: '15px'}}>{cat.title}</b><br/>
-                            <small style={{opacity: 0.6}}>{cat.sub}</small>
-                          </div>
-                        ))}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '30px' }}>
+          <Link href="/" className="logo">StudyHub</Link>
+          <nav>
+            <ul style={{ display: 'flex', gap: '25px', listStyle: 'none', alignItems: 'center' }}>
+              <li className="mega-wrapper" onMouseEnter={() => setShowMegaMenu(true)} onMouseLeave={() => setShowMegaMenu(false)}>
+                <div className="all-courses-btn">All Courses <motion.div animate={{ rotate: showMegaMenu ? 180 : 0 }} style={{width:0, height:0, borderLeft:'5px solid transparent', borderRight:'5px solid transparent', borderTop:'6px solid #5b6cfd'}}></motion.div></div>
+                <AnimatePresence>
+                  {showMegaMenu && (
+                    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 15 }} className="mega-menu">
+                      <div className="mega-container">
+                        <div className="mega-left">
+                          {categories.map(cat => (
+                            <div key={cat.id} onMouseEnter={() => setActiveCategory(cat.id)} style={{ background: activeCategory === cat.id ? 'white' : 'transparent', color: activeCategory === cat.id ? '#5b6cfd' : '#444', boxShadow: activeCategory === cat.id ? '0 10px 20px rgba(0,0,0,0.04)' : 'none' }}>
+                              <b style={{fontSize: '15px'}}>{cat.title}</b><br/><small style={{opacity: 0.6}}>{cat.sub}</small>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="mega-right">
+                          {categories.find(c => c.id === activeCategory)?.items.map(item => (
+                            <Link href={item.href} key={item.name} className="course-item">{item.name}</Link>
+                          ))}
+                        </div>
                       </div>
-                      <div className="mega-right">
-                        {categories.find(c => c.id === activeCategory)?.items.map(item => (
-                          <Link href={item.href} key={item.name} className="course-item">{item.name}</Link>
-                        ))}
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </li>
-            {isOwner && <li><Link href="/neet" style={{color: '#5b6cfd', fontWeight: '800', textDecoration: 'none'}}>Dashboard</Link></li>}
-            <li style={{fontWeight: 600, color: '#444'}}>Books</li>
-            <li style={{fontWeight: 600, color: '#444'}}>Results</li>
-          </ul>
-        </nav>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </li>
+              {isOwner && <li><Link href="/neet" style={{color: '#5b6cfd', fontWeight: '800', textDecoration: 'none'}}>Dashboard</Link></li>}
+              <li style={{fontWeight: 600, color: '#444'}}>Books</li>
+              <li style={{fontWeight: 600, color: '#444'}}>Results</li>
+            </ul>
+          </nav>
+        </div>
 
         <div className="auth-btns">
           {session ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
               <Link href="/profile" className="profile-link-area">
-                <div style={{textAlign: 'right'}}>
+                {/* PROFILE IMAGE BEFORE NAME */}
+                <img src={profilePic || session.user?.image || ""} style={{width:'45px', height:'45px', borderRadius:'50%', border:'2.5px solid #5b6cfd', objectFit: 'cover'}} />
+                <div style={{textAlign: 'left'}}>
                    <div style={{fontWeight:'800', fontSize:'15px', color: '#1c252e'}}>Hi, {displayName}</div>
                    <div style={{fontSize:'10px', fontWeight:'900', color:'#5b6cfd'}}>{isOwner ? 'FACULTY' : 'STUDENT'}</div>
                 </div>
-                <img src={profilePic || session.user?.image || ""} style={{width:'42px', height:'42px', borderRadius:'50%', border:'2px solid #5b6cfd', objectFit: 'cover'}} />
               </Link>
               <button className="logout-btn" onClick={() => signOut()}>Logout</button>
             </div>
@@ -224,25 +222,16 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* HERO SECTION */}
       <div className="hero">
         {floatingAssets.map((el, i) => (
           <motion.div
             key={i}
             className={el.type === 'text' ? 'sketch-text-asset' : 'sketch-asset'}
-            style={{ 
-              top: el.top, left: el.left, 
-              fontSize: el.size || '24px', 
-              width: el.type === 'img' ? el.size : 'auto' 
-            }}
-            animate={{ 
-              y: [0, -30, 0], 
-              rotate: [0, 10, -10, 0],
-              opacity: el.type === 'text' ? [0.2, 0.4, 0.2] : [0.3, 0.6, 0.3]
-            }}
+            style={{ top: el.top, left: el.left, fontSize: el.size || '24px', width: el.type === 'img' ? el.size : 'auto' }}
+            animate={{ y: [0, -30, 0], rotate: [0, 12, -12, 0], opacity: el.type === 'text' ? [0.2, 0.4, 0.2] : [0.3, 0.6, 0.3] }}
             transition={{ duration: 6 + i, repeat: Infinity, ease: "easeInOut" }}
           >
-            {el.type === 'img' ? <img src={el.src} style={{width: '100%', opacity: 1}} alt="science" /> : el.content}
+            {el.type === 'img' ? <img src={el.src} style={{width: '100%'}} alt="science" /> : el.content}
           </motion.div>
         ))}
 
@@ -250,19 +239,12 @@ export default function HomePage() {
           <motion.h1 initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }}>
             {session ? `Welcome back, ${displayName}!` : "Crack NEET, JEE & Boards"}
           </motion.h1>
-          <p style={{fontSize: '20px', lineHeight: '1.6'}}>Master complex concepts with premium notes and daily interactive classes from top faculty.</p>
+          <p style={{fontSize: '18px', lineHeight: '1.6'}}>Master complex concepts with premium notes and daily interactive classes from top faculty.</p>
           <button className="hero-btn" onClick={handleStartLearning}>
             {session ? "Start Learning Now" : "Join StudyHub Today"}
           </button>
         </div>
-        
-        <motion.img 
-          animate={{ y: [0, -25, 0] }} 
-          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-          src="https://cdn-icons-png.flaticon.com/512/3135/3135755.png" 
-          alt="Hero" 
-          style={{width:'480px', position: 'relative', zIndex: 6, filter: 'drop-shadow(0 20px 50px rgba(0,0,0,0.2))'}} 
-        />
+        <motion.img animate={{ y: [0, -25, 0] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }} src="https://cdn-icons-png.flaticon.com/512/3135/3135755.png" style={{width:'440px', position: 'relative', zIndex: 6}} />
       </div>
 
       <div className="section" id="categories" ref={examSectionRef}>
@@ -273,9 +255,7 @@ export default function HomePage() {
               <div className="cat-content">
                 <h3 className="cat-title">{cat.title}</h3>
                 <div>{cat.pills.map((pill, pIdx) => (<span key={pIdx} className="pill">{pill}</span>))}</div>
-                <div style={{fontWeight: '800', marginTop: '20px', display: 'flex', alignItems:'center', gap: '8px', color: '#1c252e'}}>
-                   Explore Category <span>➔</span>
-                </div>
+                <div style={{fontWeight: '800', marginTop: '20px', display: 'flex', alignItems:'center', gap: '8px', color: '#1c252e'}}>Explore Category ➔</div>
               </div>
               <img src={cat.icon} className="cat-icon" alt="icon" />
             </motion.div>
@@ -283,8 +263,8 @@ export default function HomePage() {
         </div>
       </div>
 
-      <footer style={{padding:'60px 20px', textAlign:'center', background:'#1c252e', color:'white'}}>
-        <p style={{opacity: 0.5, fontSize: '15px'}}>© 2026 StudyHub | Faculty: Bhaswar Ray | Designed for Excellence</p>
+      <footer style={{padding:'50px 20px', textAlign:'center', background:'#1c252e', color:'white'}}>
+        <p style={{opacity: 0.5, fontSize: '15px'}}>© 2026 StudyHub | Made for future doctors | By Bhaswar Ray</p>
       </footer>
     </>
   )
