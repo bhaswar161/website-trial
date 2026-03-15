@@ -84,9 +84,8 @@ export default function HomePage() {
         .hero-btn:hover { transform: translateY(-3px); }
 
         /* EXAM CATEGORIES SECTION */
-        .section { padding: 100px 8%; text-align: center; }
-        .section-tag { color: #5b6cfd; font-weight: 800; text-transform: uppercase; font-size: 14px; letter-spacing: 1px; }
-        .section-title { font-size: 36px; font-weight: 900; color: #1c252e; margin: 10px 0 20px; }
+        .section { padding: 80px 8% 100px; text-align: center; }
+        .section-title { font-size: 36px; font-weight: 900; color: #1c252e; margin-bottom: 15px; }
         .section-sub { color: #666; font-size: 16px; margin-bottom: 50px; max-width: 600px; margin-left: auto; margin-right: auto; }
 
         .category-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 30px; }
@@ -100,11 +99,13 @@ export default function HomePage() {
             overflow: hidden; 
             border: 1px solid #f0f0f0; 
             box-shadow: 0 10px 30px rgba(0,0,0,0.03); 
-            transition: 0.3s ease;
+            transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            cursor: pointer;
         }
+        
         .cat-card:hover { transform: translateY(-10px); box-shadow: 0 20px 40px rgba(91, 108, 253, 0.1); }
 
-        /* The Circle Graphic behind the card */
+        /* Background Circle */
         .cat-card::after {
             content: "";
             position: absolute;
@@ -115,7 +116,9 @@ export default function HomePage() {
             background: #fff5f8;
             border-radius: 50%;
             z-index: 0;
+            transition: 0.4s ease;
         }
+        .cat-card:hover::after { transform: scale(1.1); background: #f4f6ff; }
 
         .cat-content { position: relative; z-index: 2; }
         .cat-title { font-size: 24px; font-weight: 900; color: #1c252e; margin-bottom: 20px; }
@@ -143,14 +146,21 @@ export default function HomePage() {
         }
         .explore-link:hover { color: #5b6cfd; gap: 15px; }
 
+        /* ANIMATED ICON */
         .cat-icon {
             position: absolute;
             right: 25px;
-            bottom: 60px;
-            width: 60px;
-            height: 60px;
+            bottom: 45px;
+            width: 70px;
+            height: 70px;
             z-index: 1;
-            opacity: 0.9;
+            transition: 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            filter: drop-shadow(0 5px 10px rgba(0,0,0,0.1));
+        }
+
+        .cat-card:hover .cat-icon {
+            transform: scale(1.2) rotate(-10deg) translateX(-5px);
+            filter: drop-shadow(0 10px 15px rgba(91, 108, 253, 0.2));
         }
 
         .login-btn { background:#5b6cfd; color:white; padding:10px 22px; border-radius:12px; cursor:pointer; border:none; font-weight:700; }
@@ -210,13 +220,12 @@ export default function HomePage() {
       </div>
 
       <div className="section">
-        <div className="section-tag">Explore</div>
         <h2 className="section-title">Exam Categories</h2>
-        <p className="section-sub">StudyHub is preparing students for the most competitive exams in the country. Find your path below.</p>
+        <p className="section-sub">StudyHub is preparing students for the country's most competitive exams. Find your path below.</p>
         
         <div className="category-grid">
           {examCategories.map((cat, idx) => (
-            <div key={idx} className="cat-card">
+            <div key={idx} className="cat-card" onClick={() => window.location.href = cat.href}>
               <div className="cat-content">
                 <h3 className="cat-title">{cat.title}</h3>
                 <div className="pill-group">
@@ -224,9 +233,9 @@ export default function HomePage() {
                     <span key={pIdx} className="pill">{pill}</span>
                   ))}
                 </div>
-                <Link href={cat.href} className="explore-link">
+                <div className="explore-link">
                   Explore Category <span>➔</span>
-                </Link>
+                </div>
               </div>
               <img src={cat.icon} className="cat-icon" alt="icon" />
             </div>
@@ -235,7 +244,7 @@ export default function HomePage() {
       </div>
 
       <footer style={{padding:'40px', textAlign:'center', background:'#1c252e', color:'white'}}>
-        <p style={{opacity: 0.6, fontSize: '14px'}}>© 2026 StudyHub | Faculty: Bhaswar Ray | Made for Future Doctors</p>
+        <p style={{opacity: 0.6, fontSize: '14px'}}>© 2026 StudyHub | Faculty: Bhaswar Ray | Made by Bhaswar Ray</p>
       </footer>
     </>
   )
