@@ -1,138 +1,183 @@
-"use client";
-import { useSession, signOut } from "next-auth/react"
-import { useState } from 'react'
-import { motion, AnimatePresence } from "framer-motion"
-import Link from "next/link"
+'use client'
+import Link from 'next/link'
+import { useSession, signIn, signOut } from 'next-auth/react'
+import { useState, useEffect } from 'react'
 
-export default function Homepage() {
-  const { data: session } = useSession()
-  const [showMegaMenu, setShowMegaMenu] = useState(false)
-  const [activeCategory, setActiveCategory] = useState("Competitive")
+export default function HomePage() {
+  const { data: session } = useSession();
+  const [customName, setCustomName] = useState("");
+  const [profilePic, setProfilePic] = useState("");
 
-  const categories = [
-    { id: "Competitive", title: "Competitive Exams", sub: "NEET, IIT JEE, GATE", items: ["NEET 2026", "NEET 2025", "IIT JEE", "GATE"] },
-    { id: "Boards", title: "School Boards", sub: "CBSE, ICSE, State", items: ["Class 12 Boards", "Class 11 Boards", "Class 10 Prep"] },
-    { id: "Upskilling", title: "Upskilling", sub: "Coding, Soft Skills", items: ["Web Dev", "Python", "Communication"] }
-  ]
+  // Check if the current user is the owner (you)
+  const isOwner = session?.user?.email === "bhaswarray@gmail.com";
+
+  useEffect(() => {
+    const updateProfile = () => {
+      setCustomName(localStorage.getItem("userFirstName") || "");
+      setProfilePic(localStorage.getItem("userProfilePic") || "");
+    };
+
+    updateProfile(); 
+    window.addEventListener('storage', updateProfile);
+    return () => window.removeEventListener('storage', updateProfile);
+  }, []);
+
+  const displayName = customName || session?.user?.name?.split(' ')[0] || "Student";
 
   return (
-    <div style={{ minHeight: '100vh', background: '#fcfdfe', fontFamily: 'sans-serif' }}>
-      
-      {/* IMPROVED HEADER WITH MEGA MENU */}
-      <header style={headerWrapper}>
-        <div style={headerInner}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '30px' }}>
-            <h1 style={{ fontSize: '24px', fontWeight: '900', color: '#5b6cfd', margin: 0 }}>StudyHub</h1>
-            
-            <nav style={{ display: 'flex', alignItems: 'center', gap: '25px' }}>
-              {/* MEGA MENU WRAPPER */}
-              <div 
-                onMouseEnter={() => setShowMegaMenu(true)} 
-                onMouseLeave={() => setShowMegaMenu(false)}
-                style={{ position: 'relative', padding: '10px 0' }}
-              >
-                <div style={allCoursesBtn}>
-                  All Courses <motion.span animate={{ rotate: showMegaMenu ? 180 : 0 }}>▾</motion.span>
+    <>
+      <style dangerouslySetInnerHTML={{ __html: `
+        * { margin:0; padding:0; box-sizing:border-box; font-family: Arial, sans-serif; }
+        body { background:#f5f7fb; overflow-x: hidden; }
+
+        header {
+          display:flex;
+          align-items:center;
+          justify-content:space-between;
+          padding:15px 5%;
+          background:white;
+          box-shadow:0 2px 10px rgba(0,0,0,0.1);
+          position: sticky;
+          top: 0;
+          z-index: 1000;
+        }
+
+        .logo { font-weight:bold; font-size:24px; color:#6c63ff; text-decoration:none; }
+        nav ul { display:flex; gap:25px; list-style:none; align-items:center; }
+        nav ul li { cursor: pointer; color: #444; font-weight: 500; font-size: 15px; }
+
+        /* MEGA MENU */
+        .mega-wrapper { position:relative; padding-bottom:15px; margin-bottom: -15px; }
+        .all-courses-btn { border:2px solid #6c63ff; padding:8px 16px; border-radius:12px; color:#6c63ff; font-weight:600; display:flex; align-items:center; gap:8px; }
+        .arrow { width:0; height:0; border-left:5px solid transparent; border-right:5px solid transparent; border-top:6px solid #6c63ff; transition:0.3s; }
+        .mega-wrapper:hover .arrow { transform:rotate(180deg); }
+        .mega-menu { position:absolute; top:100%; left:0; width: 800px; background:white; border-radius:12px; box-shadow:0 15px 40px rgba(0,0,0,0.2); display:none; overflow:hidden; }
+        .mega-wrapper:hover .mega-menu { display:block; }
+        .mega-container { display:flex; }
+        .mega-left { width:35%; background:#f8f9fa; padding:20px; }
+        .mega-left div { padding:10px; border-radius:8px; margin-bottom:5px; cursor:pointer; }
+        .mega-left div:hover { background:white; color:#6c63ff; }
+        .mega-right { width:65%; padding:20px; display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+        .course-item { background:#fafafa; padding:12px; border-radius:8px; font-weight:600; text-decoration:none; color:#333; text-align:center; border: 1px solid #eee; }
+        .course-item:hover { background:#6c63ff; color:white; }
+
+        /* HERO SECTION */
+        .hero { display: flex; align-items: center; justify-content: space-between; padding: 60px 8%; background: linear-gradient(135deg,#6a1b9a,#ff4ecd); border-radius: 0 0 40px 40px; color: white; }
+        .hero-text { flex: 1; }
+        .hero h1 { font-size: clamp(30px, 5vw, 48px); line-height: 1.2; }
+        .hero p { margin-top: 20px; font-size: 18px; opacity: 0.9; }
+        .hero-btn { margin-top: 30px; padding: 15px 35px; border: none; border-radius: 8px; background: white; color: #6a1b9a; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .hero-btn:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+        .hero img { width: clamp(200px, 30vw, 400px); transform: rotate(-5deg); }
+
+        /* ADMIN BADGE */
+        .admin-badge { background: #FFD700; color: #000; padding: 5px 10px; border-radius: 5px; font-size: 12px; font-weight: bold; margin-left: 10px; }
+
+        .section { padding: 60px 5%; text-align: center; }
+        .courses-grid { display: flex; justify-content: center; flex-wrap: wrap; gap: 25px; margin-top: 40px; }
+        .card { background: white; padding: 30px; width: 280px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.08); }
+        .card h3 { color: #6a1b9a; margin-bottom: 10px; }
+        .card-btn { display: inline-block; margin-top: 15px; padding: 10px 20px; background: #6c63ff; color: white; border-radius: 8px; text-decoration: none; font-weight: bold; }
+
+        .auth-btns { display: flex; align-items: center; gap: 15px; }
+        .login-btn { background:#6c63ff; color:white; padding:10px 20px; border-radius:8px; cursor:pointer; border:none; font-weight:600; }
+
+        @media (max-width: 900px) {
+          nav ul li:not(.mega-wrapper) { display: none; }
+          .mega-menu { width: 90vw; left: -10px; }
+          .hero { flex-direction: column; text-align: center; }
+          .hero img { margin-top: 30px; width: 70%; }
+        }
+      ` }} />
+
+      <header>
+        <Link href="/" className="logo">StudyHub</Link>
+        <nav>
+          <ul>
+            <li className="mega-wrapper">
+              <div className="all-courses-btn">All Courses <div className="arrow"></div></div>
+              <div className="mega-menu">
+                <div className="mega-container">
+                  <div className="mega-left">
+                    <div><b>Competitive Exams</b><br/><small>JEE, NEET, GATE</small></div>
+                    <div><b>School Preparation</b><br/><small>Class 9-12</small></div>
+                  </div>
+                  <div className="mega-right">
+                    <Link href="/neet" className="course-item">NEET</Link>
+                    <Link href="#" className="course-item">IIT JEE</Link>
+                    <Link href="#" className="course-item">Class 12</Link>
+                    <Link href="#" className="course-item">Class 11</Link>
+                  </div>
                 </div>
-
-                <AnimatePresence>
-                  {showMegaMenu && (
-                    <motion.div 
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 10 }}
-                      style={megaMenuPanel}
-                    >
-                      <div style={{ display: 'flex', height: '400px' }}>
-                        {/* LEFT SIDE: CATEGORIES */}
-                        <div style={megaLeft}>
-                          {categories.map(cat => (
-                            <div 
-                              key={cat.id}
-                              onMouseEnter={() => setActiveCategory(cat.id)}
-                              style={{
-                                ...categoryItem,
-                                background: activeCategory === cat.id ? '#fff' : 'transparent',
-                                boxShadow: activeCategory === cat.id ? '0 4px 15px rgba(0,0,0,0.05)' : 'none'
-                              }}
-                            >
-                              <b style={{ display: 'block', fontSize: '14px' }}>{cat.title}</b>
-                              <small style={{ color: '#888' }}>{cat.sub}</small>
-                            </div>
-                          ))}
-                        </div>
-
-                        {/* RIGHT SIDE: SPECIFIC COURSES */}
-                        <div style={megaRight}>
-                          {categories.find(c => c.id === activeCategory)?.items.map(item => (
-                            <Link href="/neet" key={item} style={{ textDecoration: 'none' }}>
-                              <motion.div whileHover={{ y: -3, background: '#f8f9ff' }} style={courseCard}>
-                                {item}
-                              </motion.div>
-                            </Link>
-                          ))}
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
               </div>
+            </li>
+            {/* Special link for you */}
+            {isOwner && <li><Link href="/neet" style={{color: '#6c63ff', fontWeight: 'bold', textDecoration: 'none'}}>Live Dashboard</Link></li>}
+            <li>Books</li>
+            <li>Results</li>
+          </ul>
+        </nav>
 
-              <Link href="#" style={navLink}>Books</Link>
-              <Link href="#" style={navLink}>Results</Link>
-            </nav>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-            {session ? (
-               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                 <span style={{ fontWeight: '700', fontSize: '14px' }}>Hi, {session.user?.name?.split(' ')[0]}</span>
-                 <button onClick={() => signOut()} style={logoutBtn}>Logout</button>
-               </div>
-            ) : (
-               <Link href="/login" style={loginBtn}>Login/Register</Link>
-            )}
-          </div>
+        <div className="auth-btns">
+          {session ? (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '38px', height: '38px', borderRadius: '50%', overflow: 'hidden', backgroundColor: '#6c63ff', border: '2px solid #6c63ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {profilePic ? (
+                    <img src={profilePic} alt="User" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <span style={{ color: 'white', fontWeight: 'bold', fontSize: '14px' }}>{displayName[0].toUpperCase()}</span>
+                  )}
+                </div>
+                <div style={{display: 'flex', flexDirection: 'column'}}>
+                  <Link href="/profile" style={{fontWeight:'bold', color:'#6c63ff', textDecoration:'none'}}>Hi, {displayName}</Link>
+                  {isOwner && <span style={{fontSize: '10px', color: '#666', fontWeight: 'bold'}}>FACULTY</span>}
+                </div>
+              </div>
+              <button className="login-btn" style={{background:'#ff4757'}} onClick={() => signOut()}>Logout</button>
+            </>
+          ) : (
+            <button className="login-btn" onClick={() => signIn('google')}>Login / Register</button>
+          )}
         </div>
       </header>
 
-      {/* HERO SECTION (AS SEEN IN YOUR SS) */}
-      <main style={{ paddingTop: '120px' }}>
-        <div style={heroBanner}>
-          <h2 style={{ fontSize: '42px', fontWeight: '900', textAlign: 'center' }}>Popular Courses</h2>
+      <div className="hero">
+        <div className="hero-text">
+          <h1>{session ? (isOwner ? `Welcome, Faculty ${displayName}!` : `Welcome back, ${displayName}!`) : "Crack NEET, JEE & Boards"}</h1>
+          <p>{isOwner ? "Manage your batches and start your live interactions for today." : "Free notes, MCQs, mock tests and revision for Class 11 & 12 students."}</p>
+          
+          <button className="hero-btn" onClick={() => session ? window.location.href='/neet' : signIn('google')}>
+            {session ? (isOwner ? "🚀 Start Live Classes" : "Go to My Courses") : "Start Learning"}
+          </button>
         </div>
+        <img src="https://cdn-icons-png.flaticon.com/512/3135/3135755.png" alt="Hero" />
+      </div>
 
-        <div style={courseGrid}>
-          {['Class 11', 'Class 12', 'NEET'].map((title) => (
-            <div key={title} style={popularCard}>
-               <h3 style={{ color: '#5b6cfd', fontWeight: '800' }}>{title}</h3>
-               <p style={{ color: '#666', fontSize: '14px', margin: '15px 0' }}>
-                 {title === 'NEET' ? 'MCQs, PYQs and Mock Tests' : 'Boards + Competitive Prep'}
-               </p>
-               <Link href="/neet">
-                <button style={exploreBtn}>Explore</button>
-               </Link>
-            </div>
-          ))}
+      <div className="section">
+        <h2>Popular Courses</h2>
+        <div className="courses-grid">
+          <div className="card">
+            <h3>Class 11</h3>
+            <p>Physics, Chemistry, Biology & Maths</p>
+            <Link href="#" className="card-btn">Explore</Link>
+          </div>
+          <div className="card">
+            <h3>Class 12</h3>
+            <p>Boards + Competitive Prep</p>
+            <Link href="#" className="card-btn">Explore</Link>
+          </div>
+          <div className="card">
+            <h3>NEET</h3>
+            <p>MCQs, PYQs and Mock Tests</p>
+            <Link href="/neet" className="card-btn">Explore</Link>
+          </div>
         </div>
-      </main>
-    </div>
+      </div>
+
+      <footer style={{padding:'25px', textAlign:'center', background:'#6a1b9a', color:'white'}}>
+        © 2026 StudyHub | Faculty: Bhaswar Ray | Made for Future Doctors
+      </footer>
+    </>
   )
 }
-
-// --- STYLE DEFINITIONS ---
-const headerWrapper: any = { position: 'fixed', top: 0, left: 0, width: '100%', background: '#fff', zIndex: 1000, height: '80px', borderBottom: '1px solid #f0f0f0' };
-const headerInner: any = { maxWidth: '1300px', margin: '0 auto', height: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 40px' };
-const allCoursesBtn: any = { border: '2px solid #5b6cfd', padding: '10px 20px', borderRadius: '14px', color: '#5b6cfd', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' };
-const navLink: any = { textDecoration: 'none', color: '#444', fontWeight: '600', fontSize: '15px' };
-const megaMenuPanel: any = { position: 'absolute', top: '100%', left: 0, width: '800px', background: '#fff', borderRadius: '20px', boxShadow: '0 20px 50px rgba(0,0,0,0.15)', overflow: 'hidden', zIndex: 2000 };
-const megaLeft: any = { width: '35%', background: '#f8f9fb', padding: '20px' };
-const megaRight: any = { width: '65%', padding: '30px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', overflowY: 'auto' };
-const categoryItem: any = { padding: '15px', borderRadius: '12px', cursor: 'pointer', marginBottom: '8px', transition: '0.2s' };
-const courseCard: any = { padding: '18px', borderRadius: '15px', border: '1px solid #f0f0f0', fontWeight: '700', color: '#1c252e' };
-const loginBtn: any = { background: '#5b6cfd', color: '#fff', padding: '10px 25px', borderRadius: '12px', fontWeight: '700', textDecoration: 'none' };
-const logoutBtn: any = { background: '#ff5b5b', color: '#fff', border: 'none', padding: '8px 18px', borderRadius: '10px', fontWeight: '700', cursor: 'pointer' };
-const heroBanner: any = { background: 'linear-gradient(to right, #9c42f5, #ff5b84)', height: '240px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', borderRadius: '0 0 100px 100px', marginBottom: '60px' };
-const courseGrid: any = { display: 'flex', justifyContent: 'center', gap: '30px', maxWidth: '1200px', margin: '0 auto', padding: '0 20px' };
-const popularCard: any = { background: '#fff', padding: '40px', borderRadius: '30px', textAlign: 'center', boxShadow: '0 10px 30px rgba(0,0,0,0.05)', flex: 1, border: '1px solid #f0f0f0' };
-const exploreBtn: any = { background: '#7c72ff', color: '#fff', border: 'none', padding: '10px 30px', borderRadius: '10px', fontWeight: '700', cursor: 'pointer' };
