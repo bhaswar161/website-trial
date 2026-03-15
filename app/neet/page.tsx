@@ -48,14 +48,13 @@ export default function NeetPage() {
       .from('enrollments')
       .insert([{ student_email: session.user.email, batch_id: batchId }]);
     
-    // Update local state immediately so UI changes without refresh
     if (!error || (error as any).code === '23505') {
       setEnrolledBatches(prev => [...prev, batchId]);
     }
   };
 
   const handleShare = (batchName: string) => {
-    const text = encodeURIComponent(`Hey! Join the ${batchName} batch with me on StudyHub: ` + window.location.href);
+    const text = encodeURIComponent(`Check out ${batchName} on StudyHub: ` + window.location.href);
     window.open(`https://wa.me/?text=${text}`, '_blank');
   };
 
@@ -99,55 +98,64 @@ export default function NeetPage() {
           border-bottom: 1px solid #e2e8f0;
           position: sticky; top: 0; z-index: 1000; height: 80px;
         }
-        .nav-center ul { display: flex; gap: 25px; list-style: none; align-items: center; }
-        .nav-link { text-decoration: none; color: #444; font-weight: 600; font-size: 14px; transition: 0.2s; }
+        .nav-center ul { display: flex; gap: 20px; list-style: none; align-items: center; }
         
+        /* PIC 1 STYLE BUTTONS */
+        .btn-outline-blue {
+          border: 2px solid #5b6cfd;
+          color: #5b6cfd;
+          padding: 8px 20px;
+          border-radius: 12px;
+          font-weight: 800;
+          text-decoration: none;
+          font-size: 16px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          transition: 0.2s;
+        }
+        .btn-outline-red {
+          border: 2px solid #ff4757;
+          color: #ff4757;
+          padding: 8px 20px;
+          border-radius: 12px;
+          font-weight: 800;
+          text-decoration: none;
+          font-size: 16px;
+          transition: 0.2s;
+        }
+        .nav-link-standard { text-decoration: none; color: #444; font-weight: 600; font-size: 14px; }
+
         .filter-btn { background: #fff; border: 1px solid #e2e8f0; padding: 10px 20px; cursor: pointer; font-weight: 600; color: #64748b; border-radius: 10px; text-transform: uppercase; font-size: 12px; transition: 0.2s; }
-        .filter-btn.active { color: #fff; background: #5b6cfd; border-color: #5b6cfd; box-shadow: 0 4px 12px rgba(91, 108, 253, 0.2); }
+        .filter-btn.active { color: #fff; background: #5b6cfd; border-color: #5b6cfd; }
         
         .resource-card { flex: 1; minWidth: 240px; padding: 25px; border-radius: 20px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; border: 1px solid #f1f5f9; background: #fff; position: relative; overflow: hidden; transition: 0.3s; }
         .resource-card:hover { transform: translateY(-8px); box-shadow: 0 12px 25px rgba(0,0,0,0.06); }
         
-        .admin-panel-btn {
-          color: #ff4757; border: 2px solid #ff4757; padding: 10px 24px; border-radius: 16px;
-          font-weight: 800; text-decoration: none; display: inline-block; font-size: 16px; background: transparent;
-        }
-
         .price-container { display: flex; align-items: center; gap: 12px; margin: 15px 0; }
         .discount-badge { background: #eefcf1; color: #10b981; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 800; border: 1px solid #d1fae5; display: flex; align-items: center; gap: 4px; }
       `}} />
 
       <header>
         <Link href="/" style={{ textDecoration: 'none', fontWeight: 900, fontSize: '24px', color: '#5b6cfd' }}>StudyHub</Link>
-
         <nav className="nav-center">
-          <ul style={{ listStyle: 'none', display: 'flex', gap: '25px', alignItems: 'center' }}>
+          <ul>
             <li>
-              {/* HOME BUTTON GLOW FOR ALL */}
-              <motion.div
-                animate={{ 
-                  boxShadow: ["0 0 5px #5b6cfd", "0 0 20px #5b6cfd", "0 0 5px #5b6cfd"],
-                  textShadow: ["0 0 2px #5b6cfd", "0 0 8px #5b6cfd", "0 0 2px #5b6cfd"] 
-                }}
-                transition={{ repeat: Infinity, duration: 2 }}
-                style={{ borderRadius: '8px' }}
-              >
-                <Link href="/" className="nav-link" style={{ padding: '8px 15px', color: '#5b6cfd', fontWeight: '800' }}>Home</Link>
-              </motion.div>
+              <Link href="/" className="btn-outline-blue">
+                All Courses <span>▼</span>
+              </Link>
             </li>
-            
             {isOwner && (
               <li>
-                <motion.div animate={{ scale: [1, 1.03, 1] }} transition={{ repeat: Infinity, duration: 2 }}>
-                  <Link href="/admin" className="admin-panel-btn">Admin Panel</Link>
+                <motion.div whileHover={{ scale: 1.03 }}>
+                  <Link href="/admin" className="btn-outline-red">Admin Panel</Link>
                 </motion.div>
               </li>
             )}
-            <li className="nav-link">Books</li>
-            <li className="nav-link">Results</li>
+            <li><Link href="#" className="nav-link-standard">Books</Link></li>
+            <li><Link href="#" className="nav-link-standard">Results</Link></li>
           </ul>
         </nav>
-
         <div style={{ display: 'flex', alignItems: 'center', gap: 15, justifySelf: 'end' }}>
           <Link href="/profile" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 12 }}>
             <img src={profilePic || session?.user?.image || ""} style={{ width: '42px', height: '42px', borderRadius: '50%', border: '2px solid #5b6cfd', objectFit: 'cover' }} />
@@ -164,24 +172,27 @@ export default function NeetPage() {
         <button onClick={() => router.back()} style={{ background: '#fff', border: '1px solid #e2e8f0', width: '42px', height: '42px', borderRadius: '50%', cursor: 'pointer', marginBottom: '30px', fontSize: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>←</button>
 
         <h1 style={{ fontSize: '42px', fontWeight: '900', color: '#0f172a', marginBottom: '10px', letterSpacing: '-1px' }}>NEET Online Preparation</h1>
-        
-        {/* RESOURCE BOXES */}
-        <div style={{ display: 'flex', gap: '20px', margin: '40px 0 60px', flexWrap: 'wrap' }}>
+        <p style={{ color: '#64748b', marginBottom: '40px', fontSize: '18px', maxWidth: '850px', lineHeight: '1.6' }}>
+            Access StudyHub's premium courses and resources for NEET aspirants. Master concepts with top faculty and high-yield study material.
+        </p>
+
+        {/* RESOURCE BOXES FROM PIC 2 */}
+        <div style={{ display: 'flex', gap: '20px', marginBottom: '60px', flexWrap: 'wrap' }}>
             <motion.div whileHover={{ y: -8 }} className="resource-card" style={{ borderLeft: '6px solid #5b6cfd' }}>
                 <div><b style={{fontSize:'18px'}}>Blogs</b><br/><small style={{color:'#666'}}>Read Our Latest Blogs</small></div>
-                <span>➔</span>
+                <div style={{fontSize:'18px'}}>➔</div>
             </motion.div>
             <motion.div whileHover={{ y: -8 }} className="resource-card" style={{ borderLeft: '6px solid #ff4ecd' }}>
                 <div><b style={{fontSize:'18px'}}>PDF Bank</b><br/><small style={{color:'#666'}}>Access PDF Bank</small></div>
-                <span>➔</span>
+                <div style={{fontSize:'18px'}}>➔</div>
             </motion.div>
             <motion.div whileHover={{ y: -8 }} className="resource-card" style={{ borderLeft: '6px solid #10b981' }}>
                 <div><b style={{fontSize:'18px'}}>Test Series</b><br/><small style={{color:'#666'}}>Practice with Our Mock Test</small></div>
-                <span>➔</span>
+                <div style={{fontSize:'18px'}}>➔</div>
             </motion.div>
             <motion.div whileHover={{ y: -8 }} className="resource-card" style={{ borderLeft: '6px solid #3b82f6' }}>
                 <div><b style={{fontSize:'18px'}}>Books</b><br/><small style={{color:'#666'}}>Find NEET Books</small></div>
-                <span>➔</span>
+                <div style={{fontSize:'18px'}}>➔</div>
             </motion.div>
         </div>
 
@@ -212,16 +223,14 @@ export default function NeetPage() {
                     </div>
                   </div>
 
-                  <div style={{ color: '#64748b', fontSize: '14px', marginBottom: '15px' }}>
-                    <div>👥 For NEET Aspirants | 📅 Starts: 13 Apr, 2026</div>
+                  <div style={{ color: '#64748b', fontSize: '14px', display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '15px' }}>
+                    <div>👥 For NEET Aspirants</div>
+                    <div>📅 Starts: 13 Apr, 2026</div>
                   </div>
 
-                  {/* HASHTAGS FOR ADMIN */}
-                  {isOwner && (
-                    <div style={{ display: 'flex', gap: '6px', marginBottom: '20px', flexWrap: 'wrap' }}>
-                      {batch.hashtags.map(t => <span key={t} style={{fontSize:'10px', background:'#f8fafc', color: '#5b6cfd', border: '1px solid #e2e8f0', padding:'3px 8px', borderRadius:'6px', fontWeight: '700'}}>{t}</span>)}
-                    </div>
-                  )}
+                  <div style={{ display: 'flex', gap: '6px', marginBottom: '20px', flexWrap: 'wrap' }}>
+                    {batch.hashtags.map(t => <span key={t} style={{fontSize:'10px', background:'#f8fafc', color: '#5b6cfd', border: '1px solid #e2e8f0', padding:'3px 8px', borderRadius:'6px', fontWeight: '700'}}>{t}</span>)}
+                  </div>
 
                   <div className="price-container">
                     <span style={{ fontSize: '28px', fontWeight: '900', color: '#5b6cfd' }}>₹0</span>
@@ -237,12 +246,7 @@ export default function NeetPage() {
                     ) : (
                       <>
                         <button style={{ flex: 1, padding: '15px', borderRadius: '14px', fontWeight: '900', background: '#fff', border: `2px solid ${batch.color}`, color: batch.color, opacity: 0.5, cursor: 'not-allowed' }}>EXPLORE</button>
-                        <button 
-                            onClick={() => handleEnroll(batch.id)} 
-                            style={{ flex: 1, padding: '15px', borderRadius: '14px', fontWeight: '900', background: batch.color, color: '#fff', border: 'none', cursor: 'pointer' }}
-                        >
-                          ENROLL NOW
-                        </button>
+                        <button onClick={() => handleEnroll(batch.id)} style={{ flex: 1, padding: '15px', borderRadius: '14px', fontWeight: '900', background: batch.color, color: '#fff', border: 'none', cursor: 'pointer' }}>ENROLL NOW</button>
                       </>
                     )}
                   </div>
