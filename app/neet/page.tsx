@@ -49,13 +49,14 @@ export default function NeetPage() {
   if (status === "unauthenticated") redirect("/")
   if (status === "loading" || !mounted) return null;
 
-  // BATCH DATA WITH IMPROVED IMAGES & HASHTAGS
+  // BATCH DATA WITH NEW CRASH COURSE IMAGE
   const batches = [
     { 
         id: "ultimate-2026", 
         name: "Yakeen NEET 2026", 
         color: "#6c63ff", 
         tag: "ONLINE",
+        price: "6,000",
         hashtags: ["#class 12", "#dropper", "#all"],
         banner: "https://images.unsplash.com/photo-1576091160550-2173dba999ef?q=80&w=800&auto=format&fit=crop"
     },
@@ -64,8 +65,10 @@ export default function NeetPage() {
         name: "NEET Crash Course 2026", 
         color: "#ff4ecd", 
         tag: "ONLINE",
+        price: "5,500",
         hashtags: ["#class 11", "#all"],
-        banner: "https://images.unsplash.com/photo-1532187863486-abf9d39d9995?q=80&w=800&auto=format&fit=crop"
+        // NEW IMPROVED IMAGE FOR CRASH COURSE
+        banner: "https://images.unsplash.com/photo-1631815587646-b85a1bb027e1?q=80&w=800&auto=format&fit=crop"
     }
   ];
 
@@ -91,9 +94,14 @@ export default function NeetPage() {
         .filter-btn { background: #fff; border: 1px solid #e2e8f0; padding: 10px 20px; cursor: pointer; font-weight: 600; color: #64748b; border-radius: 10px; text-transform: uppercase; font-size: 12px; transition: 0.2s; }
         .filter-btn.active { color: #fff; background: #5b6cfd; border-color: #5b6cfd; box-shadow: 0 4px 12px rgba(91, 108, 253, 0.2); }
         .resource-card { flex: 1; minWidth: 220px; padding: 20px; border-radius: 15px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; border: 1px solid #f1f5f9; transition: 0.3s; }
+        
+        /* PRICE SECTION STYLES LIKE PIC 2 */
+        .price-container { display: flex; align-items: center; gap: 12px; margin: 15px 0; }
+        .price-final { font-size: 28px; fontWeight: 900; color: #5b6cfd; }
+        .price-original { font-size: 16px; color: #94a3b8; text-decoration: line-through; }
+        .discount-badge { background: #eefcf1; color: #10b981; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 800; border: 1px solid #d1fae5; display: flex; align-items: center; gap: 4px; }
       `}} />
 
-      {/* HEADER - CENTERED LINKS & PROFILE IMAGE FIRST */}
       <header>
         <Link href="/" style={{ textDecoration: 'none', fontWeight: 900, fontSize: '24px', color: '#5b6cfd' }}>StudyHub</Link>
 
@@ -123,15 +131,14 @@ export default function NeetPage() {
       </header>
 
       <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 20px' }}>
-        {/* BACK BUTTON */}
         <button onClick={() => router.back()} style={{ background: '#fff', border: '1px solid #e2e8f0', width: '42px', height: '42px', borderRadius: '50%', cursor: 'pointer', marginBottom: '30px', fontSize: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>←</button>
 
         <h1 style={{ fontSize: '42px', fontWeight: '900', color: '#0f172a', marginBottom: '10px', letterSpacing: '-1px' }}>NEET Online Preparation</h1>
         <p style={{ color: '#64748b', marginBottom: '40px', fontSize: '18px', maxWidth: '850px', lineHeight: '1.6' }}>
-            StudyHub brings together dedicated courses for every stage, thousands of practice questions and mock tests, and flexible learning through live and recorded classes.
+            StudyHub brings together dedicated courses for every stage, thousands of practice questions and mock tests.
         </p>
 
-        {/* ANIMATED RESOURCE CARDS */}
+        {/* RESOURCE CARDS */}
         <div style={{ display: 'flex', gap: '20px', marginBottom: '50px', flexWrap: 'wrap' }}>
             <motion.div whileHover={{y:-8}} className="resource-card" style={{background: '#f0f7ff'}}>
                 <div><b style={{display:'block', fontSize:'17px'}}>Blogs</b><small style={{color:'#666'}}>Read latest updates</small></div>
@@ -151,7 +158,6 @@ export default function NeetPage() {
             </motion.div>
         </div>
 
-        {/* HASHTAG FILTERS */}
         <div style={{ display: 'flex', gap: '12px', marginBottom: '40px', flexWrap: 'wrap', borderBottom: '1px solid #e2e8f0', paddingBottom: '25px' }}>
           {["#all", "#class 11", "#class 12", "#dropper"].map(tag => (
             <button key={tag} onClick={() => setActiveFilter(tag)} className={`filter-btn ${activeFilter === tag ? 'active' : ''}`}>
@@ -160,7 +166,6 @@ export default function NeetPage() {
           ))}
         </div>
 
-        {/* BATCH GRID - REDESIGNED PER PIC 1 */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '35px' }}>
           {filteredBatches.map((batch) => {
             const isEnrolled = isOwner || enrolledBatches.includes(batch.id);
@@ -185,20 +190,23 @@ export default function NeetPage() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>📅 Starts: 13 Apr, 2026</div>
                   </div>
 
-                  {/* ADMIN-ONLY VISUAL HASHTAGS */}
+                  {/* HASHTAGS FOR ADMIN */}
                   {isOwner && (
                     <div style={{ display: 'flex', gap: '6px', marginBottom: '20px', flexWrap: 'wrap' }}>
                       {batch.hashtags.map(t => <span key={t} style={{fontSize:'10px', background:'#f8fafc', color: '#5b6cfd', border: '1px solid #e2e8f0', padding:'3px 8px', borderRadius:'6px', fontWeight: '700'}}>{t}</span>)}
                     </div>
                   )}
 
-                  <div style={{ marginBottom: '25px' }}>
-                    <span style={{ fontSize: '36px', fontWeight: '1000', color: '#10b981' }}>FREE</span>
+                  {/* UPDATED PRICE SECTION PER PIC 2 */}
+                  <div className="price-container">
+                    <span className="price-final">₹0</span>
+                    <span className="price-original">₹{batch.price}</span>
+                    <div className="discount-badge">🏷️ Discount of 100% applied</div>
                   </div>
 
                   <div style={{ display: 'flex', gap: '12px' }}>
                     <Link href={`/neet/${batch.id}`} style={{ flex: 1 }}>
-                      <button style={{ width: '100%', padding: '15px', borderRadius: '14px', fontWeight: '900', background: '#fff', border: `2px solid ${batch.color}`, color: batch.color, cursor: 'pointer', transition: '0.2s' }}>EXPLORE</button>
+                      <button style={{ width: '100%', padding: '15px', borderRadius: '14px', fontWeight: '900', background: '#fff', border: `2px solid ${batch.color}`, color: batch.color, cursor: 'pointer' }}>EXPLORE</button>
                     </Link>
                     <button 
                         onClick={!isEnrolled ? () => handleEnroll(batch.id) : undefined}
