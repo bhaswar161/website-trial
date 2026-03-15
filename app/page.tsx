@@ -125,10 +125,10 @@ export default function HomePage() {
         
         .mega-container { display:flex; height: 320px; }
         .mega-left { width:40%; background:#f9fafb; padding:20px; border-right: 1px solid #f1f1f1; }
-        .mega-left div { padding:14px; border-radius:12px; margin-bottom:8px; cursor:pointer; }
+        .mega-left div { padding:14px; border-radius:12px; margin-bottom:8px; cursor:pointer; transition: 0.2s; }
         .mega-right { width:60%; padding:20px; display:grid; grid-template-columns: 1fr; gap:10px; overflow-y: auto; }
         
-        .course-item { padding:12px; border-radius:12px; font-weight:700; text-decoration:none; color:#1c252e; border: 1px solid #f0f0f0; text-align: center; background: #fff; }
+        .course-item { padding:12px; border-radius:12px; font-weight:700; text-decoration:none; color:#1c252e; border: 1px solid #f0f0f0; transition: 0.2s; text-align: center; background: #fff; }
         .course-item:hover { background:#5b6cfd; color:#fff; border-color: #5b6cfd; }
 
         .hero { 
@@ -144,7 +144,7 @@ export default function HomePage() {
         .sketch-text-asset { position: absolute; font-family: 'Comic Sans MS', cursive; color: white; opacity: 0.25; font-weight: bold; pointer-events: none; z-index: 1; }
 
         .hero h1 { font-size: clamp(32px, 5vw, 58px); font-weight: 900; line-height: 1.1; position: relative; z-index: 10; margin-bottom: 20px; }
-        .hero-btn { padding: 18px 45px; border: none; border-radius: 16px; background: white; color: #6a1b9a; font-weight: 900; font-size: 18px; cursor: pointer; box-shadow: 0 15px 30px rgba(0,0,0,0.2); position: relative; z-index: 10; }
+        .hero-btn { padding: 18px 45px; border: none; border-radius: 16px; background: white; color: #6a1b9a; font-weight: 900; font-size: 18px; cursor: pointer; box-shadow: 0 15px 30px rgba(0,0,0,0.2); transition: 0.3s; position: relative; z-index: 10; }
 
         .section { padding: 100px 8%; text-align: center; }
         .section-title { font-size: 48px; font-weight: 950; color: #1c252e; margin-bottom: 10px; letter-spacing: -1.5px; }
@@ -161,7 +161,7 @@ export default function HomePage() {
         }
         .cat-card:hover { transform: translateY(-15px); border-color: #5b6cfd; box-shadow: 0 25px 60px rgba(91, 108, 253, 0.15); }
         
-        /* THE BALLOON - FIXED BEHIND TEXT */
+        /* THE BALLOON - LOCKED BEHIND TEXT */
         .balloon-bg { 
             position: absolute; top: 0; right: -15%; 
             width: 200px; height: 200px; background: #fff1f5; 
@@ -169,14 +169,12 @@ export default function HomePage() {
             transition: 0.5s ease;
             pointer-events: none;
         }
-        .cat-card:hover .balloon-bg { background: #f0f3ff; transform: scale(1.3); }
 
         .cat-content { position: relative; z-index: 2; } 
 
         .pill { padding: 10px 20px; border: 1px solid #eee; border-radius: 50px; font-size: 13px; font-weight: 700; color: #5b6cfd; background: #f4f6ff; margin: 0 10px 10px 0; display: inline-block; position: relative; z-index: 2; }
         
         .cat-icon { position: absolute; right: 30px; bottom: 50px; width: 95px; height: 95px; z-index: 1; transition: 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        .cat-card:hover .cat-icon { transform: scale(1.2) rotate(-15deg) translateY(-12px); filter: drop-shadow(0 20px 30px rgba(91, 108, 253, 0.3)); }
 
         .profile-link-area { display: flex; align-items: center; gap: 12px; cursor: pointer; text-decoration: none; color: inherit; }
         .logout-btn { background:#ff4757; color:white; padding:10px 20px; border-radius:10px; cursor:pointer; border:none; font-weight:700; }
@@ -185,7 +183,7 @@ export default function HomePage() {
         @media (max-width: 1100px) {
           header { grid-template-columns: 1fr auto; padding: 0 15px; }
           .nav-center { display: none; }
-          .hero { flex-direction: column; text-align: center; padding: 100px 5% 80px; }
+          .hero { flex-direction: column; text-align: center; }
           .hero img { width: 320px !important; margin-top: 50px; }
         }
         @media (max-width: 600px) {
@@ -193,7 +191,6 @@ export default function HomePage() {
           .cat-card { padding: 30px; }
           .cat-title { font-size: 26px !important; }
           .logo { font-size: 20px; }
-          /* Ensure balloon doesn't block text on small screens */
           .balloon-bg { width: 140px; height: 140px; right: -20%; }
         }
       ` }} />
@@ -226,7 +223,21 @@ export default function HomePage() {
                 )}
               </AnimatePresence>
             </li>
-            {isOwner && <li><Link href="/neet" style={{color: '#5b6cfd', fontWeight: '800', textDecoration: 'none'}}>Dashboard</Link></li>}
+
+            {/* DYNAMIC ADMIN BUTTON LOGIC */}
+            {session && (
+              <li>
+                {isOwner ? (
+                  <Link href="/admin" style={{ color: '#ff4757', fontWeight: '800', textDecoration: 'none', border: '2px solid #ff4757', padding: '8px 16px', borderRadius: '12px' }}>
+                    Admin Panel
+                  </Link>
+                ) : (
+                  <Link href="/neet" style={{ color: '#5b6cfd', fontWeight: '800', textDecoration: 'none' }}>
+                    Dashboard
+                  </Link>
+                )}
+              </li>
+            )}
             <li style={{fontWeight: 600, color: '#444'}}>Books</li>
             <li style={{fontWeight: 600, color: '#444'}}>Results</li>
           </ul>
@@ -268,6 +279,8 @@ export default function HomePage() {
             {session ? `Welcome back, ${displayName}!` : "Crack NEET, JEE & Boards"}
           </motion.h1>
           <p style={{fontSize: '18px', lineHeight: '1.6', marginBottom: '30px'}}>Master complex concepts with premium notes and daily interactive classes from top faculty.</p>
+          
+          {/* ANIMATED PULSING BUTTON */}
           <motion.button 
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
@@ -289,7 +302,9 @@ export default function HomePage() {
         <div className="category-grid">
           {examCategories.map((cat, idx) => (
             <motion.div whileHover="hover" key={idx} className="cat-card" onClick={() => window.location.href = cat.href}>
-              <div className="balloon-bg" />
+              {/* ANIMATED BALLOON BG */}
+              <motion.div variants={{ hover: { scale: 1.3, background: "#f0f3ff" } }} className="balloon-bg" />
+              
               <div className="cat-content">
                 <h3 className="cat-title" style={{fontWeight: 950, fontSize: '32px', marginBottom: '15px'}}>{cat.title}</h3>
                 <div>{cat.pills.map((pill, pIdx) => (<span key={pIdx} className="pill">{pill}</span>))}</div>
@@ -297,7 +312,14 @@ export default function HomePage() {
                    Explore Category <span>➔</span>
                 </div>
               </div>
-              <img src={cat.icon} className="cat-icon" alt="icon" />
+              
+              {/* ANIMATED ICON */}
+              <motion.img 
+                variants={{ hover: { scale: 1.2, rotate: -15, y: -12 } }}
+                src={cat.icon} 
+                className="cat-icon" 
+                alt="icon" 
+              />
             </motion.div>
           ))}
         </div>
