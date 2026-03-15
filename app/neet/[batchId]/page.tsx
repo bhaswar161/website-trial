@@ -16,7 +16,7 @@ export default function BatchDashboard({ params }: PageProps) {
   const [mounted, setMounted] = useState(false)
   const badgeRef = useRef<HTMLDivElement>(null);
   
-  // Logic & Profile States
+  // Logic & Profile Sync States
   const [localName, setLocalName] = useState("");
   const [localPic, setLocalPic] = useState("");
   const [studySeconds, setStudySeconds] = useState(0);
@@ -80,41 +80,47 @@ export default function BatchDashboard({ params }: PageProps) {
     supabase.from('student_stats').select('*').eq('email', session?.user?.email).single().then(({data}) => setUserProfile(data));
     supabase.from('notices').select('*').eq('batch_id', batchId).order('created_at', { ascending: false }).then(({data}) => setNotices(data || []));
     
-    // Fetch only events that are NOT done
+    // Fetch only active events
     const { data: eData } = await supabase.from('events').select('*').eq('batch_id', batchId).order('event_time', { ascending: true });
-    setEvents(eData?.filter(e => !e.is_done) || []);
+    setEvents(eData?.filter((ev: any) => !ev.is_done) || []);
   };
 
-  // --- EVENT ACTIONS ---
+  // --- NEW EVENT ACTIONS ---
   const handleSaveEvent = async () => {
-    if (!eventTitle || !eventDate) return;
+    if (!eventTitle || !eventDate) {
+        alert("Please provide a title and date.");
+        return;
+    }
     
-    const newEv = { batch_id: batchId, title: eventTitle, event_time: eventDate, is_done: false };
-    
-    // 1. Insert to Supabase
-    const { data, error } = await supabase.from('events').insert([newEv]).select();
-    
-    if (!error) {
-      // 2. Auto-Post Notice
-      await supabase.from('notices').insert([{ 
-        batch_id: batchId, 
-        title: "📅 New Event", 
-        content: `${eventTitle} scheduled for ${new Date(eventDate).toLocaleString()}` 
-      }]);
+    try {
+        const newEv = { batch_id: batchId, title: eventTitle, event_time: eventDate, is_done: false };
+        const { error } = await supabase.from('events').insert([newEv]);
+        
+        if (error) throw error;
 
-      // 3. Update Local UI instantly
-      setShowEventModal(false);
-      setEventTitle("");
-      setEventDate("");
-      fetchData();
+        // Auto-Post to Notification Drawer
+        await supabase.from('notices').insert([{ 
+            batch_id: batchId, 
+            title: "📅 New Event Scheduled", 
+            content: `${eventTitle} - ${new Date(eventDate).toLocaleString()}` 
+        }]);
+
+        setShowEventModal(false);
+        setEventTitle("");
+        setEventDate("");
+        fetchData(); // Refresh UI instantly
+    } catch (err: any) {
+        alert("Failed to save: " + err.message);
     }
   };
 
-  const handleDismissDone = async (ev: any) => {
-    // Mark as done in DB
+  const handleDoneDismiss = async (ev: any) => {
     await supabase.from('events').update({ is_done: true }).eq('id', ev.id);
-    // Notify batch
-    await supabase.from('notices').insert([{ batch_id: batchId, title: "Mission Accomplished ✅", content: `The event "${ev.title}" is finished.` }]);
+    await supabase.from('notices').insert([{ 
+        batch_id: batchId, 
+        title: "Mission Accomplished ✅", 
+        content: `The event "${ev.title}" is now finished.` 
+    }]);
     fetchData();
   };
 
@@ -192,7 +198,7 @@ export default function BatchDashboard({ params }: PageProps) {
           <div style={{ position: 'relative', zIndex: 1 }}>
             <small style={{ opacity: 0.8, fontWeight: '700' }}>YOUR BATCH</small>
             <h2 style={{ fontSize: '42px', fontWeight: '900', margin: '15px 0' }}>{batchId.toUpperCase()} MISSION...</h2>
-            <div style={studyGoalText}>Session Progress: <b>{Math.floor(studySeconds/60)}m / 10m</b></div>
+            <div style={studyGoalText}>Daily Study: <b>{Math.floor(studySeconds/60)}m / 10m</b></div>
           </div>
         </motion.div>
 
@@ -212,27 +218,32 @@ export default function BatchDashboard({ params }: PageProps) {
           </div>
         </section>
 
-        {/* UPCOMING EVENTS SECTION */}
+        {/* FRESH UPCOMING EVENTS SECTION */}
         <div style={dashboardGrid}>
           <div style={{ flex: 1 }}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: '15px' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: '25px' }}>
               <h3 style={sectionTitle}>Upcoming Events</h3>
               {isOwner && <motion.button whileHover={{ scale: 1.05 }} onClick={() => setShowEventModal(true)} style={addBtn}>+ Create Event</motion.button>}
             </div>
-            {events.length === 0 ? <div style={emptyBox}>🕒 No upcoming events.</div> : events.map(ev => (
-              <motion.div layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} key={ev.id} style={dataRow}>
-                <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: '800', color: '#1c252e' }}>{ev.title}</div>
-                    <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>{new Date(ev.event_time).toLocaleString()}</div>
-                </div>
-                {isOwner && (
-                  <div style={{display:'flex', gap:'10px'}}>
-                    <motion.button whileTap={{scale:0.9}} onClick={() => handleDismissDone(ev)} style={{...textActionBtn, color:'#22c55e'}}>✓ Done</motion.button>
-                    <button onClick={() => {if(confirm("Delete?")) supabase.from('events').delete().eq('id', ev.id).then(()=>fetchData())}} style={textActionBtnRed}>Delete</button>
-                  </div>
-                )}
-              </motion.div>
-            ))}
+            
+            <AnimatePresence>
+                {events.length === 0 ? <div style={emptyBox}>🕒 No upcoming events scheduled.</div> : events.map(ev => (
+                <motion.div layout initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, scale: 0.9 }} key={ev.id} style={dataRow}>
+                    <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: '800', color: '#1c252e', fontSize: '16px' }}>{ev.title}</div>
+                        <div style={{ fontSize: '12px', color: '#888', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            📅 {new Date(ev.event_time).toLocaleString()}
+                        </div>
+                    </div>
+                    {isOwner && (
+                    <div style={{display:'flex', gap:'10px'}}>
+                        <motion.button whileTap={{scale:0.9}} onClick={() => handleDoneDismiss(ev)} style={{...textActionBtn, color:'#22c55e', background: '#f0fdf4', padding: '8px 15px', borderRadius: '10px'}}>✓ Done</motion.button>
+                        <button onClick={() => {if(confirm("Delete this event?")) supabase.from('events').delete().eq('id', ev.id).then(()=>fetchData())}} style={{...textActionBtnRed, background: '#fef2f2', padding: '8px 15px', borderRadius: '10px'}}>Delete</button>
+                    </div>
+                    )}
+                </motion.div>
+                ))}
+            </AnimatePresence>
           </div>
         </div>
       </main>
@@ -285,13 +296,28 @@ export default function BatchDashboard({ params }: PageProps) {
         {showEventModal && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={modalOverlay} onClick={() => setShowEventModal(false)}>
             <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} style={modal} onClick={e => e.stopPropagation()}>
-               <h3 style={{marginTop:0, fontWeight: '900'}}>Schedule New Event</h3>
-               <p style={{fontSize: '13px', color: '#666', marginBottom: '20px'}}>Students will be notified automatically.</p>
-               <input placeholder="Event Title (e.g. Physics Mock Test)" value={eventTitle} onChange={e => setEventTitle(e.target.value)} style={modalInput} />
-               <input type="datetime-local" value={eventDate} onChange={e => setEventDate(e.target.value)} style={{...modalInput, marginTop:'15px'}} />
-               <div style={{display: 'flex', gap: '10px', marginTop: '25px'}}>
-                  <button onClick={handleSaveEvent} style={notifSendBtn}>Create Event</button>
-                  <button onClick={() => setShowEventModal(false)} style={{...notifSendBtn, background: '#eee', color: '#333'}}>Cancel</button>
+               <h2 style={{margin: '0 0 10px', fontWeight: '900'}}>Schedule Event</h2>
+               <p style={{color: '#666', fontSize: '14px', marginBottom: '25px'}}>Students will be notified automatically.</p>
+               
+               <div style={{marginBottom: '20px'}}>
+                  <label style={inputLabel}>Event Title</label>
+                  <input placeholder="Ex: Physics Mock Test" value={eventTitle} onChange={e => setEventTitle(e.target.value)} style={modalInput} />
+               </div>
+
+               <div style={{marginBottom: '30px'}}>
+                  <label style={inputLabel}>Date & Time</label>
+                  <div style={customDateWrapper}>
+                    <input type="datetime-local" value={eventDate} onChange={e => setEventDate(e.target.value)} style={hiddenDateInput} />
+                    <div style={dateDisplayFake}>
+                       {eventDate ? new Date(eventDate).toLocaleString() : 'Select Date and Time'}
+                       <span style={{fontSize: '18px'}}>📅</span>
+                    </div>
+                  </div>
+               </div>
+
+               <div style={{display: 'flex', gap: '12px'}}>
+                  <motion.button whileTap={{scale: 0.95}} onClick={handleSaveEvent} style={notifSendBtn}>Create Event</motion.button>
+                  <motion.button whileTap={{scale: 0.95}} onClick={() => setShowEventModal(false)} style={{...notifSendBtn, background: '#f5f5f5', color: '#333'}}>Cancel</motion.button>
                </div>
             </motion.div>
           </motion.div>
@@ -331,7 +357,7 @@ export default function BatchDashboard({ params }: PageProps) {
 // --- STYLE DEFINITIONS ---
 const headerWrapper: any = { position:'fixed', top:0, left:0, width:'100%', background:'#fff', borderBottom:'1px solid #f0f0f0', zIndex: 1000, height: '80px', boxShadow:'0 2px 15px rgba(0,0,0,0.03)' };
 const headerInner: any = { maxWidth:'1300px', margin:'0 auto', display:'flex', justifyContent:'space-between', alignItems:'center', height:'100%', padding:'0 25px' };
-const contentArea: any = { paddingTop:'180px', maxWidth:'1200px', margin:'0 auto', paddingBottom:'60px' };
+const contentArea: any = { paddingTop:'180px', maxWidth:'1200px', margin:'0 auto', paddingBottom:'60px', paddingLeft:'20px', paddingRight:'20px' };
 const statPillGroup: any = { display: 'flex', gap: '12px', alignItems: 'center' };
 const streakPill: any = { background: '#fff5f5', border: '1px solid #ffdcdc', padding: '10px 18px', borderRadius: '14px', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer' };
 const bellContainer: any = { position: 'relative', background: '#f8f9ff', padding: '10px', borderRadius: '14px', cursor: 'pointer', border: '1px solid #eee' };
@@ -358,23 +384,27 @@ const modalOverlay: any = { position:'fixed', top:0, left:0, width:'100%', heigh
 const drawerUI: any = { width:'460px', height:'100%', background:'#fff', display:'flex', flexDirection:'column', boxShadow: '-10px 0 30px rgba(0,0,0,0.05)', position: 'absolute', right: 0 };
 const drawerHeaderUI: any = { padding:'30px 25px 20px', display:'flex', justifyContent:'space-between', alignItems: 'center' };
 const markReadBtnUI: any = { background: '#f0f3ff', border: '1px solid #e0e7ff', padding: '10px 18px', borderRadius: '12px', fontSize: '13px', fontWeight: '700', color: '#5b6cfd', cursor: 'pointer' };
-const notifCardUI: any = { padding: '20px', borderRadius: '25px', background: '#f8fafc', border: '1px solid #f1f5f9', marginBottom: '12px' };
+const notifCardUI: any = { padding: '20px', borderRadius: '25px', background: '#f8fafc', border: '1px solid #f1f5f9', marginBottom: '12px', boxShadow: '0 4px 10px rgba(0,0,0,0.02)' };
 const adminPanelNotifUI: any = { padding: '20px', borderTop: '1px solid #eee', background: '#fcfdfe' };
 const subjectInputUI: any = { width:'100%', padding:'12px', borderRadius:'12px', border:'1px solid #eee', marginBottom:'10px', fontSize:'14px' };
 const notifInputUI: any = { width: '100%', padding: '15px', borderRadius: '15px', border: '1px solid #eee', fontSize: '14px', minHeight: '80px' };
-const notifSendBtn: any = { width: '100%', padding: '12px', background: '#111', color: '#fff', border: 'none', borderRadius: '12px', fontWeight: 'bold', marginTop: '10px', cursor:'pointer' };
+const notifSendBtn: any = { flex: 1, padding: '15px', background: '#111', color: '#fff', border: 'none', borderRadius: '16px', fontWeight: '900', cursor:'pointer' };
 const streakCardPremium: any = { width:'400px', background:'#fff', borderRadius:'40px', overflow:'hidden', position:'relative', textAlign:'center', boxShadow:'0 30px 60px rgba(0,0,0,0.3)' };
 const streakCircleHeader: any = { height: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center', position:'relative' };
-const streakMainVal: any = { width: '120px', height: '120px', background: '#fff', borderRadius: '50%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontSize: '40px', fontWeight: '900', color: '#5b6cfd' };
+const streakMainVal: any = { width: '120px', height: '120px', background: '#fff', borderRadius: '50%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontSize: '40px', fontWeight: '900', color: '#5b6cfd', boxShadow: '0 10px 20px rgba(0,0,0,0.05)' };
 const streakInfoBody: any = { padding: '30px 25px 35px', background: '#fff' };
 const progressBarBg: any = { width:'100%', height:'8px', background:'#f0f0f0', borderRadius:'10px', marginTop:'15px', overflow:'hidden' };
 const progressBarFill: any = { height:'100%', background:'#5b6cfd' };
 const shareSectionUI: any = { padding: '20px 20px 30px', background: '#fcfdfe', borderTop: '1px solid #eee' };
 const downloadBtnUI: any = { width: '100%', padding: '14px', background: '#111', color: '#fff', border: 'none', borderRadius: '16px', fontWeight: 'bold', cursor: 'pointer' };
 const closeX: any = { position:'absolute', top:'20px', right:'20px', border:'none', background:'none', fontSize:'22px', cursor:'pointer', color:'#fff', zIndex: 10 };
-const dropdownMenu: any = { position: 'absolute', top: '65px', right: '0', background: '#fff', boxShadow: '0 15px 35px rgba(0,0,0,0.12)', borderRadius: '20px', padding: '10px', zIndex: 100, minWidth: '180px', border: '1px solid #f0f0f0', display:'flex', flexDirection:'column' };
-const dropdownItem: any = { padding: '12px 15px', color: '#333', fontSize: '14px', fontWeight: '700', borderRadius: '12px', textDecoration: 'none', display: 'block' };
-const dropdownLogoutBtn: any = { width:'100%', textAlign:'left', padding: '12px 15px', background: 'none', border: 'none', color: '#ef4444', fontSize: '14px', fontWeight: '800', borderRadius: '12px', cursor: 'pointer' };
-const modal: any = { background:'#fff', padding:'40px', borderRadius:'30px', width:'400px', margin:'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' };
-const modalInput: any = { width:'100%', padding:'15px', borderRadius:'12px', border:'1px solid #eee', outline: 'none' };
+const dropdownMenu: any = { position: 'absolute', top: '75px', right: '0', background: '#fff', boxShadow: '0 15px 35px rgba(0,0,0,0.1)', borderRadius: '20px', padding: '10px', zIndex: 100, minWidth: '180px', border: '1px solid #f0f0f0' };
+const dropdownItem: any = { display:'block', padding:'12px 15px', textDecoration:'none', color:'#333', fontWeight: '700', fontSize: '14px' };
+const dropdownLogoutBtn: any = { width:'100%', textAlign:'left', padding:'12px 15px', background:'none', border:'none', color:'#ef4444', fontWeight: '800', cursor:'pointer' };
+const modal: any = { background:'#fff', padding:'40px', borderRadius:'40px', width:'450px', boxShadow: '0 25px 50px rgba(0,0,0,0.1)' };
+const inputLabel: any = { display: 'block', fontSize: '13px', fontWeight: '800', color: '#888', marginBottom: '8px', marginLeft: '5px' };
+const modalInput: any = { width:'100%', padding:'16px', borderRadius:'18px', border:'1.5px solid #eee', fontSize: '15px', outline: 'none' };
+const customDateWrapper: any = { position: 'relative', width: '100%' };
+const hiddenDateInput: any = { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer', zIndex: 2 };
+const dateDisplayFake: any = { padding: '16px', borderRadius: '18px', border: '1.5px solid #eee', background: '#f9f9fb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#333', fontSize: '15px' };
 const emptyBox: any = { padding: '40px', textAlign: 'center', color: '#aaa', fontSize: '14px' };
