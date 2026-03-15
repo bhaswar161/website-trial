@@ -17,12 +17,14 @@ export default function BatchDashboard({ params }: PageProps) {
   const badgeRef = useRef<HTMLDivElement>(null);
   const dateInputRef = useRef<HTMLInputElement>(null);
   
-  // States
+  // Logic & Profile Sync States
   const [localName, setLocalName] = useState("");
   const [localPic, setLocalPic] = useState("");
   const [studySeconds, setStudySeconds] = useState(0);
   const [streak, setStreak] = useState(0);
   const [isStreakAchieved, setIsStreakAchieved] = useState(false);
+
+  // Data States
   const [notices, setNotices] = useState<any[]>([])
   const [events, setEvents] = useState<any[]>([])
   const [userProfile, setUserProfile] = useState<any>(null)
@@ -34,7 +36,7 @@ export default function BatchDashboard({ params }: PageProps) {
   const [showStreakModal, setShowStreakModal] = useState(false)
   const [showEventModal, setShowEventModal] = useState(false)
 
-  // Admin Input States
+  // Form States
   const [newNotice, setNewNotice] = useState("")
   const [noticeSubject, setNoticeSubject] = useState("")
   const [eventTitle, setEventTitle] = useState("")
@@ -83,17 +85,17 @@ export default function BatchDashboard({ params }: PageProps) {
     setEvents(eData?.filter((ev: any) => !ev.is_done) || []);
   };
 
-  // --- EVENT ACTIONS WITH AUTO-NOTIFICATIONS ---
+  // --- AUTO-NOTIFY LOGIC FOR EVENTS ---
   const handleSaveEvent = async () => {
     if (!eventTitle || !eventDate) return;
     try {
         const evPayload = { batch_id: batchId, title: eventTitle, event_time: eventDate, is_done: false };
         if (editingEvent) {
           await supabase.from('events').update(evPayload).eq('id', editingEvent.id);
-          await supabase.from('notices').insert([{ batch_id: batchId, title: "🔄 Event Updated", content: `"${eventTitle}" has been rescheduled for ${new Date(eventDate).toLocaleString()}` }]);
+          await supabase.from('notices').insert([{ batch_id: batchId, title: "🔄 Event Updated", content: `"${eventTitle}" rescheduled for ${new Date(eventDate).toLocaleString()}` }]);
         } else {
           await supabase.from('events').insert([evPayload]);
-          await supabase.from('notices').insert([{ batch_id: batchId, title: "📅 New Event Added", content: `${eventTitle} is scheduled for ${new Date(eventDate).toLocaleString()}` }]);
+          await supabase.from('notices').insert([{ batch_id: batchId, title: "📅 New Event Added", content: `${eventTitle} set for ${new Date(eventDate).toLocaleString()}` }]);
         }
         setShowEventModal(false); setEventTitle(""); setEventDate(""); setEditingEvent(null); fetchData();
     } catch (err: any) { alert("Error: " + err.message); }
@@ -108,19 +110,18 @@ export default function BatchDashboard({ params }: PageProps) {
 
   const handleDoneDismiss = async (ev: any) => {
     await supabase.from('events').update({ is_done: true }).eq('id', ev.id);
-    await supabase.from('notices').insert([{ batch_id: batchId, title: "✅ Mission AccomplISHED", content: `The task "${ev.title}" has been successfully completed!` }]);
+    await supabase.from('notices').insert([{ batch_id: batchId, title: "✅ Event Finished", content: `Great job! "${ev.title}" is completed.` }]);
     fetchData();
   };
 
   const handleDeleteEvent = async (ev: any) => {
     if(confirm("Delete this event?")) {
         await supabase.from('events').delete().eq('id', ev.id);
-        await supabase.from('notices').insert([{ batch_id: batchId, title: "🚫 Event Cancelled", content: `The event "${ev.title}" was removed from the schedule.` }]);
+        await supabase.from('notices').insert([{ batch_id: batchId, title: "🚫 Event Cancelled", content: `"${ev.title}" has been removed.` }]);
         fetchData();
     }
   };
 
-  // --- NOTICE ACTIONS ---
   const handlePostNotice = async () => {
     if (!newNotice.trim() || !noticeSubject.trim()) return;
     const nData = { batch_id: batchId, title: noticeSubject, content: newNotice.trim() };
@@ -131,7 +132,7 @@ export default function BatchDashboard({ params }: PageProps) {
 
   const handleDownloadBadge = async () => {
     if (badgeRef.current) {
-      const canvas = await html2canvas(badgeRef.current, { scale: 3, backgroundColor: '#ffffff' });
+      const canvas = await html2canvas(badgeRef.current, { scale: 3, backgroundColor: '#ffffff', useCORS: true });
       canvas.toBlob((blob) => { if (blob) saveAs(blob, `Streak_${streak}Days.png`); });
     }
   };
@@ -150,7 +151,6 @@ export default function BatchDashboard({ params }: PageProps) {
         <div style={headerInner}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
             <Link href="/" style={{ textDecoration: 'none' }}><motion.div whileHover={{x:-3}} style={backBtnCircle}>←</motion.div></Link>
-            {/* CLICK LOGO TO HOMEPAGE */}
             <Link href="/" style={{ textDecoration: 'none' }}>
                <h1 style={{ fontSize: '22px', fontWeight: '900', color: '#5b6cfd', margin: 0, cursor: 'pointer' }}>StudyHub</h1>
             </Link>
@@ -162,12 +162,24 @@ export default function BatchDashboard({ params }: PageProps) {
                     <span>🔔</span>{unreadCount > 0 && <span style={bellBadge}>{unreadCount}</span>}
                 </motion.div>
             </div>
-            <div style={profileTrigger} onClick={() => setShowProfileMenu(!showProfileMenu)}>
+            
+            <div style={{ position: 'relative' }}>
+              <div style={profileTrigger} onClick={() => setShowProfileMenu(!showProfileMenu)}>
                 <motion.img animate={{ boxShadow: ['0 0 0px #5b6cfd', '0 0 10px #5b6cfd', '0 0 0px #5b6cfd'] }} transition={{ repeat: Infinity, duration: 3 }} src={finalDisplayPic} style={navAvatar} />
                 <div style={nameWrapper}>
                   <span style={navNameText}>Hi, {finalDisplayName}</span>
                   <span style={navRoleText}>{isOwner ? 'FACULTY' : 'STUDENT'}</span>
                 </div>
+              </div>
+              <AnimatePresence>
+                {showProfileMenu && (
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} style={dropdownMenu}>
+                    <Link href="/profile" style={dropdownItem}>👤 My Profile</Link>
+                    <hr style={{ border: '0', borderTop: '1px solid #f0f0f0', margin: '5px 0' }} />
+                    <button onClick={() => signOut({ callbackUrl: '/' })} style={dropdownLogoutBtn}>🚪 Logout</button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
         </div>
@@ -177,49 +189,44 @@ export default function BatchDashboard({ params }: PageProps) {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={batchBanner}>
           <div style={bannerDots} />
           <h2 style={{ fontSize: '42px', fontWeight: '900', margin: 0, position: 'relative' }}>{batchId.toUpperCase()} MISSION</h2>
+          <div style={studyGoalText}>Progress: <b>{Math.floor(studySeconds/60)}m / 10m</b></div>
         </motion.div>
 
         {/* OFFERINGS */}
-        <section style={{ marginBottom: '40px' }}>
-          <h3 style={sectionTitle}>Batch Offerings</h3>
-          <div style={offeringGrid}>
-            {['All Classes', 'All Tests', 'My Doubts', 'Community'].map((item, idx) => (
-              <Link key={item} href={item === 'All Classes' ? `/neet/${batchId}/all-classes` : '#'} style={{ textDecoration: 'none' }}>
-                <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.1 }}
-                   whileHover={{ y: -8, scale: 1.02, boxShadow: '0 15px 30px rgba(91, 108, 253, 0.1)' }} style={offeringItem}>
-                  <span style={{ fontWeight: '800', color: '#000', fontSize: '16px' }}>{item}</span>
-                  <div style={arrowCircle}>❯</div>
-                </motion.div>
-              </Link>
-            ))}
-          </div>
-        </section>
+        <div style={offeringGrid}>
+          {['All Classes', 'All Tests', 'My Doubts', 'Community'].map((item, idx) => (
+            <Link key={item} href={item === 'All Classes' ? `/neet/${batchId}/all-classes` : '#'} style={{ textDecoration: 'none' }}>
+              <motion.div whileHover={{ y: -8, scale: 1.02 }} style={offeringItem}>
+                <span style={{ fontWeight: '800', color: '#000', fontSize: '16px' }}>{item}</span>
+                <div style={arrowCircle}>❯</div>
+              </motion.div>
+            </Link>
+          ))}
+        </div>
 
-        {/* EVENTS */}
-        <div style={dashboardGrid}>
-          <div style={{ flex: 1 }}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: '15px' }}>
-              <h3 style={sectionTitle}>Upcoming Events</h3>
-              {isOwner && <motion.button whileHover={{ scale: 1.05 }} onClick={() => {setEditingEvent(null); setEventTitle(""); setEventDate(""); setShowEventModal(true)}} style={addBtn}>+ Create Event</motion.button>}
-            </div>
-            <AnimatePresence>
-                {events.length === 0 ? <div style={emptyBox}>🕒 No events scheduled.</div> : events.map(ev => (
-                <motion.div layout initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, scale: 0.9 }} key={ev.id} style={dataRow}>
-                    <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: '800', color: '#1c252e', fontSize: '16px' }}>{ev.title}</div>
-                        <div style={{ fontSize: '12px', color: '#888', marginTop: '6px' }}>📅 {new Date(ev.event_time).toLocaleString()}</div>
-                    </div>
-                    {isOwner && (
-                    <div style={{display:'flex', gap:'10px'}}>
-                        <button onClick={() => handleEditEvent(ev)} style={{...textActionBtn, background: '#f8faff', padding: '8px 15px', borderRadius: '10px'}}>Edit</button>
-                        <motion.button whileTap={{scale:0.9}} onClick={() => handleDoneDismiss(ev)} style={{...textActionBtn, color:'#22c55e', background: '#f0fdf4', padding: '8px 15px', borderRadius: '10px'}}>✓ Done</motion.button>
-                        <button onClick={() => handleDeleteEvent(ev)} style={{...textActionBtnRed, background: '#fef2f2', padding: '8px 15px', borderRadius: '10px'}}>Delete</button>
-                    </div>
-                    )}
-                </motion.div>
-                ))}
-            </AnimatePresence>
+        {/* EVENTS SECTION */}
+        <div style={{ marginTop: '50px' }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: '15px' }}>
+            <h3 style={sectionTitle}>Upcoming Events</h3>
+            {isOwner && <motion.button whileHover={{ scale: 1.05 }} onClick={() => {setEditingEvent(null); setEventTitle(""); setEventDate(""); setShowEventModal(true)}} style={addBtn}>+ Create Event</motion.button>}
           </div>
+          <AnimatePresence>
+            {events.length === 0 ? <div style={emptyBox}>🕒 No upcoming events.</div> : events.map(ev => (
+              <motion.div layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, scale: 0.95 }} key={ev.id} style={dataRow}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: '800', color: '#1c252e' }}>{ev.title}</div>
+                  <div style={{ fontSize: '12px', color: '#888', marginTop: '5px' }}>📅 {new Date(ev.event_time).toLocaleString()}</div>
+                </div>
+                {isOwner && (
+                  <div style={{display:'flex', gap:'10px'}}>
+                    <button onClick={() => handleEditEvent(ev)} style={{...textActionBtn, background: '#f8faff', padding: '8px 15px', borderRadius: '10px'}}>Edit</button>
+                    <motion.button whileTap={{scale:0.9}} onClick={() => handleDoneDismiss(ev)} style={{...textActionBtn, color:'#22c55e', background: '#f0fdf4', padding: '8px 15px', borderRadius: '10px'}}>✓ Done</motion.button>
+                    <button onClick={() => handleDeleteEvent(ev)} style={{...textActionBtnRed, background: '#fef2f2', padding: '8px 15px', borderRadius: '10px'}}>Delete</button>
+                  </div>
+                )}
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </div>
       </main>
 
@@ -230,14 +237,11 @@ export default function BatchDashboard({ params }: PageProps) {
             <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} style={drawerUI} onClick={e => e.stopPropagation()}>
               <div style={drawerHeaderUI}>
                  <div style={{fontSize:'22px', fontWeight:'900'}}>Notifications</div>
-                 <div style={{display:'flex', gap:'10px'}}>
-                    <motion.button whileTap={{scale:0.95}} onClick={() => {setLastReadTime(Date.now()); localStorage.setItem(`last_read_${batchId}`, Date.now().toString())}} style={markReadBtnUI}>Mark All Read</motion.button>
-                    <button onClick={() => setShowNotifs(false)} style={{...markReadBtnUI, background:'#eee', color:'#333'}}>Close</button>
-                 </div>
+                 <button onClick={() => setShowNotifs(false)} style={{...markReadBtnUI, background:'#eee', color:'#333'}}>Close</button>
               </div>
               <div style={{padding: '0 20px', flex: 1, overflowY: 'auto'}}>
                 {notices.map(n => (
-                    <motion.div key={n.id} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} style={notifCardUI}>
+                    <div key={n.id} style={notifCardUI}>
                        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
                           <div style={{fontWeight:'800', color:'#5b6cfd'}}>{n.title}</div>
                           <div style={{fontSize:'10px', color:'#aaa'}}>{new Date(n.created_at).toLocaleString()}</div>
@@ -249,12 +253,12 @@ export default function BatchDashboard({ params }: PageProps) {
                             <button onClick={() => {if(confirm("Delete notice?")) supabase.from('notices').delete().eq('id', n.id).then(()=>fetchData())}} style={textActionBtnRed}>Delete</button>
                          </div>
                        )}
-                    </motion.div>
+                    </div>
                 ))}
               </div>
               {isOwner && (
                 <div style={adminPanelNotifUI}>
-                   <input value={noticeSubject} onChange={(e)=>setNoticeSubject(e.target.value)} placeholder="Subject..." style={subjectInputUI} />
+                   <input value={noticeSubject} onChange={e=>setNoticeSubject(e.target.value)} placeholder="Subject..." style={subjectInputUI} />
                    <textarea value={newNotice} onChange={e => setNewNotice(e.target.value)} placeholder="Message..." style={notifInputUI} />
                    <button onClick={handlePostNotice} style={notifSendBtn}>{editingNotif ? 'Update Notice' : 'Post Notice'}</button>
                 </div>
@@ -268,29 +272,25 @@ export default function BatchDashboard({ params }: PageProps) {
       <AnimatePresence>
         {showEventModal && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={modalOverlay} onClick={() => setShowEventModal(false)}>
-            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} style={modal} onClick={e => e.stopPropagation()}>
+            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} style={modal} onClick={e => e.stopPropagation()}>
                <h2 style={{margin: '0 0 10px', fontWeight: '900'}}>{editingEvent ? 'Update Event' : 'Schedule Event'}</h2>
-               <div style={{marginBottom: '20px'}}>
-                  <label style={inputLabel}>Event Title</label>
-                  <input placeholder="Ex: Physics Test" value={eventTitle} onChange={e => setEventTitle(e.target.value)} style={modalInput} />
+               <label style={inputLabel}>Event Title</label>
+               <input placeholder="Ex: Physics Test" value={eventTitle} onChange={e => setEventTitle(e.target.value)} style={modalInput} />
+               <label style={{...inputLabel, marginTop:'20px'}}>Date & Time</label>
+               <div style={customDateWrapper} onClick={() => dateInputRef.current?.showPicker()}>
+                  <input ref={dateInputRef} type="datetime-local" value={eventDate} onChange={e => setEventDate(e.target.value)} style={hiddenDateInput} />
+                  <div style={dateDisplayFake}>{eventDate ? new Date(eventDate).toLocaleString() : 'Select Date and Time'}<span>📅</span></div>
                </div>
-               <div style={{marginBottom: '30px'}}>
-                  <label style={inputLabel}>Date & Time</label>
-                  <div style={customDateWrapper} onClick={() => dateInputRef.current?.showPicker()}>
-                    <input ref={dateInputRef} type="datetime-local" value={eventDate} onChange={e => setEventDate(e.target.value)} style={hiddenDateInput} />
-                    <div style={dateDisplayFake}>{eventDate ? new Date(eventDate).toLocaleString() : 'Select Date and Time'}<span>📅</span></div>
-                  </div>
-               </div>
-               <div style={{display: 'flex', gap: '12px'}}>
+               <div style={{display: 'flex', gap: '12px', marginTop:'30px'}}>
                   <motion.button whileTap={{scale: 0.95}} onClick={handleSaveEvent} style={notifSendBtn}>{editingEvent ? 'Update' : 'Create'} Event</motion.button>
-                  <motion.button whileTap={{scale: 0.95}} onClick={() => setShowEventModal(false)} style={{...notifSendBtn, background: '#f5f5f5', color: '#333'}}>Cancel</motion.button>
+                  <button onClick={() => setShowEventModal(false)} style={{...notifSendBtn, background: '#f5f5f5', color: '#333'}}>Cancel</button>
                </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* PREMIUM STREAK MODAL */}
+      {/* STREAK MODAL */}
       <AnimatePresence>
         {showStreakModal && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={modalOverlay} onClick={() => setShowStreakModal(false)}>
@@ -304,10 +304,6 @@ export default function BatchDashboard({ params }: PageProps) {
                 </motion.div>
                 <div style={streakInfoBody}>
                     <h2 style={{margin:0, fontWeight:'900'}}>Daily Streak!</h2>
-                    <div style={{display:'flex', justifyContent:'space-between', fontSize:'11px', color:'#888', marginTop:'15px'}}>
-                        <span>{Math.floor(studySeconds/60)}m done</span>
-                        <span style={{color:'#5b6cfd', fontWeight:'700'}}>{studySeconds < 600 ? `${10 - Math.floor(studySeconds/60)}m left` : 'Goal Hit!'}</span>
-                    </div>
                     <div style={progressBarBg}><motion.div animate={{width: `${(studySeconds/600)*100}%`}} style={progressBarFill} /></div>
                 </div>
               </div>
@@ -324,16 +320,19 @@ export default function BatchDashboard({ params }: PageProps) {
 const headerWrapper: any = { position:'fixed', top:0, left:0, width:'100%', background:'#fff', borderBottom:'1px solid #f0f0f0', zIndex: 1000, height: '80px', boxShadow:'0 2px 15px rgba(0,0,0,0.03)' };
 const headerInner: any = { maxWidth:'1300px', margin:'0 auto', display:'flex', justifyContent:'space-between', alignItems:'center', height:'100%', padding:'0 25px' };
 const contentArea: any = { paddingTop:'180px', maxWidth:'1200px', margin:'0 auto', paddingBottom:'60px', paddingLeft:'20px', paddingRight:'20px' };
+const backBtnCircle: any = { color:'#333', background:'#f5f5f5', width:'35px', height:'35px', borderRadius:'10px', display:'flex', alignItems:'center', justifyContent:'center', cursor: 'pointer' };
 const statPillGroup: any = { display: 'flex', gap: '12px', alignItems: 'center' };
 const streakPill: any = { background: '#fff5f5', border: '1px solid #ffdcdc', padding: '10px 18px', borderRadius: '14px', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer' };
 const bellContainer: any = { position: 'relative', background: '#f8f9ff', padding: '10px', borderRadius: '14px', cursor: 'pointer', border: '1px solid #eee' };
 const bellBadge: any = { position: 'absolute', top: '-4px', right: '-4px', background: '#ef4444', color: '#fff', fontSize: '10px', fontWeight: '900', padding: '2px 6px', borderRadius: '10px' };
-const profileTrigger: any = { display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' };
 const navAvatar: any = { width: '45px', height: '45px', borderRadius: '50%', border: '2.5px solid #5b6cfd', objectFit: 'cover' };
+const profileTrigger: any = { display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' };
 const nameWrapper: any = { display: 'flex', flexDirection: 'column' };
 const navNameText: any = { fontSize: '15px', fontWeight: '800', color: '#5b6cfd' };
 const navRoleText: any = { fontSize: '10px', fontWeight: '700', color: '#888' };
-const backBtnCircle: any = { color:'#333', background:'#f5f5f5', width:'35px', height:'35px', borderRadius:'10px', display:'flex', alignItems:'center', justifyContent:'center', cursor: 'pointer' };
+const dropdownMenu: any = { position: 'absolute', top: '75px', right: '0', background: '#fff', boxShadow: '0 15px 35px rgba(0,0,0,0.1)', borderRadius: '20px', padding: '10px', zIndex: 100, minWidth: '180px', border: '1px solid #f0f0f0' };
+const dropdownItem: any = { display:'block', padding:'12px 15px', textDecoration:'none', color:'#333', fontWeight: '700', fontSize: '14px' };
+const dropdownLogoutBtn: any = { width:'100%', textAlign:'left', padding:'12px 15px', background:'none', border:'none', color:'#ef4444', fontWeight: '800', cursor:'pointer' };
 const batchBanner: any = { background:'#1c252e', color:'#fff', padding:'80px 60px', borderRadius:'30px 30px 100px 30px', marginBottom:'50px', position: 'relative', overflow: 'hidden', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' };
 const bannerDots: any = { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.05) 1px, transparent 0)', backgroundSize: '24px 24px' };
 const studyGoalText: any = { marginTop:'20px', background:'rgba(255,255,255,0.1)', padding:'8px 16px', borderRadius:'10px', display:'inline-block', fontSize:'13px' };
@@ -362,9 +361,6 @@ const customDateWrapper: any = { position: 'relative', width: '100%', cursor: 'p
 const hiddenDateInput: any = { position: 'absolute', top: 0, left: 0, width: '1px', height: '1px', opacity: 0, pointerEvents: 'none' };
 const dateDisplayFake: any = { padding: '16px', borderRadius: '18px', border: '1.5px solid #eee', background: '#f9f9fb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#333', fontSize: '15px' };
 const emptyBox: any = { padding: '40px', textAlign: 'center', color: '#aaa', fontSize: '14px' };
-const dropdownMenu: any = { position: 'absolute', top: '75px', right: '0', background: '#fff', boxShadow: '0 15px 35px rgba(0,0,0,0.1)', borderRadius: '20px', padding: '10px', zIndex: 100, minWidth: '180px', border: '1px solid #f0f0f0' };
-const dropdownItem: any = { display:'block', padding:'12px 15px', textDecoration:'none', color:'#333', fontWeight: '700', fontSize: '14px' };
-const dropdownLogoutBtn: any = { width:'100%', textAlign:'left', padding:'12px 15px', background:'none', border:'none', color:'#ef4444', fontWeight: '800', cursor:'pointer' };
 const streakCardPremium: any = { width:'400px', background:'#fff', borderRadius:'40px', overflow:'hidden', position:'relative', textAlign:'center', boxShadow:'0 30px 60px rgba(0,0,0,0.3)' };
 const streakCircleHeader: any = { height: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center', position:'relative' };
 const streakMainVal: any = { width: '120px', height: '120px', background: '#fff', borderRadius: '50%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontSize: '40px', fontWeight: '900', color: '#5b6cfd', boxShadow: '0 10px 20px rgba(0,0,0,0.05)' };
