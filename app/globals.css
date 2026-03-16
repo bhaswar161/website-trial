@@ -1,36 +1,65 @@
-/* Smooth transitions for theme switching */
-body {
+/* 1. Global Reset & Transitions */
+* {
   margin: 0;
   padding: 0;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  box-sizing: border-box;
+  transition: background-color 0.4s ease, border-color 0.4s ease, color 0.2s ease;
 }
 
-/* Base Light Mode */
+html, body {
+  height: 100%;
+  width: 100%;
+  scroll-behavior: smooth;
+}
+
+/* 2. Theme Definitions (Controlled by ThemeContext.tsx) */
 .light-theme {
-  background-color: #f8fafc;
-  color: #0f172a;
+  --bg-primary: #f8fafc;
+  --text-primary: #0f172a;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
 }
 
-/* Base Dark Mode */
 .dark-theme {
-  background-color: #0f172a;
-  color: #f8fafc;
+  --bg-primary: #0f172a;
+  --text-primary: #f8fafc;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
 }
 
-/* Global Translucent Header Blur */
+/* 3. Global Translucent Header & Glassmorphism */
 header {
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  backdrop-filter: blur(12px) saturate(180%);
+  /* Ensures the header line is subtle in both modes */
+  border-bottom: 1px solid rgba(128, 128, 128, 0.1); 
 }
 
-/* Custom Scrollbar */
+/* 4. Custom Scrollbar (StudyHub Blue Theme) */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 10px;
 }
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
   background: #5b6cfd;
-  border-radius: 10px;
+  border-radius: 20px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #4a59e0;
+}
+
+/* 5. Utility: Disable selection on icons/buttons */
+button, img {
+  user-select: none;
+  -webkit-user-drag: none;
 }

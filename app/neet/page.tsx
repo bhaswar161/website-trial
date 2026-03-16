@@ -9,7 +9,7 @@ import { useTheme } from "../../context/ThemeContext"
 
 export default function NeetPage() {
   const { data: session, status } = useSession()
-  const { isDarkMode, toggleTheme } = useTheme()
+  const { isDarkMode } = useTheme() // Removed toggleTheme as per your idea to keep it only on Homepage
   const router = useRouter();
   const [mounted, setMounted] = useState(false)
   const [enrolledBatches, setEnrolledBatches] = useState<string[]>([])
@@ -26,19 +26,16 @@ export default function NeetPage() {
 
   const isOwner = session?.user?.email?.toLowerCase() === "bhaswarray@gmail.com";
 
-  // FIX: Sync system that prevents "forgetting" enrollments
   const fetchEnrollments = useCallback(async () => {
     if (!session?.user?.email) return;
     const email = session.user.email.toLowerCase();
     
-    // Check Local Storage first
     const localKey = `enrolled_${email}`;
     const localData = localStorage.getItem(localKey);
     if (localData) {
       setEnrolledBatches(JSON.parse(localData));
     }
 
-    // Double check with Supabase
     const { data: enrolls } = await supabase
       .from('enrollments')
       .select('batch_id')
@@ -148,8 +145,8 @@ export default function NeetPage() {
           transition: background 0.3s ease;
         }
         .nav-center ul { display: flex; gap: 20px; list-style: none; align-items: center; margin: 0; padding: 0; }
-        .btn-outline-blue { border: 2px solid #5b6cfd; color: #5b6cfd; padding: 8px 25px; border-radius: 12px; font-weight: 800; text-decoration: none; font-size: 16px; }
-        .btn-outline-red { border: 2px solid #ff4757; color: #ff4757; padding: 8px 25px; border-radius: 12px; font-weight: 800; text-decoration: none; font-size: 16px; }
+        .btn-outline-blue { border: 2px solid #5b6cfd; color: #5b6cfd; padding: 8px 25px; border-radius: 12px; font-weight: 800; text-decoration: none; font-size: 16px; transition: 0.2s; }
+        .btn-outline-red { border: 2px solid #ff4757; color: #ff4757; padding: 8px 25px; border-radius: 12px; font-weight: 800; text-decoration: none; font-size: 16px; transition: 0.2s; }
         .filter-btn { background: ${theme.card}; border: 1px solid ${theme.border}; padding: 10px 20px; cursor: pointer; font-weight: 600; color: ${theme.subtext}; border-radius: 10px; text-transform: uppercase; font-size: 12px; transition: 0.2s; }
         .filter-btn.active { color: #fff; background: #5b6cfd; border-color: #5b6cfd; }
         .batch-card { background: ${theme.card}; border-radius: 24px; overflow: hidden; border: 1px solid ${theme.border}; box-shadow: 0 10px 30px rgba(0,0,0,0.08); transition: 0.4s; position: relative; }
@@ -174,9 +171,7 @@ export default function NeetPage() {
           </ul>
         </nav>
         <div style={{ display: 'flex', alignItems: 'center', gap: 15, justifySelf: 'end' }}>
-          <button onClick={toggleTheme} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '24px' }}>
-            {isDarkMode ? "☀️" : "🌙"}
-          </button>
+          {/* THEME TOGGLE REMOVED - BUTTON NOW LIVES ON HOMEPAGE ONLY */}
           <Link href="/profile" style={{ display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none' }}>
             <img src={profilePic || session?.user?.image || ""} style={{ width: '42px', height: '42px', borderRadius: '50%', border: '2px solid #5b6cfd', objectFit: 'cover' }} />
             <div style={{ textAlign: 'left' }}>
@@ -192,23 +187,15 @@ export default function NeetPage() {
         <h1 style={{ fontSize: '42px', fontWeight: '900', color: theme.text, marginBottom: '10px' }}>NEET Online Preparation</h1>
         <p style={{ color: theme.subtext, marginBottom: '40px', fontSize: '18px', maxWidth: '850px' }}>Access StudyHub's premium courses and resources for NEET aspirants.</p>
 
-        {/* RESOURCE BOXES */}
         <div style={{ display: 'flex', gap: '20px', marginBottom: '60px', flexWrap: 'wrap' }}>
-          <motion.div whileHover={{ y: -8 }} className="resource-card" style={{ borderLeft: `6px solid #5b6cfd` }}>
-            <div><b>Blogs</b><br/><small style={{color: theme.subtext}}>Access Blogs</small></div><div>➔</div>
-          </motion.div>
-          <motion.div whileHover={{ y: -8 }} className="resource-card" style={{ borderLeft: `6px solid #ff4ecd` }}>
-            <div><b>PDF Bank</b><br/><small style={{color: theme.subtext}}>Access PDF Bank</small></div><div>➔</div>
-          </motion.div>
-          <motion.div whileHover={{ y: -8 }} className="resource-card" style={{ borderLeft: `6px solid #10b981` }}>
-            <div><b>Test Series</b><br/><small style={{color: theme.subtext}}>Access Test Series</small></div><div>➔</div>
-          </motion.div>
-          <motion.div whileHover={{ y: -8 }} className="resource-card" style={{ borderLeft: `6px solid #3b82f6` }}>
-            <div><b>Books</b><br/><small style={{color: theme.subtext}}>Access Books</small></div><div>➔</div>
-          </motion.div>
+          {['Blogs', 'PDF Bank', 'Test Series', 'Books'].map((item, idx) => (
+            <motion.div key={item} whileHover={{ y: -8 }} className="resource-card" style={{ borderLeft: `6px solid ${['#5b6cfd', '#ff4ecd', '#10b981', '#3b82f6'][idx]}` }}>
+              <div><b>{item}</b><br/><small style={{color: theme.subtext}}>Access {item}</small></div>
+              <div>➔</div>
+            </motion.div>
+          ))}
         </div>
 
-        {/* BATCH FILTER */}
         <div style={{ display: 'flex', gap: '12px', marginBottom: '40px', borderBottom: `1px solid ${theme.border}`, paddingBottom: '25px' }}>
           {["#all", "#class 11", "#class 12", "#dropper"].map(tag => (
             <button key={tag} onClick={() => setActiveFilter(tag)} className={`filter-btn ${activeFilter === tag ? 'active' : ''}`}>{tag.replace('#', '')}</button>
@@ -224,7 +211,7 @@ export default function NeetPage() {
               return (
                 <motion.div layout key={batch.id} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="batch-card">
                   <div style={{ height: '210px', position: 'relative' }}>
-                    <img src={batch.banner} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img src={batch.banner} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="banner" />
                     <div style={{ position: 'absolute', top: '15px', left: '15px', background: batch.color, color: '#fff', padding: '6px 14px', borderRadius: '8px', fontSize: '11px', fontWeight: '900' }}>{batch.tag}</div>
                   </div>
 
@@ -237,13 +224,11 @@ export default function NeetPage() {
                       </div>
                     </div>
 
-                    {/* NEW DETAILS */}
                     <div style={{ marginBottom: '15px' }}>
                         <div style={{ color: theme.subtext, fontSize: '14px', fontWeight: '600' }}>👥 For NEET Aspirants</div>
                         <div style={{ color: theme.subtext, fontSize: '13px', marginTop: '4px' }}>📅 Starts: 13 Apr, 2026 | Ends: 30 Jun, 2027</div>
                     </div>
 
-                    {/* TAGS badges */}
                     <div style={{ display: 'flex', gap: '6px', marginBottom: '20px', flexWrap: 'wrap' }}>
                         {batch.hashtags.filter(h => h !== '#all').map(h => (
                             <span key={h} style={{ background: isDarkMode ? 'rgba(91,108,253,0.1)' : '#f0f2ff', color: '#5b6cfd', fontSize: '10px', padding: '4px 10px', borderRadius: '6px', fontWeight: '800', border: '1px solid rgba(91, 108, 253, 0.2)' }}>{h.toUpperCase()}</span>
