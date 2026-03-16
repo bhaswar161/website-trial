@@ -27,7 +27,10 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>
-      {children}
+      {/* This div applies the light-theme or dark-theme class to the whole app */}
+      <div className={isDarkMode ? "dark-theme" : "light-theme"} style={{ minHeight: '100vh' }}>
+        {children}
+      </div>
     </ThemeContext.Provider>
   );
 };

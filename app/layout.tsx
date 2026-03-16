@@ -1,6 +1,6 @@
 import { NextAuthProvider } from "./providers";
 import { ThemeProvider } from "../context/ThemeContext";
-import "./globals.css"; // ⬅️ THIS LINE IS CRITICAL
+import "./globals.css"; // Ensure this matches the filename exactly
 
 export default function RootLayout({
   children,

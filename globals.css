@@ -1,28 +1,29 @@
-/* Core transitions for smooth theme switching */
+/* Smooth transitions for theme switching */
 body {
   margin: 0;
   padding: 0;
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* These classes are toggled by the ThemeProvider */
+/* Base Light Mode */
 .light-theme {
   background-color: #f8fafc;
   color: #0f172a;
 }
 
+/* Base Dark Mode */
 .dark-theme {
   background-color: #0f172a;
   color: #f8fafc;
 }
 
-/* Make sure the translucent header blur works on all browsers */
+/* Global Translucent Header Blur */
 header {
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
 }
 
-/* Custom scrollbar to match your StudyHub blue theme */
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
 }
