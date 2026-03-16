@@ -11,6 +11,7 @@ export default function NeetPage() {
   const { data: session, status } = useSession()
   const { isDarkMode } = useTheme()
   const router = useRouter();
+  
   const [mounted, setMounted] = useState(false)
   const [enrolledBatches, setEnrolledBatches] = useState<string[]>([])
   const [activeFilter, setActiveFilter] = useState("#all");
@@ -26,15 +27,14 @@ export default function NeetPage() {
 
   const isOwner = session?.user?.email?.toLowerCase() === "bhaswarray@gmail.com";
 
+  // 🔄 REUSABLE FETCH LOGIC (With LocalStorage Safety Net)
   const fetchEnrollments = useCallback(async () => {
     if (!session?.user?.email) return;
     const email = session.user.email.toLowerCase();
     
     const localKey = `enrolled_${email}`;
     const localData = localStorage.getItem(localKey);
-    if (localData) {
-      setEnrolledBatches(JSON.parse(localData));
-    }
+    if (localData) setEnrolledBatches(JSON.parse(localData));
 
     const { data: enrolls } = await supabase
       .from('enrollments')
@@ -74,22 +74,20 @@ export default function NeetPage() {
     setEnrolledBatches(updated);
     localStorage.setItem(`enrolled_${email}`, JSON.stringify(updated));
 
-    const { error } = await supabase
-      .from('enrollments')
-      .insert([{ 
-        student_email: email, 
-        student_name: displayName, 
-        batch_id: batchId,
-        batch_name: batchName 
-      }]);
+    const { error } = await supabase.from('enrollments').insert([{ 
+      student_email: email, 
+      student_name: displayName, 
+      batch_id: batchId,
+      batch_name: batchName 
+    }]);
     
     if (!error || (error as any).code === '23505') {
-        alert(`🎉 Successfully enrolled in ${batchName}!`);
+       alert(`🎉 Welcome to ${batchName}!`);
     }
   };
 
   const handleShare = (batchName: string) => {
-    const text = encodeURIComponent(`Check out ${batchName} on StudyHub: ` + window.location.href);
+    const text = encodeURIComponent(`Join ${batchName} with me on StudyHub!`);
     window.open(`https://wa.me/?text=${text}`, '_blank');
   };
 
@@ -113,56 +111,40 @@ export default function NeetPage() {
   if (status === "loading" || !mounted) return null;
 
   return (
-    <div style={{ background: theme.bg, minHeight: '100vh', fontFamily: 'sans-serif', transition: 'background 0.4s ease' }}>
+    <div style={{ background: theme.bg, minHeight: '100vh', fontFamily: 'sans-serif', transition: '0.4s' }}>
       <style dangerouslySetInnerHTML={{ __html: `
-        body { margin: 0; padding: 0; overflow-x: hidden; }
-        header { 
-          display: flex; 
-          justify-content: space-between; 
-          align-items: center; 
-          padding: 0 5%; 
-          background: ${theme.headerBg}; 
-          backdrop-filter: blur(15px); 
-          -webkit-backdrop-filter: blur(15px);
-          border-bottom: 1px solid ${theme.border}; 
-          position: sticky; top: 0; z-index: 1000; height: 80px; 
-          transition: background 0.3s ease;
-        }
-        .nav-center ul { display: flex; gap: 25px; list-style: none; align-items: center; margin: 0; padding: 0; }
+        body { margin: 0; padding: 0; }
+        header { display: flex; justify-content: space-between; align-items: center; padding: 0 5%; background: ${theme.headerBg}; backdrop-filter: blur(15px); border-bottom: 1px solid ${theme.border}; position: sticky; top: 0; z-index: 1000; height: 80px; }
         
-        /* ⬇️ BACK BUTTON STYLE */
-        .btn-back { border: 2px solid #5b6cfd; color: #5b6cfd; padding: 8px 22px; border-radius: 12px; font-weight: 800; text-decoration: none; font-size: 15px; background: rgba(91, 108, 253, 0.05); transition: 0.2s; }
-        .btn-back:hover { background: #5b6cfd; color: #fff; }
+        .home-btn { border: 2px solid #5b6cfd; color: #5b6cfd; padding: 8px 25px; border-radius: 12px; font-weight: 800; text-decoration: none; font-size: 16px; background: rgba(91, 108, 253, 0.05); transition: 0.2s; }
+        .home-btn:hover { background: #5b6cfd; color: #fff; }
 
-        /* ⬇️ ADMIN BUTTON STYLE FROM PIC 2 */
         .admin-btn { background: #ffebeb; color: #ff4757; border: 2px solid #ff4757; padding: 8px 18px; border-radius: 12px; font-weight: 800; text-decoration: none; transition: 0.3s; }
         .admin-btn:hover { background: #ff4757; color: white; }
 
-        .nav-item { color: ${theme.text}; font-weight: 600; font-size: 15px; opacity: 0.8; cursor: pointer; text-decoration: none; }
+        .nav-item { color: ${theme.text}; font-weight: 600; font-size: 15px; opacity: 0.8; text-decoration: none; }
         
-        .filter-btn { background: ${theme.card}; border: 1px solid ${theme.border}; padding: 10px 20px; cursor: pointer; font-weight: 600; color: ${theme.subtext}; border-radius: 10px; text-transform: uppercase; font-size: 12px; transition: 0.2s; }
+        .btn-back-large { display: inline-flex; align-items: center; gap: 8px; background: none; border: none; color: #5b6cfd; font-weight: 800; font-size: 18px; cursor: pointer; margin-bottom: 20px; transition: 0.2s; }
+        .btn-back-large:hover { transform: translateX(-5px); }
+
+        .filter-btn { background: ${theme.card}; border: 1px solid ${theme.border}; padding: 10px 20px; cursor: pointer; font-weight: 600; color: ${theme.subtext}; border-radius: 10px; text-transform: uppercase; font-size: 12px; }
         .filter-btn.active { color: #fff; background: #5b6cfd; border-color: #5b6cfd; }
-        .batch-card { background: ${theme.card}; border-radius: 24px; overflow: hidden; border: 1px solid ${theme.border}; box-shadow: 0 10px 30px rgba(0,0,0,0.08); transition: 0.4s; position: relative; }
+
+        .batch-card { background: ${theme.card}; border-radius: 24px; overflow: hidden; border: 1px solid ${theme.border}; box-shadow: 0 10px 30px rgba(0,0,0,0.08); transition: 0.4s; }
         .batch-card:hover { transform: translateY(-12px); border-color: #5b6cfd; }
+
         .profile-pill { display: flex; align-items: center; gap: 12px; background: ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.04)'}; padding: 6px 16px 6px 6px; border-radius: 50px; color: inherit; text-decoration: none; }
       `}} />
 
       <header>
         <Link href="/" style={{ textDecoration: 'none', fontWeight: 900, fontSize: '24px', color: '#5b6cfd' }}>StudyHub</Link>
-        
-        <nav className="nav-center">
-          <ul>
-            {/* 1) BACK BUTTON */}
-            <li><button onClick={() => router.back()} className="btn-back">← Back</button></li>
-            
-            {/* 2) HEADER LIKE PIC 2 */}
-            {session && isOwner && <li><Link href="/admin" className="admin-btn">Admin Panel</Link></li>}
-            <li><Link href="#" className="nav-item">Books</Link></li>
-            <li><Link href="#" className="nav-item">Results</Link></li>
-          </ul>
+        <nav style={{ display: 'flex', gap: '25px', alignItems: 'center' }}>
+          <Link href="/" className="home-btn">Home</Link>
+          {session && isOwner && <Link href="/admin" className="admin-btn">Admin Panel</Link>}
+          <Link href="#" className="nav-item">Books</Link>
+          <Link href="#" className="nav-item">Results</Link>
         </nav>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 15, justifySelf: 'end' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
           <Link href="/profile" className="profile-pill">
             <img src={profilePic || session?.user?.image || ""} style={{ width: '38px', height: '38px', borderRadius: '50%', border: '2px solid #5b6cfd', objectFit: 'cover' }} />
             <div style={{ textAlign: 'left', lineHeight: 1.1 }}>
@@ -175,6 +157,10 @@ export default function NeetPage() {
       </header>
 
       <main style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 20px' }}>
+        <button onClick={() => router.push('/')} className="btn-back-large">
+          <motion.span animate={{ x: [-2, 2, -2] }} transition={{ repeat: Infinity, duration: 1.5 }}>←</motion.span> Back to Home
+        </button>
+
         <h1 style={{ fontSize: '42px', fontWeight: '900', color: theme.text, marginBottom: '10px' }}>NEET Online Preparation</h1>
         <p style={{ color: theme.subtext, marginBottom: '40px', fontSize: '18px', maxWidth: '850px' }}>Access StudyHub's premium courses and resources for NEET aspirants.</p>
 
@@ -187,7 +173,7 @@ export default function NeetPage() {
           ))}
         </div>
 
-        <div style={{ display: 'flex', gap: '12px', marginBottom: '40px', borderBottom: `1px solid ${theme.border}`, paddingBottom: '25px' }}>
+        <div style={{ display: 'flex', gap: '12px', marginBottom: '40px' }}>
           {["#all", "#class 11", "#class 12", "#dropper"].map(tag => (
             <button key={tag} onClick={() => setActiveFilter(tag)} className={`filter-btn ${activeFilter === tag ? 'active' : ''}`}>{tag.replace('#', '')}</button>
           ))}
@@ -196,8 +182,7 @@ export default function NeetPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '35px' }}>
           <AnimatePresence>
             {filteredBatches.map((batch) => {
-              const isEnrolled = enrolledBatches.includes(batch.id);
-              const canExplore = isOwner || isEnrolled;
+              const canExplore = isOwner || enrolledBatches.includes(batch.id);
               return (
                 <motion.div layout key={batch.id} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="batch-card">
                   <div style={{ height: '210px', position: 'relative' }}>
@@ -212,30 +197,25 @@ export default function NeetPage() {
                           <img src="https://cdn-icons-png.flaticon.com/512/3670/3670051.png" style={{ width: '22px', cursor: 'pointer' }} onClick={() => handleShare(batch.name)} />
                       </div>
                     </div>
-                    <div style={{ marginBottom: '15px' }}>
-                        <div style={{ color: theme.subtext, fontSize: '14px', fontWeight: '600' }}>👥 For NEET Aspirants</div>
-                        <div style={{ color: theme.subtext, fontSize: '13px', marginTop: '4px' }}>📅 Starts: 13 Apr, 2026 | Ends: 30 Jun, 2027</div>
-                    </div>
+                    <div style={{ color: theme.subtext, fontSize: '14px', fontWeight: '600', marginBottom: '15px' }}>📅 Starts: 13 Apr, 2026 | Ends: 30 Jun, 2027</div>
                     <div style={{ display: 'flex', gap: '6px', marginBottom: '20px', flexWrap: 'wrap' }}>
                         {batch.hashtags.filter(h => h !== '#all').map(h => (
                             <span key={h} style={{ background: isDarkMode ? 'rgba(91,108,253,0.1)' : '#f0f2ff', color: '#5b6cfd', fontSize: '10px', padding: '4px 10px', borderRadius: '6px', fontWeight: '800' }}>{h.toUpperCase()}</span>
                         ))}
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '15px 0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: '20px' }}>
                       <span style={{ fontSize: '28px', fontWeight: '900', color: '#5b6cfd' }}>₹0</span>
                       <span style={{ fontSize: '16px', color: '#94a3b8', textDecoration: 'line-through' }}>₹{batch.price}</span>
                     </div>
-                    <div style={{ display: 'flex', gap: '12px' }}>
-                      {isDataLoading ? (
-                        <button disabled style={{ flex: 1, padding: '15px', borderRadius: '14px', background: theme.border }}>LOADING...</button>
-                      ) : canExplore ? (
-                        <Link href={`/neet/${batch.id}`} style={{ flex: 1 }}>
-                          <button style={{ width: '100%', padding: '15px', borderRadius: '14px', fontWeight: '900', background: batch.color, color: '#fff', border: 'none', cursor: 'pointer' }}>EXPLORE</button>
-                        </Link>
-                      ) : (
-                        <button onClick={() => handleEnroll(batch.id, batch.name)} style={{ flex: 1, padding: '15px', borderRadius: '14px', fontWeight: '900', background: batch.color, color: '#fff', border: 'none', cursor: 'pointer' }}>ENROLL NOW</button>
-                      )}
-                    </div>
+                    {isDataLoading ? (
+                      <button disabled style={{ width: '100%', padding: '15px', borderRadius: '14px', background: theme.border }}>LOADING...</button>
+                    ) : canExplore ? (
+                      <Link href={`/neet/${batch.id}`} style={{ width: '100%' }}>
+                        <button style={{ width: '100%', padding: '15px', borderRadius: '14px', fontWeight: '900', background: batch.color, color: '#fff', border: 'none', cursor: 'pointer' }}>EXPLORE</button>
+                      </Link>
+                    ) : (
+                      <button onClick={() => handleEnroll(batch.id, batch.name)} style={{ width: '100%', padding: '15px', borderRadius: '14px', fontWeight: '900', background: batch.color, color: '#fff', border: 'none', cursor: 'pointer' }}>ENROLL NOW</button>
+                    )}
                   </div>
                 </motion.div>
               );
