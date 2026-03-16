@@ -158,7 +158,7 @@ export default function NeetPage() {
 
       <main style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 20px' }}>
         <button onClick={() => router.push('/')} className="btn-back-large">
-          <motion.span animate={{ x: [-2, 2, -2] }} transition={{ repeat: Infinity, duration: 1.5 }}>←</motion.span> Back to Home
+          <motion.span animate={{ x: [-2, 2, -2] }} transition={{ repeat: Infinity, duration: 1.5 }}>←</motion.span> Back
         </button>
 
         <h1 style={{ fontSize: '42px', fontWeight: '900', color: theme.text, marginBottom: '10px' }}>NEET Online Preparation</h1>
