@@ -13,6 +13,7 @@ export default function NeetPage() {
   const [enrolledBatches, setEnrolledBatches] = useState<string[]>([])
   const [activeFilter, setActiveFilter] = useState("#all");
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDataLoading, setIsDataLoading] = useState(true);
   
   const [customName, setCustomName] = useState("");
   const [profilePic, setProfilePic] = useState("");
@@ -32,17 +33,21 @@ export default function NeetPage() {
     const savedTheme = localStorage.getItem("theme");
     if (savedTheme === "dark") setIsDarkMode(true);
 
-    if (!session?.user?.email) return;
-
-    const fetchData = async () => {
-      const { data: enrolls } = await supabase
-        .from('enrollments')
-        .select('batch_id')
-        .eq('student_email', session.user.email);
-      if (enrolls) setEnrolledBatches(enrolls.map(e => e.batch_id));
-    };
-    fetchData();
-  }, [session, supabase]);
+    if (status === "authenticated" && session?.user?.email) {
+      const fetchData = async () => {
+        setIsDataLoading(true);
+        const { data: enrolls } = await supabase
+          .from('enrollments')
+          .select('batch_id')
+          .eq('student_email', session.user.email);
+        if (enrolls) setEnrolledBatches(enrolls.map(e => e.batch_id));
+        setIsDataLoading(false);
+      };
+      fetchData();
+    } else if (status === "unauthenticated") {
+      setIsDataLoading(false);
+    }
+  }, [session, status, supabase]);
 
   const toggleTheme = () => {
     const newMode = !isDarkMode;
@@ -74,7 +79,6 @@ export default function NeetPage() {
       const { error: fallbackError } = await supabase
         .from('enrollments')
         .insert([{ student_email: session.user.email, batch_id: batchId }]);
-
       if (!fallbackError) {
         setEnrolledBatches(prev => [...prev, batchId]);
         alert("🎉 Enrolled! (Basic mode)");
@@ -130,61 +134,21 @@ export default function NeetPage() {
     <div style={{ background: theme.bg, minHeight: '100vh', fontFamily: 'sans-serif', transition: 'background 0.4s ease' }}>
       <style dangerouslySetInnerHTML={{ __html: `
         body { margin: 0; padding: 0; overflow-x: hidden; }
-        header {
-          display: grid;
-          grid-template-columns: 1fr auto 1fr;
-          align-items: center;
-          padding: 0 5%;
-          background: ${theme.header};
-          border-bottom: 1px solid ${theme.border};
-          position: sticky; top: 0; z-index: 1000; height: 80px;
-        }
+        header { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 0 5%; background: ${theme.header}; border-bottom: 1px solid ${theme.border}; position: sticky; top: 0; z-index: 1000; height: 80px; }
         .nav-center ul { display: flex; gap: 20px; list-style: none; align-items: center; margin: 0; padding: 0; }
         .btn-outline-blue { border: 2px solid #5b6cfd; color: #5b6cfd; padding: 8px 25px; border-radius: 12px; font-weight: 800; text-decoration: none; font-size: 16px; transition: 0.2s; }
         .btn-outline-red { border: 2px solid #ff4757; color: #ff4757; padding: 8px 25px; border-radius: 12px; font-weight: 800; text-decoration: none; font-size: 16px; transition: 0.2s; }
         .nav-link-standard { text-decoration: none; color: ${theme.subtext}; font-weight: 600; font-size: 14px; }
-        
         .filter-btn { background: ${theme.card}; border: 1px solid ${theme.border}; padding: 10px 20px; cursor: pointer; font-weight: 600; color: ${theme.subtext}; border-radius: 10px; text-transform: uppercase; font-size: 12px; transition: 0.2s; }
         .filter-btn.active { color: #fff; background: #5b6cfd; border-color: #5b6cfd; }
-
-        .batch-card {
-            background: ${theme.card}; 
-            border-radius: 24px; 
-            overflow: hidden; 
-            border: 1px solid ${theme.border}; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            position: relative;
-        }
-        .batch-card:hover {
-            transform: translateY(-12px);
-            border-color: #5b6cfd;
-            box-shadow: 0 0 25px rgba(91, 108, 253, 0.5);
-        }
-        .batch-card::after {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            border-radius: 24px;
-            border: 2px solid #5b6cfd;
-            opacity: 0;
-            transition: 0.3s;
-            pointer-events: none;
-        }
-        .batch-card:hover::after {
-            opacity: 1;
-            animation: spark-pulse 1.5s infinite;
-        }
-        @keyframes spark-pulse {
-            0% { box-shadow: 0 0 0 0px rgba(91, 108, 253, 0.7); }
-            100% { box-shadow: 0 0 0 15px rgba(91, 108, 253, 0); }
-        }
-
+        .batch-card { background: ${theme.card}; border-radius: 24px; overflow: hidden; border: 1px solid ${theme.border}; box-shadow: 0 10px 30px rgba(0,0,0,0.08); transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); position: relative; }
+        .batch-card:hover { transform: translateY(-12px); border-color: #5b6cfd; box-shadow: 0 0 25px rgba(91, 108, 253, 0.5); }
+        .batch-card::after { content: ''; position: absolute; inset: 0; border-radius: 24px; border: 2px solid #5b6cfd; opacity: 0; transition: 0.3s; pointer-events: none; }
+        .batch-card:hover::after { opacity: 1; animation: spark-pulse 1.5s infinite; }
+        @keyframes spark-pulse { 0% { box-shadow: 0 0 0 0px rgba(91, 108, 253, 0.7); } 100% { box-shadow: 0 0 0 15px rgba(91, 108, 253, 0); } }
         .resource-card { flex: 1; minWidth: 240px; padding: 25px; border-radius: 20px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; border: 1px solid ${theme.border}; background: ${theme.card}; position: relative; overflow: hidden; transition: 0.3s; color: ${theme.text}; }
         .resource-card:hover { transform: translateY(-8px); box-shadow: 0 12px 25px rgba(0,0,0,0.15); }
-        
-        .cute-toggle { background: ${isDarkMode ? '#334155' : '#e2e8f0'}; border: none; width: 50px; height: 50px; border-radius: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.3s; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        .cute-toggle img { width: 32px; height: 32px; }
+        .cute-toggle { background: ${isDarkMode ? '#334155' : '#e2e8f0'}; border: none; width: 50px; height: 50px; border-radius: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.3s; }
       `}} />
 
       <header>
@@ -193,11 +157,7 @@ export default function NeetPage() {
           <ul>
             <li><Link href="/" className="btn-outline-blue">Home</Link></li>
             {isOwner && (
-              <li>
-                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                  <Link href="/admin" className="btn-outline-red">Admin Panel</Link>
-                </motion.div>
-              </li>
+              <li><motion.div whileHover={{ scale: 1.05 }}><Link href="/admin" className="btn-outline-red">Admin Panel</Link></motion.div></li>
             )}
             <li><Link href="#" className="nav-link-standard">Books</Link></li>
             <li><Link href="#" className="nav-link-standard">Results</Link></li>
@@ -205,7 +165,7 @@ export default function NeetPage() {
         </nav>
         <div style={{ display: 'flex', alignItems: 'center', gap: 15, justifySelf: 'end' }}>
           <button onClick={toggleTheme} className="cute-toggle">
-            <img src={isDarkMode ? "https://cdn-icons-png.flaticon.com/512/606/606807.png" : "https://cdn-icons-png.flaticon.com/512/869/869869.png"} alt="theme" />
+            <img src={isDarkMode ? "https://cdn-icons-png.flaticon.com/512/606/606807.png" : "https://cdn-icons-png.flaticon.com/512/869/869869.png"} alt="theme" style={{width:'32px'}}/>
           </button>
           <Link href="/profile" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 12 }}>
             <img src={profilePic || session?.user?.image || ""} style={{ width: '42px', height: '42px', borderRadius: '50%', border: '2px solid #5b6cfd', objectFit: 'cover' }} />
@@ -219,22 +179,19 @@ export default function NeetPage() {
       </header>
 
       <main style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 20px' }}>
-        <h1 style={{ fontSize: '42px', fontWeight: '900', color: theme.text, marginBottom: '10px', letterSpacing: '-1px' }}>NEET Online Preparation</h1>
-        <p style={{ color: theme.subtext, marginBottom: '40px', fontSize: '18px', maxWidth: '850px', lineHeight: '1.6' }}>
-            Access StudyHub's premium courses and resources for NEET aspirants. Master concepts with top faculty and high-yield study material.
-        </p>
+        <h1 style={{ fontSize: '42px', fontWeight: '900', color: theme.text, marginBottom: '10px' }}>NEET Online Preparation</h1>
+        <p style={{ color: theme.subtext, marginBottom: '40px', fontSize: '18px', maxWidth: '850px' }}>Access StudyHub's premium courses and resources for NEET aspirants.</p>
 
-        {/* RESOURCE BOXES */}
         <div style={{ display: 'flex', gap: '20px', marginBottom: '60px', flexWrap: 'wrap' }}>
             {['Blogs', 'PDF Bank', 'Test Series', 'Books'].map((item, idx) => (
               <motion.div key={item} whileHover={{ y: -8 }} className="resource-card" style={{ borderLeft: `6px solid ${['#5b6cfd', '#ff4ecd', '#10b981', '#3b82f6'][idx]}` }}>
                 <div><b style={{fontSize:'18px'}}>{item}</b><br/><small style={{color: theme.subtext}}>Access {item}</small></div>
-                <div style={{fontSize:'18px'}}>➔</div>
+                <div>➔</div>
               </motion.div>
             ))}
         </div>
 
-        <div style={{ display: 'flex', gap: '12px', marginBottom: '40px', flexWrap: 'wrap', borderBottom: `1px solid ${theme.border}`, paddingBottom: '25px' }}>
+        <div style={{ display: 'flex', gap: '12px', marginBottom: '40px', borderBottom: `1px solid ${theme.border}`, paddingBottom: '25px' }}>
           {["#all", "#class 11", "#class 12", "#dropper"].map(tag => (
             <button key={tag} onClick={() => setActiveFilter(tag)} className={`filter-btn ${activeFilter === tag ? 'active' : ''}`}>{tag.replace('#', '')}</button>
           ))}
@@ -262,37 +219,32 @@ export default function NeetPage() {
                       </div>
                     </div>
 
-                    {/* ADDED BATCH DETAILS */}
                     <div style={{ marginBottom: '15px' }}>
                         <div style={{ color: theme.subtext, fontSize: '14px', fontWeight: '600' }}>👥 For NEET Aspirants</div>
-                        <div style={{ color: theme.subtext, fontSize: '13px', marginTop: '4px' }}>📅 <b>Starts:</b> 13 Apr, 2026 | <b>Ends:</b> 30 Jun, 2027</div>
+                        <div style={{ color: theme.subtext, fontSize: '13px', marginTop: '4px' }}>📅 Starts: 13 Apr, 2026 | Ends: 30 Jun, 2027</div>
                     </div>
 
-                    {/* ADDED TAGS/HASHTAGS */}
                     <div style={{ display: 'flex', gap: '6px', marginBottom: '20px', flexWrap: 'wrap' }}>
                         {batch.hashtags.filter(h => h !== '#all').map(h => (
-                            <span key={h} style={{ background: isDarkMode ? 'rgba(91,108,253,0.1)' : '#f0f2ff', color: '#5b6cfd', fontSize: '10px', padding: '4px 10px', borderRadius: '6px', fontWeight: '800', border: '1px solid rgba(91,108,253,0.2)' }}>
-                                {h.toUpperCase()}
-                            </span>
+                            <span key={h} style={{ background: isDarkMode ? 'rgba(91,108,253,0.1)' : '#f0f2ff', color: '#5b6cfd', fontSize: '10px', padding: '4px 10px', borderRadius: '6px', fontWeight: '800', border: '1px solid rgba(91,108,253,0.2)' }}>{h.toUpperCase()}</span>
                         ))}
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '15px 0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '15px 0' }}>
                       <span style={{ fontSize: '28px', fontWeight: '900', color: '#5b6cfd' }}>₹0</span>
                       <span style={{ fontSize: '16px', color: '#94a3b8', textDecoration: 'line-through' }}>₹{batch.price}</span>
                       <div style={{ background: '#eefcf1', color: '#10b981', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '800', border: '1px solid #d1fae5' }}>🏷️ 100% OFF</div>
                     </div>
 
                     <div style={{ display: 'flex', gap: '12px' }}>
-                      {canExplore ? (
+                      {isDataLoading ? (
+                        <button disabled style={{ flex: 1, padding: '15px', borderRadius: '14px', fontWeight: '900', background: theme.border, color: theme.subtext }}>LOADING...</button>
+                      ) : canExplore ? (
                         <Link href={`/neet/${batch.id}`} style={{ flex: 1 }}>
                           <button style={{ width: '100%', padding: '15px', borderRadius: '14px', fontWeight: '900', background: batch.color, color: '#fff', border: 'none', cursor: 'pointer' }}>EXPLORE</button>
                         </Link>
                       ) : (
-                        <>
-                          <button style={{ flex: 1, padding: '15px', borderRadius: '14px', fontWeight: '900', background: theme.border, border: `1px solid ${theme.border}`, color: theme.subtext, opacity: 0.5, cursor: 'not-allowed' }}>EXPLORE</button>
-                          <button onClick={() => handleEnroll(batch.id, batch.name)} style={{ flex: 1, padding: '15px', borderRadius: '14px', fontWeight: '900', background: batch.color, color: '#fff', border: 'none', cursor: 'pointer' }}>ENROLL NOW</button>
-                        </>
+                        <button onClick={() => handleEnroll(batch.id, batch.name)} style={{ flex: 1, padding: '15px', borderRadius: '14px', fontWeight: '900', background: batch.color, color: '#fff', border: 'none', cursor: 'pointer' }}>ENROLL NOW</button>
                       )}
                     </div>
                   </div>
