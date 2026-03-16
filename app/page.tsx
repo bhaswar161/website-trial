@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { useSession, signIn, signOut } from 'next-auth/react'
 import { useState, useEffect, useRef } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, Variants } from 'framer-motion'
 import { useTheme } from "../context/ThemeContext"
 
 export default function HomePage() {
@@ -69,6 +69,23 @@ export default function HomePage() {
     { type: 'pencil', content: "✏️", top: "28%", left: "18%", rotate: 45, size: "55px" },
   ];
 
+  // FIXED VARIANTS FOR TYPESCRIPT COMPATIBILITY
+  const cardContainerVariants: Variants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.15, delayChildren: 0.2 }
+    }
+  };
+
+  const cardItemVariants: Variants = {
+    hidden: { y: 40, opacity: 0, scale: 0.95 },
+    visible: { 
+      y: 0, opacity: 1, scale: 1,
+      transition: { type: "spring", stiffness: 100, damping: 15 } 
+    }
+  };
+
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: `
@@ -82,7 +99,6 @@ export default function HomePage() {
         }
 
         .logo { font-weight:900; font-size:26px; color:#5b6cfd; letter-spacing: -0.8px; }
-
         .nav-center ul { display: flex; align-items: center; gap: 25px; }
         .nav-center li { cursor: pointer; color: ${theme.text}; font-weight: 600; font-size: 15px; position: relative; }
 
@@ -91,10 +107,11 @@ export default function HomePage() {
 
         .all-courses-btn { border:2px solid #5b6cfd; padding:8px 18px; border-radius:12px; color:#5b6cfd; font-weight:700; display:flex; align-items:center; gap:8px; cursor: pointer; }
         
+        .mega-wrapper { position: relative; }
         .mega-menu { position:absolute; top:55px; left: 50%; transform: translateX(-50%); width: 550px; background:${isDarkMode ? '#1e293b' : 'white'}; border-radius:24px; box-shadow:0 25px 60px rgba(0,0,0,0.25); z-index: 2000; border: 1px solid ${theme.border}; overflow: hidden; }
         .mega-container { display:flex; height: 320px; }
         .mega-left { width:40%; background:${theme.megaLeft}; padding:20px; border-right: 1px solid ${theme.border}; }
-        .mega-left div { padding:14px; border-radius:12px; margin-bottom:8px; cursor:pointer; transition: 0.2s; }
+        .mega-left div { padding:14px; border-radius:12px; margin-bottom:8px; cursor:pointer; }
         .mega-right { width:60%; padding:20px; display:grid; gap:10px; overflow-y: auto; }
         .course-item { padding:12px; border-radius:12px; font-weight:700; color:${theme.text}; border: 1px solid ${theme.border}; text-align: center; background: ${isDarkMode ? '#0f172a' : '#fff'}; transition: 0.2s; }
 
@@ -107,7 +124,7 @@ export default function HomePage() {
         .hero-content { flex: 1.2; text-align: left; position: relative; z-index: 10; }
         .hero h1 { font-size: clamp(36px, 5vw, 68px); font-weight: 950; line-height: 1.1; margin-bottom: 20px; letter-spacing: -2px; }
         .hero p { font-size: 20px; opacity: 0.9; margin-bottom: 40px; max-width: 600px; }
-        .hero-btn { padding: 20px 50px; border: none; border-radius: 20px; background: white; color: #5b6cfd; font-weight: 950; font-size: 20px; cursor: pointer; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
+        .hero-btn { padding: 20px 50px; border: none; border-radius: 20px; background: white; color: #5b6cfd; font-weight: 950; font-size: 20px; cursor: pointer; box-shadow: 0 20px 40px rgba(0,0,0,0.2); transition: 0.3s; }
 
         .banner-img-container { flex: 0.8; display: flex; justify-content: flex-end; position: relative; z-index: 5; }
         .banner-img { width: 100%; max-width: 520px; filter: drop-shadow(0 20px 50px rgba(0,0,0,0.3)); }
@@ -120,7 +137,6 @@ export default function HomePage() {
         .cat-card:hover { transform: translateY(-15px); border-color: #5b6cfd; box-shadow: 0 25px 60px rgba(91, 108, 253, 0.2); }
         .balloon-bg { position: absolute; top: 0; right: -15%; width: 220px; height: 220px; background: ${isDarkMode ? 'rgba(91,108,253,0.1)' : '#fff1f5'}; border-radius: 50%; z-index: 0; }
         
-        .auth-section { display: flex; align-items: center; gap: 15px; }
         .theme-btn { background: ${isDarkMode ? '#334155' : '#f0f2ff'}; border: none; width: 45px; height: 45px; border-radius: 12px; cursor: pointer; font-size: 22px; display: flex; align-items: center; justify-content: center; }
         .profile-pill { display: flex; align-items: center; gap: 12px; background: ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.04)'}; padding: 6px 16px 6px 6px; border-radius: 50px; color: inherit; }
         .logout-pill-btn { background: #ff4757; color: white; border: none; padding: 10px 20px; border-radius: 12px; font-weight: 800; cursor: pointer; transition: 0.3s; }
@@ -131,7 +147,7 @@ export default function HomePage() {
 
         <nav className="nav-center">
           <ul>
-            <li onMouseEnter={() => setShowMegaMenu(true)} onMouseLeave={() => setShowMegaMenu(false)}>
+            <li className="mega-wrapper" onMouseEnter={() => setShowMegaMenu(true)} onMouseLeave={() => setShowMegaMenu(false)}>
               <div className="all-courses-btn">All Courses <motion.div animate={{ rotate: showMegaMenu ? 180 : 0 }} style={{width:0, height:0, borderLeft:'5px solid transparent', borderRight:'5px solid transparent', borderTop:'6px solid #5b6cfd'}}></motion.div></div>
               <AnimatePresence>
                 {showMegaMenu && (
@@ -208,12 +224,12 @@ export default function HomePage() {
       </section>
 
       <div className="section" ref={examSectionRef}>
-        <h2 style={{fontSize:'44px', fontWeight:950, marginBottom: '10px'}}>Explore Your Path</h2>
-        <p style={{color: theme.subtext, marginBottom: '60px', fontSize: '18px'}}>Choose your goal and start your journey today.</p>
+        <motion.h2 initial={{opacity:0, y:20}} whileInView={{opacity:1, y:0}} viewport={{once:true}} style={{fontSize:'44px', fontWeight:950, marginBottom: '10px'}}>Explore Your Path</motion.h2>
+        <motion.p initial={{opacity:0}} whileInView={{opacity:1}} viewport={{once:true}} style={{color: theme.subtext, marginBottom: '60px', fontSize: '18px'}}>Choose your goal and start your journey today.</motion.p>
         
-        <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '35px'}}>
+        <motion.div variants={cardContainerVariants} initial="hidden" whileInView="visible" viewport={{ once: true, amount: 0.2 }} style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '35px'}}>
           {examCategories.map((cat, idx) => (
-            <motion.div whileHover="hover" key={idx} className="cat-card" onClick={() => window.location.href = cat.href}>
+            <motion.div variants={cardItemVariants} whileHover="hover" key={idx} className="cat-card" onClick={() => window.location.href = cat.href}>
               <div className="balloon-bg" />
               <div style={{position: 'relative', zIndex: 2}}>
                 <h3 style={{fontWeight: 950, fontSize: '34px', marginBottom: '15px'}}>{cat.title}</h3>
@@ -225,7 +241,7 @@ export default function HomePage() {
               <motion.img variants={{ hover: { scale: 1.15, rotate: -8, y: -5 } }} src={cat.icon} style={{position: 'absolute', right: '30px', bottom: '40px', width: '105px'}} />
             </motion.div>
           ))}
-        </div>
+        </motion.div>
       </div>
 
       <footer style={{padding:'60px 20px', textAlign:'center', background: isDarkMode ? '#0f172a' : '#1c252e', color:'white', borderTop: `1px solid ${theme.border}`}}>
