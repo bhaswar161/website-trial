@@ -84,16 +84,17 @@ export default function HomePage() {
         .logo { font-weight:900; font-size:26px; color:#5b6cfd; letter-spacing: -0.8px; }
 
         .nav-center ul { display: flex; align-items: center; gap: 25px; }
-        .nav-center li { cursor: pointer; color: ${theme.text}; font-weight: 600; font-size: 15px; opacity: 0.8; }
+        .nav-center li { cursor: pointer; color: ${theme.text}; font-weight: 600; font-size: 15px; position: relative; }
 
         .admin-btn { background: #ffebeb; color: #ff4757; border: 2px solid #ff4757; padding: 8px 18px; border-radius: 12px; font-weight: 800; transition: 0.3s; }
         .admin-btn:hover { background: #ff4757; color: white; }
 
         .all-courses-btn { border:2px solid #5b6cfd; padding:8px 18px; border-radius:12px; color:#5b6cfd; font-weight:700; display:flex; align-items:center; gap:8px; cursor: pointer; }
         
-        .mega-menu { position:absolute; top:75px; left: 50%; transform: translateX(-50%); width: 550px; background:${isDarkMode ? '#1e293b' : 'white'}; border-radius:24px; box-shadow:0 25px 60px rgba(0,0,0,0.25); z-index: 2000; border: 1px solid ${theme.border}; overflow: hidden; }
+        .mega-menu { position:absolute; top:55px; left: 50%; transform: translateX(-50%); width: 550px; background:${isDarkMode ? '#1e293b' : 'white'}; border-radius:24px; box-shadow:0 25px 60px rgba(0,0,0,0.25); z-index: 2000; border: 1px solid ${theme.border}; overflow: hidden; }
         .mega-container { display:flex; height: 320px; }
         .mega-left { width:40%; background:${theme.megaLeft}; padding:20px; border-right: 1px solid ${theme.border}; }
+        .mega-left div { padding:14px; border-radius:12px; margin-bottom:8px; cursor:pointer; transition: 0.2s; }
         .mega-right { width:60%; padding:20px; display:grid; gap:10px; overflow-y: auto; }
         .course-item { padding:12px; border-radius:12px; font-weight:700; color:${theme.text}; border: 1px solid ${theme.border}; text-align: center; background: ${isDarkMode ? '#0f172a' : '#fff'}; transition: 0.2s; }
 
@@ -103,13 +104,13 @@ export default function HomePage() {
           border-radius: 0 0 100px 100px; color: white; position: relative; overflow: hidden;
         }
 
-        .hero-content { flex: 1; text-align: left; position: relative; z-index: 10; }
+        .hero-content { flex: 1.2; text-align: left; position: relative; z-index: 10; }
         .hero h1 { font-size: clamp(36px, 5vw, 68px); font-weight: 950; line-height: 1.1; margin-bottom: 20px; letter-spacing: -2px; }
         .hero p { font-size: 20px; opacity: 0.9; margin-bottom: 40px; max-width: 600px; }
         .hero-btn { padding: 20px 50px; border: none; border-radius: 20px; background: white; color: #5b6cfd; font-weight: 950; font-size: 20px; cursor: pointer; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
 
-        .banner-img-container { flex: 1; display: flex; justify-content: flex-end; position: relative; z-index: 5; }
-        .banner-img { width: 100%; max-width: 480px; filter: drop-shadow(0 20px 50px rgba(0,0,0,0.3)); }
+        .banner-img-container { flex: 0.8; display: flex; justify-content: flex-end; position: relative; z-index: 5; }
+        .banner-img { width: 100%; max-width: 520px; filter: drop-shadow(0 20px 50px rgba(0,0,0,0.3)); }
 
         .sketch-asset { position: absolute; pointer-events: none; z-index: 1; opacity: 0.2; filter: brightness(0) invert(1); }
         .sketch-text-asset { position: absolute; font-family: 'Comic Sans MS', cursive; color: white; opacity: 0.15; font-weight: bold; pointer-events: none; z-index: 1; }
@@ -134,7 +135,7 @@ export default function HomePage() {
               <div className="all-courses-btn">All Courses <motion.div animate={{ rotate: showMegaMenu ? 180 : 0 }} style={{width:0, height:0, borderLeft:'5px solid transparent', borderRight:'5px solid transparent', borderTop:'6px solid #5b6cfd'}}></motion.div></div>
               <AnimatePresence>
                 {showMegaMenu && (
-                  <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 15 }} className="mega-menu">
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="mega-menu">
                     <div className="mega-container">
                       <div className="mega-left">
                         {megaMenuData.map(cat => (
@@ -180,27 +181,25 @@ export default function HomePage() {
       </header>
 
       <section className="hero">
-        {/* Floating Assets Restored */}
         {floatingAssets.map((el, i) => (
-          <motion.div key={i} className={el.type === 'text' ? 'sketch-text-asset' : 'sketch-asset'} style={{ top: el.top, left: el.left, fontSize: el.size || '24px', width: el.type === 'img' ? el.size : 'auto' }} animate={{ y: [0, -40, 0], rotate: [0, 10, -10, 0] }} transition={{ duration: 7 + i, repeat: Infinity, ease: "easeInOut" }}>
+          <motion.div key={i} className={el.type === 'text' ? 'sketch-text-asset' : 'sketch-asset'} style={{ top: el.top, left: el.left, fontSize: el.size || '24px', width: el.type === 'img' ? el.size : 'auto' }} animate={{ y: [0, -30, 0], rotate: [0, 5, -5, 0] }} transition={{ duration: 6 + i, repeat: Infinity, ease: "easeInOut" }}>
             {el.type === 'img' ? <img src={el.src} style={{width: '100%'}} /> : el.content}
           </motion.div>
         ))}
 
         <div className="hero-content">
-          <motion.h1 initial={{ x: -50, opacity: 0 }} animate={{ x: 0, opacity: 1 }}>
+          <motion.h1 initial={{ x: -40, opacity: 0 }} animate={{ x: 0, opacity: 1 }}>
             {session ? `Welcome back, ${displayName}!` : "Master Your Future"}
           </motion.h1>
           <p>Crack NEET, JEE & Boards with interactive classes and premium study material designed by experts.</p>
           <motion.button whileHover={{ scale: 1.05 }} className="hero-btn" onClick={handleStartLearning}>Start Learning Now</motion.button>
         </div>
 
-        {/* BIG BANNER PIC RESTORED */}
         <div className="banner-img-container">
           <motion.img 
-            initial={{ y: 50, opacity: 0 }} 
-            animate={{ y: 0, opacity: 1 }} 
-            transition={{ duration: 0.8 }}
+            initial={{ y: 20, opacity: 0 }} 
+            animate={{ y: [-10, 10, -10], opacity: 1 }} 
+            transition={{ y: { duration: 4, repeat: Infinity, ease: "easeInOut" }, opacity: { duration: 0.8 } }}
             src="https://cdn-icons-png.flaticon.com/512/3135/3135755.png" 
             className="banner-img" 
             alt="student banner" 
