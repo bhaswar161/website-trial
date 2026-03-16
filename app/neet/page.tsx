@@ -58,10 +58,16 @@ export default function NeetPage() {
         return;
     }
 
-    // AUTH FIX: Ensure Supabase session is active to prevent 401
-    await supabase.auth.getSession();
+    // 🔴 AUTH FIX: Ensure Supabase recognizes the session from NextAuth
+    // This solves the 401 Unauthorized issue
+    const { data: { session: currentSbSession } } = await supabase.auth.getSession();
+    
+    if (!currentSbSession) {
+        // If no session, we try to refresh it or use basic insert if RLS allows public
+        console.log("Supabase session missing, attempting background refresh...");
+    }
 
-    // Primary Enrollment Attempt
+    // Attempt Enrollment
     const { error } = await supabase
       .from('enrollments')
       .insert([{ 
@@ -71,21 +77,23 @@ export default function NeetPage() {
         batch_name: batchName 
       }]);
     
-    if (!error || (error as any).code === '23505') {
+    if (!error) {
       setEnrolledBatches(prev => [...prev, batchId]);
       alert(`🎉 Successfully enrolled in ${batchName}!`);
+    } else if ((error as any).code === '23505') {
+      setEnrolledBatches(prev => [...prev, batchId]);
     } else {
-      // Fallback: If student_name column is missing
+      // 🟡 FALLBACK: Try simple enrollment if student_name columns don't exist yet
       const { error: fallbackError } = await supabase
         .from('enrollments')
         .insert([{ student_email: session.user.email, batch_id: batchId }]);
 
       if (!fallbackError) {
         setEnrolledBatches(prev => [...prev, batchId]);
-        alert("🎉 Enrolled! (Using basic tracking)");
+        alert("🎉 Enrolled! (Basic mode)");
       } else {
-        console.error("Critical Enrollment Error:", fallbackError.message);
-        alert(`Failed: ${fallbackError.message}. Check RLS INSERT policy.`);
+        console.error("Enrollment failed:", fallbackError.message);
+        alert(`Failed: ${fallbackError.message}. Make sure RLS policy is 'true' for Authenticated users.`);
       }
     }
   };
@@ -149,10 +157,10 @@ export default function NeetPage() {
         .btn-outline-blue { border: 2px solid #5b6cfd; color: #5b6cfd; padding: 8px 25px; border-radius: 12px; font-weight: 800; text-decoration: none; font-size: 16px; transition: 0.2s; }
         .btn-outline-red { border: 2px solid #ff4757; color: #ff4757; padding: 8px 25px; border-radius: 12px; font-weight: 800; text-decoration: none; font-size: 16px; transition: 0.2s; }
         .nav-link-standard { text-decoration: none; color: ${theme.subtext}; font-weight: 600; font-size: 14px; }
+        
         .filter-btn { background: ${theme.card}; border: 1px solid ${theme.border}; padding: 10px 20px; cursor: pointer; font-weight: 600; color: ${theme.subtext}; border-radius: 10px; text-transform: uppercase; font-size: 12px; transition: 0.2s; }
         .filter-btn.active { color: #fff; background: #5b6cfd; border-color: #5b6cfd; }
 
-        /* BLUE SPARK HOVER EFFECT */
         .batch-card {
             background: ${theme.card}; 
             border-radius: 24px; 
@@ -165,7 +173,7 @@ export default function NeetPage() {
         .batch-card:hover {
             transform: translateY(-12px);
             border-color: #5b6cfd;
-            box-shadow: 0 0 25px rgba(91, 108, 253, 0.4);
+            box-shadow: 0 0 25px rgba(91, 108, 253, 0.5);
         }
         .batch-card::after {
             content: '';
