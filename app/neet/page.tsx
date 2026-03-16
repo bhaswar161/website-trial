@@ -25,21 +25,24 @@ export default function NeetPage() {
 
   const isOwner = session?.user?.email?.toLowerCase() === "bhaswarray@gmail.com";
 
-  // Refactored Fetch Function to be reusable
   const fetchEnrollments = useCallback(async () => {
     if (!session?.user?.email) return;
     
-    setIsDataLoading(true);
-    // FIX: Convert email to lowercase to match database storage exactly
-    const { data: enrolls, error } = await supabase
+    const localKey = `enrolled_${session.user.email.toLowerCase()}`;
+    const localEnrollments = localStorage.getItem(localKey);
+    if (localEnrollments) {
+      setEnrolledBatches(JSON.parse(localEnrollments));
+    }
+
+    const { data: enrolls } = await supabase
       .from('enrollments')
       .select('batch_id')
       .eq('student_email', session.user.email.toLowerCase());
     
     if (enrolls) {
       const ids = enrolls.map(e => e.batch_id);
-      console.log("Verified Enrollments:", ids);
       setEnrolledBatches(ids);
+      localStorage.setItem(localKey, JSON.stringify(ids));
     }
     setIsDataLoading(false);
   }, [session, supabase]);
@@ -58,7 +61,6 @@ export default function NeetPage() {
       setIsDataLoading(false);
     }
 
-    // REFRESH FIX: When student clicks "back" from a batch, re-check enrollment
     window.addEventListener('focus', fetchEnrollments);
     return () => window.removeEventListener('focus', fetchEnrollments);
   }, [status, fetchEnrollments]);
@@ -73,9 +75,11 @@ export default function NeetPage() {
 
   const handleEnroll = async (batchId: string, batchName: string) => {
     if (!session?.user?.email) return;
+    const email = session.user.email.toLowerCase();
 
-    await supabase.auth.getSession();
-    const email = session.user.email.toLowerCase(); // Force lowercase
+    const newEnrolled = [...enrolledBatches, batchId];
+    setEnrolledBatches(newEnrolled);
+    localStorage.setItem(`enrolled_${email}`, JSON.stringify(newEnrolled));
 
     const { error } = await supabase
       .from('enrollments')
@@ -86,18 +90,15 @@ export default function NeetPage() {
         batch_name: batchName 
       }]);
     
-    if (!error || (error as any).code === '23505') {
-      setEnrolledBatches(prev => [...prev, batchId]);
-      alert(`🎉 Successfully enrolled in ${batchName}!`);
+    if (error && (error as any).code !== '23505') {
+        console.error("Sync error:", error.message);
     } else {
-      // Fallback
-      await supabase.from('enrollments').insert([{ student_email: email, batch_id: batchId }]);
-      setEnrolledBatches(prev => [...prev, batchId]);
+        alert(`🎉 Successfully enrolled in ${batchName}!`);
     }
   };
 
   const handleShare = (batchName: string) => {
-    const text = encodeURIComponent(`Check out ${batchName} on StudyHub: ` + window.location.href);
+    const text = encodeURIComponent(`Join ${batchName} with me on StudyHub!`);
     window.open(`https://wa.me/?text=${text}`, '_blank');
   };
 
@@ -134,7 +135,8 @@ export default function NeetPage() {
     card: isDarkMode ? '#1e293b' : '#fff',
     text: isDarkMode ? '#f8fafc' : '#0f172a',
     subtext: isDarkMode ? '#94a3b8' : '#64748b',
-    header: isDarkMode ? '#1e293b' : '#fff',
+    // ⬇️ Updated Header Colors for Translucency
+    headerBg: isDarkMode ? 'rgba(30, 41, 59, 0.8)' : 'rgba(255, 255, 255, 0.8)',
     border: isDarkMode ? '#334155' : '#e2e8f0'
   };
 
@@ -142,7 +144,20 @@ export default function NeetPage() {
     <div style={{ background: theme.bg, minHeight: '100vh', fontFamily: 'sans-serif', transition: 'background 0.4s ease' }}>
       <style dangerouslySetInnerHTML={{ __html: `
         body { margin: 0; padding: 0; overflow-x: hidden; }
-        header { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 0 5%; background: ${theme.header}; border-bottom: 1px solid ${theme.border}; position: sticky; top: 0; z-index: 1000; height: 80px; }
+        
+        header { 
+          display: grid; 
+          grid-template-columns: 1fr auto 1fr; 
+          align-items: center; 
+          padding: 0 5%; 
+          background: ${theme.headerBg}; 
+          backdrop-filter: blur(12px); 
+          -webkit-backdrop-filter: blur(12px);
+          border-bottom: 1px solid ${theme.border}; 
+          position: sticky; top: 0; z-index: 1000; height: 80px; 
+          transition: background 0.3s ease;
+        }
+
         .nav-center ul { display: flex; gap: 20px; list-style: none; align-items: center; margin: 0; padding: 0; }
         .btn-outline-blue { border: 2px solid #5b6cfd; color: #5b6cfd; padding: 8px 25px; border-radius: 12px; font-weight: 800; text-decoration: none; font-size: 16px; transition: 0.2s; }
         .btn-outline-red { border: 2px solid #ff4757; color: #ff4757; padding: 8px 25px; border-radius: 12px; font-weight: 800; text-decoration: none; font-size: 16px; transition: 0.2s; }
