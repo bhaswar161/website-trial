@@ -57,17 +57,7 @@ export default function NeetPage() {
         alert("Please login to enroll!");
         return;
     }
-
-    // 🔴 AUTH FIX: Ensure Supabase recognizes the session from NextAuth
-    // This solves the 401 Unauthorized issue
-    const { data: { session: currentSbSession } } = await supabase.auth.getSession();
-    
-    if (!currentSbSession) {
-        // If no session, we try to refresh it or use basic insert if RLS allows public
-        console.log("Supabase session missing, attempting background refresh...");
-    }
-
-    // Attempt Enrollment
+    await supabase.auth.getSession();
     const { error } = await supabase
       .from('enrollments')
       .insert([{ 
@@ -77,13 +67,10 @@ export default function NeetPage() {
         batch_name: batchName 
       }]);
     
-    if (!error) {
+    if (!error || (error as any).code === '23505') {
       setEnrolledBatches(prev => [...prev, batchId]);
       alert(`🎉 Successfully enrolled in ${batchName}!`);
-    } else if ((error as any).code === '23505') {
-      setEnrolledBatches(prev => [...prev, batchId]);
     } else {
-      // 🟡 FALLBACK: Try simple enrollment if student_name columns don't exist yet
       const { error: fallbackError } = await supabase
         .from('enrollments')
         .insert([{ student_email: session.user.email, batch_id: batchId }]);
@@ -92,8 +79,7 @@ export default function NeetPage() {
         setEnrolledBatches(prev => [...prev, batchId]);
         alert("🎉 Enrolled! (Basic mode)");
       } else {
-        console.error("Enrollment failed:", fallbackError.message);
-        alert(`Failed: ${fallbackError.message}. Make sure RLS policy is 'true' for Authenticated users.`);
+        alert(`Failed: ${fallbackError.message}.`);
       }
     }
   };
@@ -196,8 +182,6 @@ export default function NeetPage() {
 
         .resource-card { flex: 1; minWidth: 240px; padding: 25px; border-radius: 20px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; border: 1px solid ${theme.border}; background: ${theme.card}; position: relative; overflow: hidden; transition: 0.3s; color: ${theme.text}; }
         .resource-card:hover { transform: translateY(-8px); box-shadow: 0 12px 25px rgba(0,0,0,0.15); }
-        .price-container { display: flex; align-items: center; gap: 12px; margin: 15px 0; }
-        .discount-badge { background: #eefcf1; color: #10b981; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 800; border: 1px solid #d1fae5; display: flex; align-items: center; gap: 4px; }
         
         .cute-toggle { background: ${isDarkMode ? '#334155' : '#e2e8f0'}; border: none; width: 50px; height: 50px; border-radius: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.3s; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         .cute-toggle img { width: 32px; height: 32px; }
@@ -263,20 +247,14 @@ export default function NeetPage() {
               const canExplore = isOwner || isEnrolled;
 
               return (
-                <motion.div 
-                  layout
-                  key={batch.id} 
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="batch-card"
-                >
+                <motion.div layout key={batch.id} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="batch-card">
                   <div style={{ height: '210px', position: 'relative' }}>
                     <img src={batch.banner} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="banner" />
                     <div style={{ position: 'absolute', top: '15px', left: '15px', background: batch.color, color: '#fff', padding: '6px 14px', borderRadius: '8px', fontSize: '11px', fontWeight: '900' }}>{batch.tag}</div>
                   </div>
 
                   <div style={{ padding: '25px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '18px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
                       <h3 style={{ fontSize: '24px', fontWeight: '900', color: theme.text, margin: 0 }}>{batch.name}</h3>
                       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                           <span style={{ background: isDarkMode ? '#334155' : '#f1f5f9', color: theme.subtext, fontSize: '11px', padding: '4px 8px', borderRadius: '5px', fontWeight: 'bold' }}>Hinglish</span>
@@ -284,10 +262,25 @@ export default function NeetPage() {
                       </div>
                     </div>
 
-                    <div className="price-container">
+                    {/* ADDED BATCH DETAILS */}
+                    <div style={{ marginBottom: '15px' }}>
+                        <div style={{ color: theme.subtext, fontSize: '14px', fontWeight: '600' }}>👥 For NEET Aspirants</div>
+                        <div style={{ color: theme.subtext, fontSize: '13px', marginTop: '4px' }}>📅 <b>Starts:</b> 13 Apr, 2026 | <b>Ends:</b> 30 Jun, 2027</div>
+                    </div>
+
+                    {/* ADDED TAGS/HASHTAGS */}
+                    <div style={{ display: 'flex', gap: '6px', marginBottom: '20px', flexWrap: 'wrap' }}>
+                        {batch.hashtags.filter(h => h !== '#all').map(h => (
+                            <span key={h} style={{ background: isDarkMode ? 'rgba(91,108,253,0.1)' : '#f0f2ff', color: '#5b6cfd', fontSize: '10px', padding: '4px 10px', borderRadius: '6px', fontWeight: '800', border: '1px solid rgba(91,108,253,0.2)' }}>
+                                {h.toUpperCase()}
+                            </span>
+                        ))}
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '15px 0' }}>
                       <span style={{ fontSize: '28px', fontWeight: '900', color: '#5b6cfd' }}>₹0</span>
                       <span style={{ fontSize: '16px', color: '#94a3b8', textDecoration: 'line-through' }}>₹{batch.price}</span>
-                      <div className="discount-badge">🏷️ 100% OFF</div>
+                      <div style={{ background: '#eefcf1', color: '#10b981', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '800', border: '1px solid #d1fae5' }}>🏷️ 100% OFF</div>
                     </div>
 
                     <div style={{ display: 'flex', gap: '12px' }}>
@@ -298,12 +291,7 @@ export default function NeetPage() {
                       ) : (
                         <>
                           <button style={{ flex: 1, padding: '15px', borderRadius: '14px', fontWeight: '900', background: theme.border, border: `1px solid ${theme.border}`, color: theme.subtext, opacity: 0.5, cursor: 'not-allowed' }}>EXPLORE</button>
-                          <button 
-                            onClick={() => handleEnroll(batch.id, batch.name)} 
-                            style={{ flex: 1, padding: '15px', borderRadius: '14px', fontWeight: '900', background: batch.color, color: '#fff', border: 'none', cursor: 'pointer' }}
-                          >
-                            ENROLL NOW
-                          </button>
+                          <button onClick={() => handleEnroll(batch.id, batch.name)} style={{ flex: 1, padding: '15px', borderRadius: '14px', fontWeight: '900', background: batch.color, color: '#fff', border: 'none', cursor: 'pointer' }}>ENROLL NOW</button>
                         </>
                       )}
                     </div>
