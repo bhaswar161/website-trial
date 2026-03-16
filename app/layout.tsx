@@ -1,4 +1,5 @@
 import { NextAuthProvider } from "./providers";
+import { ThemeProvider } from "../context/ThemeContext"; // Path to the file created in Step 1
 
 export default function RootLayout({
   children,
@@ -8,7 +9,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body suppressHydrationWarning={true}>
-        <NextAuthProvider>{children}</NextAuthProvider>
+        {/* NextAuthProvider handles Login, ThemeProvider handles Dark/Light Mode */}
+        <NextAuthProvider>
+          <ThemeProvider>
+            {children}
+          </ThemeProvider>
+        </NextAuthProvider>
       </body>
     </html>
   );
