@@ -3,11 +3,12 @@ import Link from 'next/link'
 import { useSession, signIn, signOut } from 'next-auth/react'
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useTheme } from "../context/ThemeContext" // Added this import
+import { useTheme } from "../context/ThemeContext"
 
 export default function HomePage() {
   const { data: session } = useSession();
-  const { isDarkMode, toggleTheme } = useTheme(); // Added this hook
+  const { isDarkMode, toggleTheme } = useTheme();
+  
   const [customName, setCustomName] = useState("");
   const [profilePic, setProfilePic] = useState("");
   const [showMegaMenu, setShowMegaMenu] = useState(false);
@@ -16,6 +17,7 @@ export default function HomePage() {
 
   const isOwner = session?.user?.email === "bhaswarray@gmail.com";
 
+  // Sync profile data from LocalStorage
   useEffect(() => {
     const updateProfile = () => {
       setCustomName(localStorage.getItem("userFirstName") || "");
@@ -34,6 +36,17 @@ export default function HomePage() {
     } else {
       examSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
+  };
+
+  // Dynamic Theme Colors
+  const theme = {
+    bg: isDarkMode ? '#0f172a' : '#fcfdfe',
+    header: isDarkMode ? 'rgba(30, 41, 59, 0.85)' : 'rgba(255, 255, 255, 0.85)',
+    text: isDarkMode ? '#f8fafc' : '#1c252e',
+    subtext: isDarkMode ? '#94a3b8' : '#666',
+    border: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+    card: isDarkMode ? '#1e293b' : 'white',
+    megaLeft: isDarkMode ? '#0f172a' : '#f9fafb'
   };
 
   const megaMenuData = [
@@ -58,24 +71,9 @@ export default function HomePage() {
   ];
 
   const examCategories = [
-    {
-      title: "NEET",
-      pills: ["class 11", "class 12", "Dropper"],
-      href: "/neet",
-      icon: "https://cdn-icons-png.flaticon.com/512/3063/3063200.png"
-    },
-    {
-      title: "IIT JEE",
-      pills: ["class 11", "class 12", "Dropper"],
-      href: "#",
-      icon: "https://cdn-icons-png.flaticon.com/512/4341/4341139.png"
-    },
-    {
-      title: "School Boards",
-      pills: ["CBSE", "ICSE", "State Boards"],
-      href: "#",
-      icon: "https://cdn-icons-png.flaticon.com/512/2941/2941513.png"
-    }
+    { title: "NEET", pills: ["class 11", "class 12", "Dropper"], href: "/neet", icon: "https://cdn-icons-png.flaticon.com/512/3063/3063200.png" },
+    { title: "IIT JEE", pills: ["class 11", "class 12", "Dropper"], href: "#", icon: "https://cdn-icons-png.flaticon.com/512/4341/4341139.png" },
+    { title: "School Boards", pills: ["CBSE", "ICSE", "State Boards"], href: "#", icon: "https://cdn-icons-png.flaticon.com/512/2941/2941513.png" }
   ];
 
   const floatingAssets = [
@@ -92,133 +90,66 @@ export default function HomePage() {
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: `
-        * { margin:0; padding:0; box-sizing:border-box; font-family: 'Segoe UI', Roboto, sans-serif; }
-        body { background:#fcfdfe; overflow-x: hidden; scroll-behavior: smooth; }
+        * { margin:0; padding:0; box-sizing:border-box; list-style: none; text-decoration: none; font-family: 'Segoe UI', sans-serif; }
+        body { background:${theme.bg}; color: ${theme.text}; overflow-x: hidden; scroll-behavior: smooth; transition: background 0.4s ease; }
 
         header {
-          display: grid;
-          grid-template-columns: 1fr auto 1fr;
-          align-items: center;
-          padding: 0 5%;
-          background: rgba(255, 255, 255, 0.85);
-          backdrop-filter: blur(12px);
-          border-bottom: 1px solid rgba(0,0,0,0.05);
-          position: sticky;
-          top: 0;
-          z-index: 1000;
-          height: 80px;
+          display: flex; justify-content: space-between; align-items: center;
+          padding: 0 5%; background: ${theme.header}; backdrop-filter: blur(15px);
+          border-bottom: 1px solid ${theme.border}; position: sticky; top: 0; z-index: 1000; height: 80px;
         }
 
-        .logo { font-weight:900; font-size:24px; color:#5b6cfd; text-decoration:none; letter-spacing: -0.8px; justify-self: start; }
+        .logo { font-weight:900; font-size:26px; color:#5b6cfd; letter-spacing: -0.8px; }
 
-        .nav-center { justify-self: center; }
-        .nav-center ul { display: flex; align-items: center; gap: 30px; list-style: none; }
-        .nav-center li { cursor: pointer; color: #444; font-weight: 600; font-size: 15px; }
+        .nav-center ul { display: flex; align-items: center; gap: 30px; }
+        .nav-center li { cursor: pointer; color: ${theme.text}; font-weight: 600; font-size: 15px; opacity: 0.8; transition: 0.2s; }
+        .nav-center li:hover { opacity: 1; color: #5b6cfd; }
 
-        .auth-section { justify-self: end; display: flex; align-items: center; gap: 15px; }
-
-        .all-courses-btn { border:2px solid #5b6cfd; padding:8px 16px; border-radius:12px; color:#5b6cfd; font-weight:700; display:flex; align-items:center; gap:8px; cursor: pointer; }
+        .all-courses-btn { border:2px solid #5b6cfd; padding:8px 18px; border-radius:12px; color:#5b6cfd; font-weight:700; display:flex; align-items:center; gap:8px; cursor: pointer; }
         
         .mega-menu { 
-          position:absolute; top:75px; left: 50%; transform: translateX(-50%); width: 550px; background:white; 
-          border-radius:24px; box-shadow:0 25px 60px rgba(0,0,0,0.12); 
-          overflow:hidden; z-index: 2000; border: 1px solid #f0f0f0;
+          position:absolute; top:75px; left: 50%; transform: translateX(-50%); width: 550px; background:${isDarkMode ? '#1e293b' : 'white'}; 
+          border-radius:24px; box-shadow:0 25px 60px rgba(0,0,0,0.25); z-index: 2000; border: 1px solid ${theme.border}; overflow: hidden;
         }
         
         .mega-container { display:flex; height: 320px; }
-        .mega-left { width:40%; background:#f9fafb; padding:20px; border-right: 1px solid #f1f1f1; }
+        .mega-left { width:40%; background:${theme.megaLeft}; padding:20px; border-right: 1px solid ${theme.border}; }
         .mega-left div { padding:14px; border-radius:12px; margin-bottom:8px; cursor:pointer; transition: 0.2s; }
         .mega-right { width:60%; padding:20px; display:grid; grid-template-columns: 1fr; gap:10px; overflow-y: auto; }
-        
-        .course-item { padding:12px; border-radius:12px; font-weight:700; text-decoration:none; color:#1c252e; border: 1px solid #f0f0f0; transition: 0.2s; text-align: center; background: #fff; }
+        .course-item { padding:12px; border-radius:12px; font-weight:700; color:${theme.text}; border: 1px solid ${theme.border}; text-align: center; background: ${isDarkMode ? '#0f172a' : '#fff'}; transition: 0.2s; }
         .course-item:hover { background:#5b6cfd; color:#fff; border-color: #5b6cfd; }
 
         .hero { 
-          display: flex; align-items: center; justify-content: space-between; 
-          padding: 120px 10% 160px; background: linear-gradient(135deg, #6a1b9a, #ff4ecd, #5b6cfd); 
-          background-size: 400% 400%; animation: gradientShift 10s ease infinite;
-          border-radius: 0 0 100px 100px; color: white; position: relative; overflow: hidden;
+          min-height: 85vh; display: flex; align-items: center; justify-content: center; 
+          padding: 60px 10%; background: ${isDarkMode ? 'linear-gradient(135deg, #1e1b4b, #312e81)' : 'linear-gradient(135deg, #6a1b9a, #ff4ecd, #5b6cfd)'}; 
+          border-radius: 0 0 80px 80px; color: white; position: relative; overflow: hidden; text-align: center;
         }
 
-        @keyframes gradientShift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+        .sketch-asset { position: absolute; pointer-events: none; z-index: 1; opacity: 0.25; filter: brightness(0) invert(1); }
+        .sketch-text-asset { position: absolute; font-family: 'Comic Sans MS', cursive; color: white; opacity: 0.15; font-weight: bold; pointer-events: none; z-index: 1; }
 
-        .sketch-asset { position: absolute; pointer-events: none; z-index: 1; opacity: 0.35; filter: brightness(0) invert(1); }
-        .sketch-text-asset { position: absolute; font-family: 'Comic Sans MS', cursive; color: white; opacity: 0.25; font-weight: bold; pointer-events: none; z-index: 1; }
+        .hero-content { position: relative; z-index: 10; max-width: 850px; }
+        .hero h1 { font-size: clamp(38px, 6vw, 70px); font-weight: 950; line-height: 1.1; margin-bottom: 25px; letter-spacing: -2px; }
+        .hero p { font-size: 20px; opacity: 0.9; margin-bottom: 40px; }
+        .hero-btn { padding: 20px 50px; border: none; border-radius: 20px; background: white; color: #5b6cfd; font-weight: 950; font-size: 20px; cursor: pointer; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
 
-        .hero h1 { font-size: clamp(32px, 5vw, 58px); font-weight: 900; line-height: 1.1; position: relative; z-index: 10; margin-bottom: 20px; }
-        .hero-btn { padding: 18px 45px; border: none; border-radius: 16px; background: white; color: #6a1b9a; font-weight: 900; font-size: 18px; cursor: pointer; box-shadow: 0 15px 30px rgba(0,0,0,0.2); transition: 0.3s; position: relative; z-index: 10; }
+        .section { padding: 100px 10%; text-align: center; }
+        .cat-card { background: ${theme.card}; border-radius: 35px; padding: 45px; text-align: left; position: relative; overflow: hidden; border: 1px solid ${theme.border}; transition: 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); cursor: pointer; }
+        .cat-card:hover { transform: translateY(-15px); border-color: #5b6cfd; box-shadow: 0 25px 60px rgba(91, 108, 253, 0.2); }
+        .balloon-bg { position: absolute; top: 0; right: -15%; width: 220px; height: 220px; background: ${isDarkMode ? 'rgba(91,108,253,0.1)' : '#fff1f5'}; border-radius: 50%; z-index: 0; }
+        .pill { padding: 8px 18px; border-radius: 50px; font-size: 13px; font-weight: 700; color: #5b6cfd; background: ${isDarkMode ? '#334155' : '#f4f6ff'}; margin: 0 8px 8px 0; display: inline-block; position: relative; z-index: 2; }
 
-        .section { padding: 100px 8%; text-align: center; }
-        .section-title { font-size: 48px; font-weight: 950; color: #1c252e; margin-bottom: 10px; letter-spacing: -1.5px; }
-        .section-sub { color: #666; font-size: 18px; margin-bottom: 60px; max-width: 700px; margin-left: auto; margin-right: auto; line-height: 1.6; }
-
-        .category-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 40px; }
-        
-        .cat-card { 
-            background: white; border-radius: 32px; padding: 45px; 
-            text-align: left; position: relative; overflow: hidden; 
-            border: 1px solid #f0f0f0; box-shadow: 0 10px 40px rgba(0,0,0,0.04); 
-            transition: 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); cursor: pointer;
-            z-index: 1;
-        }
-        .cat-card:hover { transform: translateY(-15px); border-color: #5b6cfd; box-shadow: 0 25px 60px rgba(91, 108, 253, 0.15); }
-        
-        .balloon-bg { 
-            position: absolute; top: 0; right: -15%; 
-            width: 200px; height: 200px; background: #fff1f5; 
-            border-radius: 50%; z-index: 0; 
-            transition: 0.5s ease;
-            pointer-events: none;
-        }
-
-        .cat-content { position: relative; z-index: 2; } 
-
-        .pill { padding: 10px 20px; border: 1px solid #eee; border-radius: 50px; font-size: 13px; font-weight: 700; color: #5b6cfd; background: #f4f6ff; margin: 0 10px 10px 0; display: inline-block; position: relative; z-index: 2; }
-        
-        .cat-icon { position: absolute; right: 30px; bottom: 50px; width: 95px; height: 95px; z-index: 1; transition: 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-
-        .profile-link-area { display: flex; align-items: center; gap: 12px; cursor: pointer; text-decoration: none; color: inherit; }
-        .logout-btn { background:#ff4757; color:white; padding:10px 20px; border-radius:10px; cursor:pointer; border:none; font-weight:700; }
-        .login-btn { background:#5b6cfd; color:white; padding:12px 24px; border-radius:14px; cursor:pointer; border:none; font-weight:700; }
-
-        /* Added Toggle Style */
-        .theme-toggle-btn { 
-          background: #f0f2ff; 
-          border: none; 
-          width: 40px; 
-          height: 40px; 
-          border-radius: 12px; 
-          cursor: pointer; 
-          display: flex; 
-          align-items: center; 
-          justify-content: center; 
-          font-size: 20px; 
-          transition: 0.3s;
-          box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-        }
-        .theme-toggle-btn:hover { background: #e2e6ff; transform: scale(1.05); }
-
-        @media (max-width: 1100px) {
-          header { grid-template-columns: 1fr auto; padding: 0 15px; }
-          .nav-center { display: none; }
-          .hero { flex-direction: column; text-align: center; }
-          .hero img { width: 320px !important; margin-top: 50px; }
-        }
-        @media (max-width: 600px) {
-          .section-title { font-size: 32px; }
-          .cat-card { padding: 30px; }
-          .cat-title { font-size: 26px !important; }
-          .logo { font-size: 20px; }
-          .balloon-bg { width: 140px; height: 140px; right: -20%; }
-        }
-      ` }} />
+        .auth-section { display: flex; align-items: center; gap: 15px; }
+        .theme-btn { background: ${isDarkMode ? '#334155' : '#f0f2ff'}; border: none; width: 45px; height: 45px; border-radius: 12px; cursor: pointer; font-size: 22px; display: flex; align-items: center; justify-content: center; }
+        .profile-pill { display: flex; align-items: center; gap: 12px; background: ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'}; padding: 6px 16px 6px 6px; border-radius: 50px; color: inherit; }
+      `}} />
 
       <header>
         <Link href="/" className="logo">StudyHub</Link>
 
         <nav className="nav-center">
           <ul>
-            <li className="mega-wrapper" onMouseEnter={() => setShowMegaMenu(true)} onMouseLeave={() => setShowMegaMenu(false)}>
+            <li onMouseEnter={() => setShowMegaMenu(true)} onMouseLeave={() => setShowMegaMenu(false)}>
               <div className="all-courses-btn">All Courses <motion.div animate={{ rotate: showMegaMenu ? 180 : 0 }} style={{width:0, height:0, borderLeft:'5px solid transparent', borderRight:'5px solid transparent', borderTop:'6px solid #5b6cfd'}}></motion.div></div>
               <AnimatePresence>
                 {showMegaMenu && (
@@ -226,7 +157,7 @@ export default function HomePage() {
                     <div className="mega-container">
                       <div className="mega-left">
                         {megaMenuData.map(cat => (
-                          <div key={cat.id} onMouseEnter={() => setActiveCategory(cat.id)} style={{ background: activeCategory === cat.id ? 'white' : 'transparent', color: activeCategory === cat.id ? '#5b6cfd' : '#444', boxShadow: activeCategory === cat.id ? '0 10px 20px rgba(0,0,0,0.04)' : 'none' }}>
+                          <div key={cat.id} onMouseEnter={() => setActiveCategory(cat.id)} style={{ background: activeCategory === cat.id ? (isDarkMode ? '#334155' : 'white') : 'transparent', color: activeCategory === cat.id ? '#5b6cfd' : theme.text }}>
                             <b style={{fontSize: '15px'}}>{cat.title}</b><br/><small style={{opacity: 0.6}}>{cat.sub}</small>
                           </div>
                         ))}
@@ -241,111 +172,67 @@ export default function HomePage() {
                 )}
               </AnimatePresence>
             </li>
-
-            {session && (
-              <li>
-                {isOwner ? (
-                  <Link href="/admin" style={{ color: '#ff4757', fontWeight: '800', textDecoration: 'none', border: '2px solid #ff4757', padding: '8px 16px', borderRadius: '12px' }}>
-                    Admin Panel
-                  </Link>
-                ) : (
-                  <Link href="/neet" style={{ color: '#5b6cfd', fontWeight: '800', textDecoration: 'none' }}>
-                    Dashboard
-                  </Link>
-                )}
-              </li>
-            )}
-            <li style={{fontWeight: 600, color: '#444'}}>Books</li>
-            <li style={{fontWeight: 600, color: '#444'}}>Results</li>
+            {session && <li><Link href={isOwner ? "/admin" : "/neet"} style={{ color: isOwner ? '#ff4757' : '#5b6cfd', fontWeight: '800' }}>{isOwner ? 'Admin Panel' : 'Dashboard'}</Link></li>}
+            <li>Books</li>
+            <li>Results</li>
           </ul>
         </nav>
 
         <div className="auth-section">
-          {/* THE MASTER THEME TOGGLE BUTTON */}
-          <button onClick={toggleTheme} className="theme-toggle-btn">
-            {isDarkMode ? "☀️" : "🌙"}
-          </button>
-
+          <button onClick={toggleTheme} className="theme-btn">{isDarkMode ? "☀️" : "🌙"}</button>
           {session ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-              <Link href="/profile" className="profile-link-area">
-                <img src={profilePic || session.user?.image || ""} style={{width:'45px', height:'45px', borderRadius:'50%', border:'2px solid #5b6cfd', objectFit: 'cover'}} />
-                <div style={{textAlign: 'left'}}>
-                   <div style={{fontWeight:'800', fontSize:'15px', color: '#1c252e'}}>Hi, {displayName}</div>
-                   <div style={{fontSize:'10px', fontWeight:'900', color:'#5b6cfd'}}>{isOwner ? 'FACULTY' : 'STUDENT'}</div>
+            <>
+              <Link href="/profile" className="profile-pill">
+                <img src={profilePic || session.user?.image || ""} style={{width:'38px', height:'38px', borderRadius:'50%', objectFit: 'cover', border: '2px solid #5b6cfd'}} />
+                <div style={{lineHeight: 1.1}}>
+                   <div style={{fontWeight:'800', fontSize:'13px'}}>Hi, {displayName}</div>
+                   <div style={{fontSize:'10px', color:'#5b6cfd', fontWeight:'900'}}>{isOwner ? 'FACULTY' : 'STUDENT'}</div>
                 </div>
               </Link>
-              <button className="logout-btn" onClick={() => signOut()}>Logout</button>
-            </div>
+              <button onClick={() => signOut()} style={{background:'none', border:'none', color:'#ff4757', fontWeight:'700', cursor:'pointer', fontSize:'14px'}}>Logout</button>
+            </>
           ) : (
-            <button className="login-btn" onClick={() => signIn('google')}>Login / Register</button>
+            <button onClick={() => signIn('google')} style={{padding:'12px 25px', borderRadius:'14px', background:'#5b6cfd', color:'#fff', border:'none', fontWeight:'700', cursor:'pointer'}}>Login</button>
           )}
         </div>
       </header>
 
-      <div className="hero">
+      <section className="hero">
         {floatingAssets.map((el, i) => (
-          <motion.div
-            key={i}
-            className={el.type === 'text' ? 'sketch-text-asset' : 'sketch-asset'}
-            style={{ top: el.top, left: el.left, fontSize: el.size || '24px', width: el.type === 'img' ? el.size : 'auto' }}
-            animate={{ y: [0, -30, 0], rotate: [0, 12, -12, 0], opacity: el.type === 'text' ? [0.2, 0.4, 0.2] : [0.3, 0.6, 0.3] }}
-            transition={{ duration: 6 + i, repeat: Infinity, ease: "easeInOut" }}
-          >
-            {el.type === 'img' ? <img src={el.src} style={{width: '100%'}} alt="science" /> : el.content}
+          <motion.div key={i} className={el.type === 'text' ? 'sketch-text-asset' : 'sketch-asset'} style={{ top: el.top, left: el.left, fontSize: el.size || '24px', width: el.type === 'img' ? el.size : 'auto' }} animate={{ y: [0, -40, 0], rotate: [0, 10, -10, 0], opacity: [0.15, 0.35, 0.15] }} transition={{ duration: 7 + i, repeat: Infinity, ease: "easeInOut" }}>
+            {el.type === 'img' ? <img src={el.src} style={{width: '100%'}} /> : el.content}
           </motion.div>
         ))}
-
-        <div className="hero-text" style={{ position: 'relative', zIndex: 10, maxWidth: '600px' }}>
-          <motion.h1 initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }}>
-            {session ? `Welcome back, ${displayName}!` : "Crack NEET, JEE & Boards"}
+        <div className="hero-content">
+          <motion.h1 initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
+            {session ? `Welcome back, ${displayName}!` : "Master Your Future"}
           </motion.h1>
-          <p style={{fontSize: '18px', lineHeight: '1.6', marginBottom: '30px'}}>Master complex concepts with premium notes and daily interactive classes from top faculty.</p>
-          
-          <motion.button 
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            animate={{ boxShadow: ["0 0 0px rgba(255,255,255,0)", "0 0 20px rgba(255,255,255,0.4)", "0 0 0px rgba(255,255,255,0)"] }}
-            transition={{ repeat: Infinity, duration: 2 }}
-            className="hero-btn" 
-            onClick={handleStartLearning}
-          >
-            {session ? "Start Learning Now" : "Join StudyHub Today"}
-          </motion.button>
+          <p>Crack NEET, JEE & Boards with interactive classes and premium study material.</p>
+          <motion.button whileHover={{ scale: 1.05 }} className="hero-btn" onClick={handleStartLearning}>Start Learning Now</motion.button>
         </div>
-        <motion.img animate={{ y: [0, -25, 0] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }} src="https://cdn-icons-png.flaticon.com/512/3135/3135755.png" style={{width:'440px', position: 'relative', zIndex: 6}} />
-      </div>
+      </section>
 
-      <div className="section" id="categories" ref={examSectionRef}>
-        <h2 className="section-title">Explore Your Path</h2>
-        <p className="section-sub">Achieve your dreams with our goal-oriented courses. Whether you're aiming for medical school, engineering, or top board scores, we provide the ultimate learning framework.</p>
+      <div className="section" ref={examSectionRef}>
+        <h2 style={{fontSize:'44px', fontWeight:950, marginBottom: '10px'}}>Explore Your Path</h2>
+        <p style={{color: theme.subtext, marginBottom: '60px', fontSize: '18px'}}>Choose your goal and start your journey today.</p>
         
-        <div className="category-grid">
+        <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '35px'}}>
           {examCategories.map((cat, idx) => (
             <motion.div whileHover="hover" key={idx} className="cat-card" onClick={() => window.location.href = cat.href}>
-              <motion.div variants={{ hover: { scale: 1.3, background: "#f0f3ff" } }} className="balloon-bg" />
-              
-              <div className="cat-content">
-                <h3 className="cat-title" style={{fontWeight: 950, fontSize: '32px', marginBottom: '15px'}}>{cat.title}</h3>
-                <div>{cat.pills.map((pill, pIdx) => (<span key={pIdx} className="pill">{pill}</span>))}</div>
-                <div style={{fontWeight: '800', marginTop: '25px', display: 'flex', alignItems:'center', gap: '8px', color: '#1c252e'}}>
-                   Explore Category <span>➔</span>
-                </div>
+              <div className="balloon-bg" />
+              <div style={{position: 'relative', zIndex: 2}}>
+                <h3 style={{fontWeight: 950, fontSize: '34px', marginBottom: '15px'}}>{cat.title}</h3>
+                <div>{cat.pills.map(p => (<span key={p} className="pill">{p}</span>))}</div>
+                <div style={{fontWeight: '800', marginTop: '30px', color: '#5b6cfd', display: 'flex', alignItems: 'center', gap: '8px'}}>Explore Category <span>➔</span></div>
               </div>
-              
-              <motion.img 
-                variants={{ hover: { scale: 1.2, rotate: -15, y: -12 } }}
-                src={cat.icon} 
-                className="cat-icon" 
-                alt="icon" 
-              />
+              <motion.img variants={{ hover: { scale: 1.15, rotate: -8, y: -5 } }} src={cat.icon} style={{position: 'absolute', right: '30px', bottom: '40px', width: '105px'}} />
             </motion.div>
           ))}
         </div>
       </div>
 
-      <footer style={{padding:'50px 20px', textAlign:'center', background:'#1c252e', color:'white'}}>
-        <p style={{opacity: 0.5, fontSize: '15px'}}>© 2026 StudyHub | Made for future doctors | By Bhaswar Ray</p>
+      <footer style={{padding:'60px 20px', textAlign:'center', background: isDarkMode ? '#0f172a' : '#1c252e', color:'white', borderTop: `1px solid ${theme.border}`}}>
+        <p style={{opacity: 0.5}}>© 2026 StudyHub | Dedicated to NEET Aspirants | By Bhaswar Ray</p>
       </footer>
     </>
   )
