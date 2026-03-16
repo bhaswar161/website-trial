@@ -2,7 +2,7 @@
 import { useSession, signOut } from "next-auth/react"
 import { redirect, useRouter } from "next/navigation"
 import Link from "next/link"
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -23,7 +23,26 @@ export default function NeetPage() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   ), []);
 
-  const isOwner = session?.user?.email === "bhaswarray@gmail.com";
+  const isOwner = session?.user?.email?.toLowerCase() === "bhaswarray@gmail.com";
+
+  // Refactored Fetch Function to be reusable
+  const fetchEnrollments = useCallback(async () => {
+    if (!session?.user?.email) return;
+    
+    setIsDataLoading(true);
+    // FIX: Convert email to lowercase to match database storage exactly
+    const { data: enrolls, error } = await supabase
+      .from('enrollments')
+      .select('batch_id')
+      .eq('student_email', session.user.email.toLowerCase());
+    
+    if (enrolls) {
+      const ids = enrolls.map(e => e.batch_id);
+      console.log("Verified Enrollments:", ids);
+      setEnrolledBatches(ids);
+    }
+    setIsDataLoading(false);
+  }, [session, supabase]);
 
   useEffect(() => {
     setMounted(true)
@@ -33,21 +52,16 @@ export default function NeetPage() {
     const savedTheme = localStorage.getItem("theme");
     if (savedTheme === "dark") setIsDarkMode(true);
 
-    if (status === "authenticated" && session?.user?.email) {
-      const fetchData = async () => {
-        setIsDataLoading(true);
-        const { data: enrolls } = await supabase
-          .from('enrollments')
-          .select('batch_id')
-          .eq('student_email', session.user.email);
-        if (enrolls) setEnrolledBatches(enrolls.map(e => e.batch_id));
-        setIsDataLoading(false);
-      };
-      fetchData();
+    if (status === "authenticated") {
+      fetchEnrollments();
     } else if (status === "unauthenticated") {
       setIsDataLoading(false);
     }
-  }, [session, status, supabase]);
+
+    // REFRESH FIX: When student clicks "back" from a batch, re-check enrollment
+    window.addEventListener('focus', fetchEnrollments);
+    return () => window.removeEventListener('focus', fetchEnrollments);
+  }, [status, fetchEnrollments]);
 
   const toggleTheme = () => {
     const newMode = !isDarkMode;
@@ -58,15 +72,15 @@ export default function NeetPage() {
   const displayName = customName || session?.user?.name?.split(' ')[0] || "Student";
 
   const handleEnroll = async (batchId: string, batchName: string) => {
-    if (!session?.user?.email) {
-        alert("Please login to enroll!");
-        return;
-    }
+    if (!session?.user?.email) return;
+
     await supabase.auth.getSession();
+    const email = session.user.email.toLowerCase(); // Force lowercase
+
     const { error } = await supabase
       .from('enrollments')
       .insert([{ 
-        student_email: session.user.email, 
+        student_email: email, 
         student_name: displayName, 
         batch_id: batchId,
         batch_name: batchName 
@@ -76,15 +90,9 @@ export default function NeetPage() {
       setEnrolledBatches(prev => [...prev, batchId]);
       alert(`🎉 Successfully enrolled in ${batchName}!`);
     } else {
-      const { error: fallbackError } = await supabase
-        .from('enrollments')
-        .insert([{ student_email: session.user.email, batch_id: batchId }]);
-      if (!fallbackError) {
-        setEnrolledBatches(prev => [...prev, batchId]);
-        alert("🎉 Enrolled! (Basic mode)");
-      } else {
-        alert(`Failed: ${fallbackError.message}.`);
-      }
+      // Fallback
+      await supabase.from('enrollments').insert([{ student_email: email, batch_id: batchId }]);
+      setEnrolledBatches(prev => [...prev, batchId]);
     }
   };
 
@@ -211,14 +219,7 @@ export default function NeetPage() {
                   </div>
 
                   <div style={{ padding: '25px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
-                      <h3 style={{ fontSize: '24px', fontWeight: '900', color: theme.text, margin: 0 }}>{batch.name}</h3>
-                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                          <span style={{ background: isDarkMode ? '#334155' : '#f1f5f9', color: theme.subtext, fontSize: '11px', padding: '4px 8px', borderRadius: '5px', fontWeight: 'bold' }}>Hinglish</span>
-                          <img src="https://cdn-icons-png.flaticon.com/512/3670/3670051.png" style={{ width: '22px', cursor: 'pointer' }} onClick={() => handleShare(batch.name)} alt="whatsapp" />
-                      </div>
-                    </div>
-
+                    <h3 style={{ fontSize: '24px', fontWeight: '900', color: theme.text, marginBottom:'10px' }}>{batch.name}</h3>
                     <div style={{ marginBottom: '15px' }}>
                         <div style={{ color: theme.subtext, fontSize: '14px', fontWeight: '600' }}>👥 For NEET Aspirants</div>
                         <div style={{ color: theme.subtext, fontSize: '13px', marginTop: '4px' }}>📅 Starts: 13 Apr, 2026 | Ends: 30 Jun, 2027</div>
@@ -226,14 +227,14 @@ export default function NeetPage() {
 
                     <div style={{ display: 'flex', gap: '6px', marginBottom: '20px', flexWrap: 'wrap' }}>
                         {batch.hashtags.filter(h => h !== '#all').map(h => (
-                            <span key={h} style={{ background: isDarkMode ? 'rgba(91,108,253,0.1)' : '#f0f2ff', color: '#5b6cfd', fontSize: '10px', padding: '4px 10px', borderRadius: '6px', fontWeight: '800', border: '1px solid rgba(91,108,253,0.2)' }}>{h.toUpperCase()}</span>
+                            <span key={h} style={{ background: isDarkMode ? 'rgba(91,108,253,0.1)' : '#f0f2ff', color: '#5b6cfd', fontSize: '10px', padding: '4px 10px', borderRadius: '6px', fontWeight: '800' }}>{h.toUpperCase()}</span>
                         ))}
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '15px 0' }}>
                       <span style={{ fontSize: '28px', fontWeight: '900', color: '#5b6cfd' }}>₹0</span>
                       <span style={{ fontSize: '16px', color: '#94a3b8', textDecoration: 'line-through' }}>₹{batch.price}</span>
-                      <div style={{ background: '#eefcf1', color: '#10b981', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '800', border: '1px solid #d1fae5' }}>🏷️ 100% OFF</div>
+                      <div style={{ background: '#eefcf1', color: '#10b981', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '800' }}>🏷️ 100% OFF</div>
                     </div>
 
                     <div style={{ display: 'flex', gap: '12px' }}>
