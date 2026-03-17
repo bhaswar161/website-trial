@@ -55,6 +55,19 @@ export default function AdminPayments() {
     } catch (err: any) { alert("Error: " + err.message); }
   };
 
+  const handleRejectSubmit = async () => {
+    if (!rejectReason) return alert("Please provide a reason.");
+    try {
+      const { error } = await supabase.from('payment_requests').update({ 
+        status: 'rejected', rejection_reason: rejectReason 
+      }).eq('id', rejectingReq.id);
+      if (error) throw error;
+      alert("❌ Request rejected.");
+      setRejectingReq(null); setRejectReason("");
+      fetchRequests();
+    } catch (err: any) { alert("Error: " + err.message); }
+  };
+
   const theme = {
     bg: isDarkMode ? '#0f172a' : '#f8fafc',
     card: isDarkMode ? '#1e293b' : '#ffffff',
@@ -91,11 +104,7 @@ export default function AdminPayments() {
             {requests.map((req) => (
               <tr key={req.id} style={{ borderBottom: `1px solid ${theme.border}` }}>
                 <td style={{ padding: '20px' }}>
-                  <motion.div 
-                    whileHover={{ x: 5 }} 
-                    onClick={() => setViewingProfile(req)} 
-                    style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px' }}
-                  >
+                  <motion.div whileHover={{ x: 5 }} onClick={() => setViewingProfile(req)} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <img src={req.student_pic || "https://ui-avatars.com/api/?name=" + req.student_name} style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} />
                     <div>
                         <div style={{ fontWeight: 800, fontSize: '15px', color: '#5b6cfd' }}>{req.student_name} 👤</div>
@@ -108,12 +117,12 @@ export default function AdminPayments() {
                    <div style={{ fontWeight: 900, color: '#10b981' }}>₹{req.amount}</div>
                 </td>
                 <td>
-                  <button onClick={() => setSelectedImg(req.screenshot_url)} style={{ background: '#3b82f6', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '10px', cursor: 'pointer', fontWeight: 700 }}>🔍 VIEW SS</button>
+                  <button onClick={() => setSelectedImg(req.screenshot_url)} style={{ background: '#3b82f6', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '10px', cursor: 'pointer', fontWeight: 700, fontSize: '12px' }}>🔍 VIEW SS</button>
                 </td>
                 <td style={{ paddingRight: '20px' }}>
                   <div style={{ display: 'flex', gap: '10px' }}>
-                    <button onClick={() => handleApprove(req)} style={{ background: '#10b981', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '12px', cursor: 'pointer', fontWeight: 900 }}>APPROVE</button>
-                    <button onClick={() => setRejectingReq(req)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '12px', cursor: 'pointer', fontWeight: 900 }}>REJECT</button>
+                    <button onClick={() => handleApprove(req)} style={{ background: '#10b981', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '12px', cursor: 'pointer', fontWeight: 900, fontSize: '13px' }}>APPROVE</button>
+                    <button onClick={() => setRejectingReq(req)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '12px', cursor: 'pointer', fontWeight: 900, fontSize: '13px' }}>REJECT</button>
                   </div>
                 </td>
               </tr>
@@ -122,7 +131,7 @@ export default function AdminPayments() {
         </table>
       </div>
 
-      {/* STUDENT FULL PROFILE MODAL */}
+      {/* 1. STUDENT FULL PROFILE MODAL */}
       <AnimatePresence>
         {viewingProfile && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.85)', zIndex: 3500, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
@@ -141,7 +150,7 @@ export default function AdminPayments() {
                    <InfoBox label="Guardian Name" value={viewingProfile.guardian_name || "Not Provided"} theme={theme} />
                    <InfoBox label="Guardian Phone" value={viewingProfile.guardian_phone || "Not Provided"} theme={theme} />
                    <div style={{ height: '1px', background: theme.border, margin: '10px 0' }} />
-                   <InfoBox label="User UUID (Email-based)" value={viewingProfile.user_id} theme={theme} />
+                   <InfoBox label="User ID" value={viewingProfile.user_id} theme={theme} />
                    <InfoBox label="Submission Date" value={new Date(viewingProfile.created_at).toLocaleString()} theme={theme} />
                 </div>
 
@@ -151,8 +160,48 @@ export default function AdminPayments() {
         )}
       </AnimatePresence>
 
-      {/* REJECTION & SS VIEWER MODALS (Keep existing code from previous version) */}
-      {/* ... */}
+      {/* 2. REJECTION MODAL */}
+      <AnimatePresence>
+        {rejectingReq && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.8)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} style={{ background: theme.card, padding: '30px', borderRadius: '24px', maxWidth: '450px', width: '100%', border: `1px solid ${theme.border}` }}>
+              <h2 style={{ fontWeight: 900, fontSize: '24px', marginBottom: '10px' }}>Reject Payment</h2>
+              <p style={{ color: theme.subtext, fontSize: '14px', marginBottom: '20px' }}>Reason for rejecting {rejectingReq.student_name}:</p>
+              <textarea 
+                style={{ width: '100%', height: '120px', borderRadius: '12px', border: `1px solid ${theme.border}`, background: theme.input, color: theme.text, padding: '15px', outline: 'none', marginBottom: '20px' }}
+                placeholder="e.g. Transaction ID not visible..."
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+              />
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button onClick={() => { setRejectingReq(null); setRejectReason(""); }} style={{ flex: 1, padding: '15px', borderRadius: '12px', background: '#ccc', border: 'none', fontWeight: 800 }}>Cancel</button>
+                <button onClick={handleRejectSubmit} style={{ flex: 1, padding: '15px', borderRadius: '12px', background: '#ef4444', color: '#fff', border: 'none', fontWeight: 800 }}>Confirm Reject</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 3. SCREENSHOT VIEWER (SS) */}
+      <AnimatePresence>
+        {selectedImg && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={() => setSelectedImg(null)}
+            style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.95)', zIndex: 4000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
+          >
+            <motion.img 
+              initial={{ scale: 0.8 }} animate={{ scale: 1 }}
+              src={selectedImg} 
+              style={{ maxHeight: '85vh', maxWidth: '90vw', borderRadius: '16px', boxShadow: '0 0 50px rgba(91,108,253,0.3)', border: '4px solid white' }} 
+            />
+            <div style={{ marginTop: '20px', color: '#fff', fontWeight: 800, background: 'rgba(255,255,255,0.1)', padding: '10px 20px', borderRadius: '30px' }}>
+                Click anywhere to close
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }
