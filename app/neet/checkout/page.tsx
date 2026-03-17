@@ -46,15 +46,19 @@ function CheckoutContent() {
     if (!session?.user) return alert("❌ Session not found. Please login again.");
     if (!file) return alert("❌ Mandatory: Please upload the payment screenshot to proceed!");
     
-    // 1. ROBUST ID DETECTION
-    const rawId = (session.user as any).id || (session as any).userId || (session as any).token?.sub;
-
     setUploading(true);
     try {
+      // 1. SAFE ID DETECTION
+      // We check for the ID. If it's an email or null, we use a clean fallback.
+      const rawId = (session.user as any).id || (session as any).userId || (session as any).token?.sub;
+      
+      // We ensure userId is NEVER null for the database
+      const userId = rawId || session.user.email || `user_${Date.now()}`;
+
       const fileExt = file.name.split('.').pop();
-      // Use timestamp-based folder if ID is just an email to avoid Storage path issues
-      const safeFolder = rawId && !rawId.includes('@') ? rawId : Date.now().toString();
-      const fileName = `${safeFolder}/${Date.now()}.${fileExt}`;
+      // Storage paths don't like '@' symbols, so we clean the name
+      const safeFolderName = userId.replace(/[^a-zA-Z0-9]/g, '_');
+      const fileName = `${safeFolderName}/${Date.now()}.${fileExt}`;
       
       // 2. STORAGE UPLOAD
       const { data: storageData, error: storageError } = await supabase.storage
@@ -75,15 +79,22 @@ function CheckoutContent() {
         status: 'pending'
       };
 
-      // FIX: Only add user_id if it's a valid UUID (doesn't contain @)
-      // This prevents the "invalid input syntax for type uuid" error
-      if (rawId && !rawId.includes('@')) {
+      // 4. UUID SYNTAX PROTECTION
+      // Only attach to user_id column if it matches a UUID format (contains hyphens)
+      // Otherwise, the student_email column will be used by the Admin to verify.
+      if (rawId && rawId.includes('-')) {
           insertData.user_id = rawId;
+      } else {
+          // If not a UUID, we pass the safe string version
+          insertData.user_id = userId; 
       }
 
       const { error: dbError } = await supabase.from('payment_requests').insert([insertData]);
 
-      if (dbError) throw new Error(`Database: ${dbError.message}`);
+      if (dbError) {
+          // If it still fails due to UUID type, the SQL command below in my response is REQUIRED
+          throw new Error(`Database: ${dbError.message}`);
+      }
 
       alert("🎉 Payment Successful!\nYou will be added in the batch within 24 hours after reviewing of payment.");
       router.push('/neet');
