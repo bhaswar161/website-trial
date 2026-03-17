@@ -108,7 +108,6 @@ export default function NeetPage() {
     border: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'
   };
 
-  // Updated batch data as per specific price/tag requirements
   const batches = [
     { id: "ultimate-2026", name: "Yakeen NEET 2026", color: "#6c63ff", tag: "FREE", price: "0", originalPrice: "3,500", isPaid: false, hashtags: ["#class 12", "#dropper", "#all"], banner: "https://images.unsplash.com/photo-1576091160550-2173dba999ef?q=80&w=800&auto=format&fit=crop" },
     { id: "crash-course", name: "NEET Crash Course 2026", color: "#ff4ecd", tag: "FREE", price: "0", originalPrice: "2,000", isPaid: false, hashtags: ["#class 11", "#all"], banner: "https://images.unsplash.com/photo-1631815587646-b85a1bb027e1?q=80&w=800&auto=format&fit=crop" },
@@ -125,13 +124,14 @@ export default function NeetPage() {
       <style dangerouslySetInnerHTML={{ __html: `
         body { margin: 0; padding: 0; }
         header { display: flex; justify-content: space-between; align-items: center; padding: 0 5%; background: ${theme.headerBg}; backdrop-filter: blur(15px); border-bottom: 1px solid ${theme.border}; position: sticky; top: 0; z-index: 1000; height: 80px; }
-        .back-home-btn { color: #5b6cfd; text-decoration: none; font-weight: 800; font-size: 16px; display: flex; align-items: center; gap: 8px; margin-bottom: 20px; border: none; background: none; cursor: pointer; }
+        .back-btn-text { color: #5b6cfd; text-decoration: none; font-weight: 800; font-size: 18px; display: flex; align-items: center; gap: 8px; margin-bottom: 20px; border: none; background: none; cursor: pointer; }
         .home-btn-nav { border: 2px solid #5b6cfd; color: #5b6cfd; padding: 8px 25px; border-radius: 12px; font-weight: 800; text-decoration: none; font-size: 16px; background: rgba(91, 108, 253, 0.05); transition: 0.2s; }
         .filter-btn { background: ${theme.card}; border: 1px solid ${theme.border}; padding: 10px 20px; cursor: pointer; font-weight: 600; color: ${theme.subtext}; border-radius: 10px; text-transform: uppercase; font-size: 12px; }
         .filter-btn.active { color: #fff; background: #5b6cfd; border-color: #5b6cfd; }
         .batch-card { background: ${theme.card}; border-radius: 24px; overflow: hidden; border: 1px solid ${theme.border}; box-shadow: 0 10px 30px rgba(0,0,0,0.08); transition: 0.4s; position: relative; }
         .batch-card:hover { transform: translateY(-12px); border-color: #5b6cfd; }
-        .profile-pill { display: flex; align-items: center; gap: 12px; background: ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.04)'}; padding: 6px 16px 6px 6px; border-radius: 50px; color: inherit; text-decoration: none; }
+        .feature-item { flex: 1; min-width: 240px; padding: 25px; border-radius: 20px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; border: 1px solid ${theme.border}; background: ${theme.card}; color: ${theme.text}; transition: 0.3s; }
+        .feature-item:hover { transform: translateY(-5px); border-color: #5b6cfd; }
       `}} />
 
       <header>
@@ -143,7 +143,7 @@ export default function NeetPage() {
           <Link href="#" style={{color: theme.text, textDecoration:'none', fontWeight: 600}}>Results</Link>
         </nav>
         <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
-          <Link href="/profile" className="profile-pill">
+          <Link href="/profile" style={{ display: 'flex', alignItems: 'center', gap: '12px', background: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.04)', padding: '6px 16px 6px 6px', borderRadius: '50px', color: 'inherit', textDecoration: 'none' }}>
             <img src={profilePic || session?.user?.image || ""} style={{ width: '38px', height: '38px', borderRadius: '50%', border: '2px solid #5b6cfd', objectFit: 'cover' }} />
             <div style={{ textAlign: 'left', lineHeight: 1.1 }}>
                 <div style={{ fontWeight: '800', fontSize: '13px', color: theme.text }}>Hi, {displayName}</div>
@@ -155,13 +155,28 @@ export default function NeetPage() {
       </header>
 
       <main style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 20px' }}>
-        {/* BACK TO HOMEPAGE BUTTON */}
-        <Link href="/" className="back-home-btn">
-           <motion.span animate={{ x: [-2, 2, -2] }} transition={{ repeat: Infinity, duration: 1.5 }}>←</motion.span> Back to Homepage
-        </Link>
+        {/* RENAMED BACK BUTTON */}
+        <button onClick={() => router.push('/')} className="back-btn-text">
+           <motion.span animate={{ x: [-2, 2, -2] }} transition={{ repeat: Infinity, duration: 1.5 }}>←</motion.span> Back
+        </button>
 
         <h1 style={{ fontSize: '42px', fontWeight: '900', color: theme.text, marginBottom: '10px' }}>NEET Online Preparation</h1>
         <p style={{ color: theme.subtext, marginBottom: '40px', fontSize: '18px' }}>Join our premium batches and start your journey to medical excellence.</p>
+
+        {/* RESTORED FEATURES SECTION (What was missing) */}
+        <div style={{ display: 'flex', gap: '20px', marginBottom: '60px', flexWrap: 'wrap' }}>
+          {[
+            { name: 'Blogs', sub: 'Latest updates', color: '#5b6cfd' },
+            { name: 'PDF Bank', sub: 'Study material', color: '#ff4ecd' },
+            { name: 'Test Series', sub: 'Practice more', color: '#10b981' },
+            { name: 'Books', sub: 'Digital library', color: '#3b82f6' }
+          ].map((item) => (
+            <motion.div key={item.name} whileHover={{ y: -8 }} className="feature-item" style={{ borderLeft: `6px solid ${item.color}` }}>
+              <div><b style={{fontSize: '18px'}}>{item.name}</b><br/><small style={{color: theme.subtext}}>{item.sub}</small></div>
+              <div style={{fontWeight: 900, color: item.color}}>➔</div>
+            </motion.div>
+          ))}
+        </div>
 
         <div style={{ display: 'flex', gap: '12px', marginBottom: '40px' }}>
           {["#all", "#class 11", "#class 12", "#dropper"].map(tag => (
