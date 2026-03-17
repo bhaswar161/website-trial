@@ -37,7 +37,6 @@ export default function BatchDashboard({ params }: PageProps) {
   
   // UI States
   const [showNotifs, setShowNotifs] = useState(false)
-  const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [showStreakModal, setShowStreakModal] = useState(false)
   const [showEventModal, setShowEventModal] = useState(false)
 
@@ -106,7 +105,7 @@ export default function BatchDashboard({ params }: PageProps) {
     setEvents(eData?.filter((ev: any) => !ev.is_done) || []);
   };
 
-  // --- ACTIONS ---
+  // --- ADMIN ACTIONS ---
   const handleSaveEvent = async () => {
     if (!eventTitle || !eventDate) return;
     const evPayload = { batch_id: batchId, title: eventTitle, event_time: eventDate, is_done: false };
@@ -136,7 +135,6 @@ export default function BatchDashboard({ params }: PageProps) {
   const handleDeleteEvent = async (ev: any) => {
     if(confirm("Delete this event?")) {
         await supabase.from('events').delete().eq('id', ev.id);
-        await supabase.from('notices').insert([{ batch_id: batchId, title: "🚫 Event Removed", content: `The scheduled event "${ev.title}" was deleted.` }]);
         fetchData();
     }
   };
@@ -157,12 +155,13 @@ export default function BatchDashboard({ params }: PageProps) {
   };
 
   const theme = {
-    bg: isDarkMode ? '#0f172a' : '#f8fafc',
+    bg: isDarkMode ? '#0f172a' : '#fcfdfe',
     header: isDarkMode ? 'rgba(30, 41, 59, 0.85)' : 'rgba(255, 255, 255, 0.85)',
     text: isDarkMode ? '#f8fafc' : '#1c252e',
     card: isDarkMode ? '#1e293b' : '#fff',
     border: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
-    subtext: isDarkMode ? '#94a3b8' : '#64748b'
+    pill: isDarkMode ? '#334155' : '#f8f9ff',
+    streakBg: isDarkMode ? 'rgba(255, 78, 80, 0.15)' : 'rgba(255, 78, 80, 0.05)'
   };
 
   const finalDisplayName = localName || session?.user?.name?.split(' ')[0] || "User";
@@ -175,57 +174,67 @@ export default function BatchDashboard({ params }: PageProps) {
     <div style={{ background: theme.bg, minHeight: '100vh', fontFamily: 'sans-serif', transition: '0.4s' }}>
       
       <style dangerouslySetInnerHTML={{ __html: `
-        * { box-sizing: border-box; list-style: none; text-decoration: none; }
+        * { box-sizing: border-box; }
         header { display: flex; justify-content: space-between; align-items: center; padding: 0 5%; background: ${theme.header}; backdrop-filter: blur(15px); border-bottom: 1px solid ${theme.border}; position: sticky; top: 0; z-index: 1000; height: 80px; }
-        .nav-center ul { display: flex; gap: 25px; align-items: center; }
-        .home-btn { border: 2px solid #5b6cfd; color: #5b6cfd; padding: 8px 25px; border-radius: 12px; font-weight: 800; font-size: 16px; transition: 0.2s; background: rgba(91, 108, 253, 0.05); }
-        .admin-btn { background: #ffebeb; color: #ff4757; border: 2px solid #ff4757; padding: 8px 18px; border-radius: 12px; font-weight: 800; transition: 0.3s; }
-        .admin-btn:hover { background: #ff4757; color: white; }
-        .streak-pill { background: ${isDarkMode ? 'rgba(239, 68, 68, 0.1)' : '#fff5f5'}; border: 1px solid rgba(239, 68, 68, 0.2); padding: 8px 15px; border-radius: 12px; display: flex; align-items: center; gap: 8px; cursor: pointer; color: #ef4444; font-weight: bold; }
-        .notif-bell { background: ${isDarkMode ? 'rgba(255,255,255,0.05)' : '#f8f9ff'}; padding: 10px; border-radius: 12px; border: 1px solid ${theme.border}; cursor: pointer; position: relative; }
+        .nav-center ul { display: flex; gap: 20px; list-style: none; align-items: center; margin: 0; padding: 0; }
+        .home-btn { border: 2px solid #5b6cfd; color: #5b6cfd; padding: 8px 25px; border-radius: 12px; font-weight: 800; text-decoration: none; font-size: 16px; transition: 0.2s; background: rgba(91, 108, 253, 0.05); }
+        .admin-btn { background: #ffebeb; color: #ff4757; border: 2px solid #ff4757; padding: 8px 18px; border-radius: 12px; font-weight: 800; text-decoration: none; }
+        .nav-item { color: ${theme.text}; font-weight: 600; font-size: 15px; opacity: 0.8; text-decoration: none; }
+        
+        .streak-pill { background: ${theme.streakBg}; border: 1px solid rgba(255, 78, 80, 0.2); padding: 8px 18px; border-radius: 12px; display: flex; align-items: center; gap: 8px; cursor: pointer; color: #ff4e50; font-weight: 900; }
+        .notif-bell { background: ${theme.pill}; padding: 10px; border-radius: 12px; border: 1px solid ${theme.border}; cursor: pointer; position: relative; color: ${theme.text}; }
         .bell-badge { position: absolute; top: -5px; right: -5px; background: #ef4444; color: #fff; font-size: 10px; font-weight: 900; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
-        .profile-pill { display: flex; align-items: center; gap: 12px; background: ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'}; padding: 6px 16px 6px 6px; border-radius: 50px; color: inherit; }
-        .back-link { color: #5b6cfd; font-weight: 800; font-size: 18px; display: flex; align-items: center; gap: 8px; margin-bottom: 20px; cursor: pointer; border: none; background: none; }
+        
+        .profile-pill { display: flex; align-items: center; gap: 12px; background: ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)'}; padding: 6px 14px; border-radius: 50px; color: inherit; text-decoration: none; border: 1px solid ${theme.border}; }
+        .btn-logout { background: #ff4757; color: white; border: none; padding: 10px 20px; border-radius: 12px; font-weight: 800; cursor: pointer; transition: 0.3s; }
+        
+        .back-link-large { color: #5b6cfd; text-decoration: none; font-weight: 800; font-size: 18px; display: inline-flex; align-items: center; gap: 8px; margin-bottom: 25px; cursor: pointer; border: none; background: none; }
         .offering-card { padding: 30px; background: ${theme.card}; border-radius: 25px; border: 1px solid ${theme.border}; color: ${theme.text}; display: flex; justify-content: space-between; align-items: center; transition: 0.3s; }
-        .offering-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
       `}} />
 
       <header>
-        <Link href="/" style={{ fontWeight: 900, fontSize: '24px', color: '#5b6cfd' }}>StudyHub</Link>
+        <Link href="/" style={{ textDecoration: 'none', fontWeight: 900, fontSize: '24px', color: '#5b6cfd' }}>StudyHub</Link>
         <nav className="nav-center">
           <ul>
             <li><Link href="/" className="home-btn">Home</Link></li>
             {isOwner && <li><Link href="/admin" className="admin-btn">Admin Panel</Link></li>}
-            <li><Link href="#" style={{color: theme.text, fontWeight: 600}}>Books</Link></li>
-            <li><Link href="#" style={{color: theme.text, fontWeight: 600}}>Results</Link></li>
+            <li><Link href="#" className="nav-item">Books</Link></li>
+            <li><Link href="#" className="nav-item">Results</Link></li>
           </ul>
         </nav>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
-          <div className="streak-pill" onClick={() => setShowStreakModal(true)}>🔥 {streak}</div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {/* STREAK PILL */}
+          <motion.div 
+            whileHover={{ scale: 1.05 }} 
+            whileTap={{ scale: 0.95 }} 
+            className="streak-pill" 
+            onClick={() => setShowStreakModal(true)}
+          >
+            <motion.span animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 2 }}>🔥</motion.span> {streak}
+          </motion.div>
+
+          {/* NOTIFS */}
           <div className="notif-bell" onClick={() => { setShowNotifs(true); setLastReadTime(Date.now()); localStorage.setItem(`last_read_${batchId}`, Date.now().toString()); }}>
-            🔔 {unreadCount > 0 && <div className="bell-badge">{unreadCount}</div>}
+            <span>🔔</span>
+            {unreadCount > 0 && <div className="bell-badge">{unreadCount}</div>}
           </div>
-          <div style={{ position: 'relative' }}>
-            <div className="profile-pill" onClick={() => setShowProfileMenu(!showProfileMenu)} style={{cursor:'pointer'}}>
-                <img src={finalDisplayPic} style={{ width: '38px', height: '38px', borderRadius: '50%', border: '2px solid #5b6cfd', objectFit: 'cover' }} />
-                <div style={{ textAlign: 'left', lineHeight: 1.1 }}>
-                    <div style={{ fontWeight: '800', fontSize: '13px', color: theme.text }}>Hi, {finalDisplayName}</div>
-                    <div style={{ fontSize: '9px', color: '#5b6cfd', fontWeight: '900' }}>{isOwner ? 'FACULTY' : 'STUDENT'}</div>
-                </div>
+
+          <Link href="/profile" className="profile-pill">
+            <img src={finalDisplayPic} style={{ width: '34px', height: '34px', borderRadius: '50%', border: '2px solid #5b6cfd', objectFit: 'cover' }} />
+            <div style={{ textAlign: 'left', lineHeight: 1.1 }}>
+                <div style={{ fontWeight: '800', fontSize: '13px', color: theme.text }}>Hi, {finalDisplayName}</div>
+                <div style={{ fontSize: '9px', color: '#5b6cfd', fontWeight: '900' }}>{isOwner ? 'FACULTY' : 'STUDENT'}</div>
             </div>
-            {showProfileMenu && (
-                <div style={{ position: 'absolute', top: '55px', right: 0, background: theme.card, padding: '15px', borderRadius: '15px', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', zIndex: 100, border: `1px solid ${theme.border}`, minWidth: '150px' }}>
-                    <Link href="/profile" style={{ color: theme.text, display:'block', marginBottom:'10px' }}>My Profile</Link>
-                    <button onClick={() => signOut()} style={{ color: '#ef4444', background: 'none', border: 'none', fontWeight: 'bold', cursor: 'pointer' }}>Logout</button>
-                </div>
-            )}
-          </div>
+          </Link>
+
+          <button onClick={() => signOut({ callbackUrl: '/' })} className="btn-logout">Logout</button>
         </div>
       </header>
 
       <main style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 20px' }}>
-        <button onClick={() => router.push('/')} className="back-link">
-          <motion.span animate={{ x: [-2, 2, -2] }} transition={{ repeat: Infinity, duration: 1.5 }}>←</motion.span> Back to Home
+        <button onClick={() => router.push('/neet')} className="back-link-large">
+          <motion.span animate={{ x: [-2, 2, -2] }} transition={{ repeat: Infinity, duration: 1.5 }}>←</motion.span> Back to NEET Preparation
         </button>
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} 
@@ -238,9 +247,11 @@ export default function BatchDashboard({ params }: PageProps) {
           <h3 style={{ color: theme.text, fontSize: '24px', fontWeight: '900', marginBottom: '30px' }}>Batch Offerings</h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '25px' }}>
             {['All Classes', 'All Tests', 'My Doubts', 'Community'].map((item) => (
-              <Link key={item} href={item === 'All Classes' ? `/neet/${batchId}/all-classes` : '#'} className="offering-card">
-                <span style={{ fontWeight: '800' }}>{item}</span>
-                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: isDarkMode ? '#334155' : '#f5f7ff', color: '#5b6cfd', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>❯</div>
+              <Link key={item} href={item === 'All Classes' ? `/neet/${batchId}/all-classes` : '#'} style={{ textDecoration:'none' }}>
+                <div className="offering-card">
+                  <span style={{ fontWeight: '800' }}>{item}</span>
+                  <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: isDarkMode ? '#334155' : '#f5f7ff', color: '#5b6cfd', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>❯</div>
+                </div>
               </Link>
             ))}
           </div>
@@ -252,11 +263,11 @@ export default function BatchDashboard({ params }: PageProps) {
               <h3 style={{ color: theme.text, fontSize:'24px', fontWeight:'900' }}>Upcoming Events</h3>
               {isOwner && <button onClick={() => {setEditingEvent(null); setShowEventModal(true)}} style={{ background: '#5b6cfd', color: '#fff', border: 'none', padding: '12px 20px', borderRadius: '15px', fontWeight: 'bold', cursor: 'pointer' }}>+ Create Event</button>}
             </div>
-            {events.length === 0 ? <div style={{ padding: '40px', textAlign: 'center', color: theme.subtext, background: theme.card, borderRadius: '30px', border: `1px solid ${theme.border}` }}>🕒 No upcoming events scheduled.</div> : events.map(ev => (
+            {events.length === 0 ? <div style={{ padding: '40px', textAlign: 'center', color: '#888', background: theme.card, borderRadius: '30px', border: `1px solid ${theme.border}` }}>🕒 No events scheduled.</div> : events.map(ev => (
               <div key={ev.id} style={{ background: theme.card, padding: '25px', borderRadius: '30px', marginBottom: '15px', border: `1px solid ${theme.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <div style={{ fontWeight: '800', color: theme.text, fontSize: '18px' }}>{ev.title}</div>
-                  <div style={{ fontSize: '13px', color: theme.subtext, marginTop: '5px' }}>📅 {new Date(ev.event_time).toLocaleString()}</div>
+                  <div style={{ fontSize: '13px', color: '#888', marginTop: '5px' }}>📅 {new Date(ev.event_time).toLocaleString()}</div>
                 </div>
                 {isOwner && (
                     <div style={{display:'flex', gap:'10px'}}>
@@ -271,30 +282,56 @@ export default function BatchDashboard({ params }: PageProps) {
         </div>
       </main>
 
-      {/* MODALS */}
+      {/* STREAK MODAL */}
+      <AnimatePresence>
+        {showStreakModal && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.7)', zIndex:3000, display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(8px)' }} onClick={() => setShowStreakModal(false)}>
+            <motion.div initial={{ scale: 0.8, rotate: -5 }} animate={{ scale: 1, rotate: 0 }} style={{ background: theme.card, padding: '0', borderRadius: '40px', width: '380px', overflow:'hidden', textAlign:'center', boxShadow:'0 30px 60px rgba(0,0,0,0.4)' }} onClick={e => e.stopPropagation()}>
+                <div ref={badgeRef} style={{ padding:'40px 20px', background: isDarkMode ? theme.card : '#fff' }}>
+                   <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 2 }} style={{fontSize:'80px'}}>🔥</motion.div>
+                   <h2 style={{ fontSize: '42px', fontWeight: '950', color: theme.text, margin: '10px 0' }}>{streak} Days</h2>
+                   <p style={{ color: '#5b6cfd', fontWeight: '800', fontSize: '14px', letterSpacing: '1px' }}>MISSION STREAK</p>
+                   <div style={{ width:'100%', height:'12px', background: isDarkMode ? '#334155' : '#f0f0f0', borderRadius:'20px', marginTop:'25px', overflow:'hidden' }}>
+                      <motion.div initial={{width:0}} animate={{width: `${(Math.min(studySeconds, 600)/600)*100}%`}} style={{ height:'100%', background:'linear-gradient(90deg, #ff4e50, #ff8c00)' }} />
+                   </div>
+                   <p style={{ fontSize: '12px', color: '#888', marginTop: '12px' }}>{Math.floor(studySeconds/60)}m / 10m daily goal</p>
+                </div>
+                <div style={{ padding:'25px', background: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fcfdfe', borderTop:`1px solid ${theme.border}` }}>
+                   <button onClick={handleDownloadBadge} style={{ width:'100%', padding:'18px', background:'#5b6cfd', color:'#fff', border:'none', borderRadius:'20px', fontWeight:'900', cursor:'pointer', fontSize: '16px' }}>Download Badge</button>
+                </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* NOTIF MODAL WITH ADMIN LOGIC */}
       <AnimatePresence>
         {showNotifs && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', zIndex:2000, display:'flex', justifyContent:'flex-end', backdropFilter:'blur(4px)' }} onClick={() => setShowNotifs(false)}>
             <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} style={{ width:'450px', background: theme.card, height:'100%', display:'flex', flexDirection:'column', boxShadow: '-10px 0 30px rgba(0,0,0,0.1)' }} onClick={e => e.stopPropagation()}>
-              <div style={{ padding:'30px', borderBottom: `1px solid ${theme.border}`, display:'flex', justifyContent:'space-between' }}>
-                <h2 style={{ color: theme.text, fontWeight: '900' }}>Notifications</h2>
-                <button onClick={() => setShowNotifs(false)} style={{ background:'#eee', border:'none', padding:'5px 15px', borderRadius:'10px', cursor:'pointer' }}>Close</button>
+              <div style={{ padding:'30px', borderBottom: `1px solid ${theme.border}`, display:'flex', justifyContent:'space-between', alignItems: 'center' }}>
+                <h2 style={{ color: theme.text, fontWeight: '900', margin: 0 }}>Mission Updates</h2>
+                <button onClick={() => setShowNotifs(false)} style={{ background: theme.pill, border: `1px solid ${theme.border}`, color: theme.text, padding:'8px 15px', borderRadius:'10px', cursor:'pointer', fontWeight: 'bold' }}>Close</button>
               </div>
               <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
                 {notices.map(n => (
                   <div key={n.id} style={{ padding: '20px', borderBottom: `1px solid ${theme.border}`, position:'relative' }}>
                     <div style={{ fontWeight: '800', color: '#5b6cfd' }}>{n.title}</div>
                     <div style={{ color: theme.text, fontSize: '14px', marginTop: '5px' }}>{n.content}</div>
-                    <div style={{ fontSize: '10px', color: theme.subtext, marginTop: '10px' }}>{new Date(n.created_at).toLocaleString()}</div>
-                    {isOwner && <button onClick={() => supabase.from('notices').delete().eq('id', n.id).then(()=>fetchData())} style={{ color: '#ef4444', position: 'absolute', top: 20, right: 0, background: 'none', border: 'none', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer' }}>Delete</button>}
+                    {isOwner && (
+                      <div style={{display:'flex', gap:'10px', marginTop:'10px'}}>
+                        <button onClick={() => {setEditingNotif(n); setNoticeSubject(n.title); setNewNotice(n.content)}} style={{color:'#5b6cfd', background:'none', border:'none', fontSize:'11px', fontWeight:'bold', cursor:'pointer'}}>Edit</button>
+                        <button onClick={() => supabase.from('notices').delete().eq('id', n.id).then(()=>fetchData())} style={{color:'#ef4444', background:'none', border:'none', fontSize:'11px', fontWeight:'bold', cursor:'pointer'}}>Delete</button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
               {isOwner && (
                 <div style={{ padding: '20px', background: isDarkMode ? '#0f172a' : '#fcfdfe', borderTop: `1px solid ${theme.border}` }}>
-                    <input value={noticeSubject} onChange={e=>setNoticeSubject(e.target.value)} placeholder="Notice Title..." style={{ width: '100%', padding: '12px', borderRadius: '12px', border: `1px solid ${theme.border}`, marginBottom: '10px', background: theme.card, color: theme.text }} />
-                    <textarea value={newNotice} onChange={e=>setNewNotice(e.target.value)} placeholder="Notice Content..." style={{ width: '100%', padding: '12px', borderRadius: '12px', border: `1px solid ${theme.border}`, background: theme.card, color: theme.text, height: '80px' }} />
-                    <button onClick={handlePostNotice} style={{ width:'100%', padding:'12px', background:'#111', color:'#fff', borderRadius:'12px', border:'none', marginTop:'10px', fontWeight:'bold', cursor:'pointer' }}>Post Notice</button>
+                    <input value={noticeSubject} onChange={e=>setNoticeSubject(e.target.value)} placeholder="Title..." style={{ width: '100%', padding: '12px', borderRadius: '12px', border: `1px solid ${theme.border}`, marginBottom: '10px', background: theme.card, color: theme.text }} />
+                    <textarea value={newNotice} onChange={e=>setNewNotice(e.target.value)} placeholder="Notice content..." style={{ width: '100%', padding: '12px', borderRadius: '12px', border: `1px solid ${theme.border}`, background: theme.card, color: theme.text, height: '80px' }} />
+                    <button onClick={handlePostNotice} style={{ width:'100%', padding:'12px', background:'#5b6cfd', color:'#fff', borderRadius:'12px', border:'none', marginTop:'10px', fontWeight:'bold', cursor:'pointer' }}>{editingNotif ? 'Update' : 'Post'} Notice</button>
                 </div>
               )}
             </motion.div>
@@ -307,35 +344,13 @@ export default function BatchDashboard({ params }: PageProps) {
         {showEventModal && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', zIndex:3000, display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(4px)' }} onClick={() => setShowEventModal(false)}>
             <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} style={{ background: theme.card, padding: '40px', borderRadius: '40px', width: '450px' }} onClick={e => e.stopPropagation()}>
-               <h2 style={{ color: theme.text, fontWeight: '900', marginBottom: '20px' }}>{editingEvent ? 'Update' : 'Schedule'} Event</h2>
-               <input placeholder="Event Title" value={eventTitle} onChange={e=>setEventTitle(e.target.value)} style={{ width: '100%', padding: '15px', borderRadius: '15px', border: `1px solid ${theme.border}`, marginBottom: '15px', background: theme.bg, color: theme.text }} />
+               <h2 style={{ color: theme.text, fontWeight: '900', marginBottom: '20px' }}>{editingEvent ? 'Update' : 'New'} Event</h2>
+               <input placeholder="Title" value={eventTitle} onChange={e=>setEventTitle(e.target.value)} style={{ width: '100%', padding: '15px', borderRadius: '15px', border: `1px solid ${theme.border}`, marginBottom: '15px', background: theme.bg, color: theme.text }} />
                <input type="datetime-local" value={eventDate} onChange={e=>setEventDate(e.target.value)} style={{ width: '100%', padding: '15px', borderRadius: '15px', border: `1px solid ${theme.border}`, marginBottom: '25px', background: theme.bg, color: theme.text }} />
                <div style={{ display:'flex', gap:'15px' }}>
                  <button onClick={handleSaveEvent} style={{ flex:1, padding:'15px', background:'#5b6cfd', color:'#fff', border:'none', borderRadius:'15px', fontWeight:'900', cursor:'pointer' }}>Save</button>
                  <button onClick={() => setShowEventModal(false)} style={{ flex:1, padding:'15px', background:'#f5f5f5', color:'#333', border:'none', borderRadius:'15px', fontWeight:'900', cursor:'pointer' }}>Cancel</button>
                </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* STREAK MODAL */}
-      <AnimatePresence>
-        {showStreakModal && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.7)', zIndex:3000, display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(8px)' }} onClick={() => setShowStreakModal(false)}>
-            <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }} style={{ background: '#fff', padding: '0', borderRadius: '40px', width: '380px', overflow:'hidden', textAlign:'center', boxShadow:'0 30px 60px rgba(0,0,0,0.3)' }} onClick={e => e.stopPropagation()}>
-                <div ref={badgeRef} style={{background:'#fff', padding:'40px 20px'}}>
-                   <div style={{fontSize:'70px', marginBottom:'10px'}}>🔥</div>
-                   <h2 style={{ fontSize: '38px', fontWeight: '950', color: '#1c252e', margin: 0 }}>{streak} Days</h2>
-                   <p style={{ color: '#888', fontWeight: '700', marginTop: '5px' }}>STUDY STREAK</p>
-                   <div style={{ width:'100%', height:'8px', background:'#f0f0f0', borderRadius:'10px', marginTop:'25px', overflow:'hidden' }}>
-                      <motion.div initial={{width:0}} animate={{width: `${(Math.min(studySeconds, 600)/600)*100}%`}} style={{ height:'100%', background:'#5b6cfd' }} />
-                   </div>
-                   <p style={{ fontSize: '11px', color: '#aaa', marginTop: '10px' }}>{Math.floor(studySeconds/60)} / 10 Minutes daily goal</p>
-                </div>
-                <div style={{ padding:'20px', background:'#fcfdfe', borderTop:'1px solid #eee' }}>
-                   <button onClick={handleDownloadBadge} style={{ width:'100%', padding:'16px', background:'#111', color:'#fff', border:'none', borderRadius:'18px', fontWeight:'900', cursor:'pointer' }}>Download Badge</button>
-                </div>
             </motion.div>
           </motion.div>
         )}
