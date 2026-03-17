@@ -6,6 +6,8 @@ import { motion, AnimatePresence } from "framer-motion"
 import Link from "next/link"
 import html2canvas from 'html2canvas'
 import { saveAs } from 'file-saver'
+import { useRouter } from "next/navigation"
+import { useTheme } from "../../../context/ThemeContext"
 
 type PageProps = { params: Promise<{ batchId: string }> };
 
@@ -13,6 +15,9 @@ export default function BatchDashboard({ params }: PageProps) {
   const resolvedParams = use(params);
   const batchId = resolvedParams.batchId;
   const { data: session, status } = useSession()
+  const { isDarkMode } = useTheme();
+  const router = useRouter();
+  
   const [mounted, setMounted] = useState(false)
   const badgeRef = useRef<HTMLDivElement>(null);
   const dateInputRef = useRef<HTMLInputElement>(null);
@@ -54,7 +59,6 @@ export default function BatchDashboard({ params }: PageProps) {
       setLocalPic(localStorage.getItem("userProfilePic") || "");
       setStreak(parseInt(localStorage.getItem("userStreak") || "0"));
       
-      // DAILY RESET LOGIC
       const today = new Date().toDateString();
       const lastStudyDate = localStorage.getItem("lastStudyDate");
       
@@ -105,17 +109,15 @@ export default function BatchDashboard({ params }: PageProps) {
   // --- ACTIONS ---
   const handleSaveEvent = async () => {
     if (!eventTitle || !eventDate) return;
-    try {
-        const evPayload = { batch_id: batchId, title: eventTitle, event_time: eventDate, is_done: false };
-        if (editingEvent) {
-          await supabase.from('events').update(evPayload).eq('id', editingEvent.id);
-          await supabase.from('notices').insert([{ batch_id: batchId, title: "🔄 Event Updated", content: `"${eventTitle}" reschedule details: ${new Date(eventDate).toLocaleString()}` }]);
-        } else {
-          await supabase.from('events').insert([evPayload]);
-          await supabase.from('notices').insert([{ batch_id: batchId, title: "📅 New Event Added", content: `${eventTitle} is scheduled for ${new Date(eventDate).toLocaleString()}` }]);
-        }
-        setShowEventModal(false); setEventTitle(""); setEventDate(""); setEditingEvent(null); fetchData();
-    } catch (err: any) { alert("Error: " + err.message); }
+    const evPayload = { batch_id: batchId, title: eventTitle, event_time: eventDate, is_done: false };
+    if (editingEvent) {
+      await supabase.from('events').update(evPayload).eq('id', editingEvent.id);
+      await supabase.from('notices').insert([{ batch_id: batchId, title: "🔄 Event Updated", content: `"${eventTitle}" reschedule details: ${new Date(eventDate).toLocaleString()}` }]);
+    } else {
+      await supabase.from('events').insert([evPayload]);
+      await supabase.from('notices').insert([{ batch_id: batchId, title: "📅 New Event Added", content: `${eventTitle} is scheduled for ${new Date(eventDate).toLocaleString()}` }]);
+    }
+    setShowEventModal(false); setEventTitle(""); setEventDate(""); setEditingEvent(null); fetchData();
   };
 
   const handleEditEvent = (ev: any) => {
@@ -127,7 +129,7 @@ export default function BatchDashboard({ params }: PageProps) {
 
   const handleDoneDismiss = async (ev: any) => {
     await supabase.from('events').update({ is_done: true }).eq('id', ev.id);
-    await supabase.from('notices').insert([{ batch_id: batchId, title: "✅ Mission AccomplISHED", content: `Excellent! The task "${ev.title}" is finished.` }]);
+    await supabase.from('notices').insert([{ batch_id: batchId, title: "✅ Mission Accomplished", content: `Excellent! The task "${ev.title}" is finished.` }]);
     fetchData();
   };
 
@@ -149,9 +151,18 @@ export default function BatchDashboard({ params }: PageProps) {
 
   const handleDownloadBadge = async () => {
     if (badgeRef.current) {
-      const canvas = await html2canvas(badgeRef.current, { scale: 3, backgroundColor: '#ffffff', useCORS: true });
-      canvas.toBlob((blob) => { if (blob) saveAs(blob, `StudyHub_Streak_${streak}Days.png`); });
+      const canvas = await html2canvas(badgeRef.current, { scale: 3, backgroundColor: isDarkMode ? '#0f172a' : '#ffffff', useCORS: true });
+      canvas.toBlob((blob) => { if (blob) saveAs(blob, `Streak_${streak}Days.png`); });
     }
+  };
+
+  const theme = {
+    bg: isDarkMode ? '#0f172a' : '#f8fafc',
+    header: isDarkMode ? 'rgba(30, 41, 59, 0.85)' : 'rgba(255, 255, 255, 0.85)',
+    text: isDarkMode ? '#f8fafc' : '#1c252e',
+    card: isDarkMode ? '#1e293b' : '#fff',
+    border: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+    subtext: isDarkMode ? '#94a3b8' : '#64748b'
   };
 
   const finalDisplayName = localName || session?.user?.name?.split(' ')[0] || "User";
@@ -161,132 +172,129 @@ export default function BatchDashboard({ params }: PageProps) {
   if (status === "loading" || !mounted) return null;
 
   return (
-    <div style={{ background: '#fcfdfe', minHeight: '100vh', fontFamily: 'sans-serif' }}>
+    <div style={{ background: theme.bg, minHeight: '100vh', fontFamily: 'sans-serif', transition: '0.4s' }}>
       
-      {/* HEADER */}
-      <header style={headerWrapper}>
-        <div style={headerInner}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-            {/* BACK BUTTON TO NEET BATCHES PAGE */}
-            <Link href="/neet" style={{ textDecoration: 'none' }}>
-              <motion.div whileHover={{x:-3}} style={backBtnCircle}>←</motion.div>
-            </Link>
-            <Link href="/" style={{ textDecoration: 'none' }}><h1 style={{ fontSize: '22px', fontWeight: '900', color: '#5b6cfd', margin: 0, cursor: 'pointer' }}>StudyHub</h1></Link>
+      <style dangerouslySetInnerHTML={{ __html: `
+        * { box-sizing: border-box; list-style: none; text-decoration: none; }
+        header { display: flex; justify-content: space-between; align-items: center; padding: 0 5%; background: ${theme.header}; backdrop-filter: blur(15px); border-bottom: 1px solid ${theme.border}; position: sticky; top: 0; z-index: 1000; height: 80px; }
+        .nav-center ul { display: flex; gap: 25px; align-items: center; }
+        .home-btn { border: 2px solid #5b6cfd; color: #5b6cfd; padding: 8px 25px; border-radius: 12px; font-weight: 800; font-size: 16px; transition: 0.2s; background: rgba(91, 108, 253, 0.05); }
+        .admin-btn { background: #ffebeb; color: #ff4757; border: 2px solid #ff4757; padding: 8px 18px; border-radius: 12px; font-weight: 800; transition: 0.3s; }
+        .admin-btn:hover { background: #ff4757; color: white; }
+        .streak-pill { background: ${isDarkMode ? 'rgba(239, 68, 68, 0.1)' : '#fff5f5'}; border: 1px solid rgba(239, 68, 68, 0.2); padding: 8px 15px; border-radius: 12px; display: flex; align-items: center; gap: 8px; cursor: pointer; color: #ef4444; font-weight: bold; }
+        .notif-bell { background: ${isDarkMode ? 'rgba(255,255,255,0.05)' : '#f8f9ff'}; padding: 10px; border-radius: 12px; border: 1px solid ${theme.border}; cursor: pointer; position: relative; }
+        .bell-badge { position: absolute; top: -5px; right: -5px; background: #ef4444; color: #fff; font-size: 10px; font-weight: 900; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+        .profile-pill { display: flex; align-items: center; gap: 12px; background: ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'}; padding: 6px 16px 6px 6px; border-radius: 50px; color: inherit; }
+        .back-link { color: #5b6cfd; font-weight: 800; font-size: 18px; display: flex; align-items: center; gap: 8px; margin-bottom: 20px; cursor: pointer; border: none; background: none; }
+        .offering-card { padding: 30px; background: ${theme.card}; border-radius: 25px; border: 1px solid ${theme.border}; color: ${theme.text}; display: flex; justify-content: space-between; align-items: center; transition: 0.3s; }
+        .offering-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
+      `}} />
+
+      <header>
+        <Link href="/" style={{ fontWeight: 900, fontSize: '24px', color: '#5b6cfd' }}>StudyHub</Link>
+        <nav className="nav-center">
+          <ul>
+            <li><Link href="/" className="home-btn">Home</Link></li>
+            {isOwner && <li><Link href="/admin" className="admin-btn">Admin Panel</Link></li>}
+            <li><Link href="#" style={{color: theme.text, fontWeight: 600}}>Books</Link></li>
+            <li><Link href="#" style={{color: theme.text, fontWeight: 600}}>Results</Link></li>
+          </ul>
+        </nav>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
+          <div className="streak-pill" onClick={() => setShowStreakModal(true)}>🔥 {streak}</div>
+          <div className="notif-bell" onClick={() => { setShowNotifs(true); setLastReadTime(Date.now()); localStorage.setItem(`last_read_${batchId}`, Date.now().toString()); }}>
+            🔔 {unreadCount > 0 && <div className="bell-badge">{unreadCount}</div>}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-            <div style={statPillGroup}>
-                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} style={streakPill} onClick={() => setShowStreakModal(true)}>🔥 {streak}</motion.div>
-                <motion.div whileHover={{ rotate: [0,-10,10,0] }} style={bellContainer} onClick={() => setShowNotifs(true)}>
-                    <span>🔔</span>{unreadCount > 0 && <span style={bellBadge}>{unreadCount}</span>}
-                </motion.div>
-            </div>
-            
-            <div style={{ position: 'relative' }}>
-              <div style={profileTrigger} onClick={() => setShowProfileMenu(!showProfileMenu)}>
-                <motion.img animate={{ boxShadow: ['0 0 0px #5b6cfd', '0 0 10px #5b6cfd', '0 0 0px #5b6cfd'] }} transition={{ repeat: Infinity, duration: 3 }} src={finalDisplayPic} style={navAvatar} />
-                <div style={nameWrapper}>
-                  <span style={navNameText}>Hi, {finalDisplayName}</span>
-                  <span style={navRoleText}>{isOwner ? 'FACULTY' : 'STUDENT'}</span>
+          <div style={{ position: 'relative' }}>
+            <div className="profile-pill" onClick={() => setShowProfileMenu(!showProfileMenu)} style={{cursor:'pointer'}}>
+                <img src={finalDisplayPic} style={{ width: '38px', height: '38px', borderRadius: '50%', border: '2px solid #5b6cfd', objectFit: 'cover' }} />
+                <div style={{ textAlign: 'left', lineHeight: 1.1 }}>
+                    <div style={{ fontWeight: '800', fontSize: '13px', color: theme.text }}>Hi, {finalDisplayName}</div>
+                    <div style={{ fontSize: '9px', color: '#5b6cfd', fontWeight: '900' }}>{isOwner ? 'FACULTY' : 'STUDENT'}</div>
                 </div>
-              </div>
-              <AnimatePresence>
-                {showProfileMenu && (
-                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 5 }} style={dropdownMenu}>
-                    <Link href="/profile" style={dropdownItem}>👤 My Profile</Link>
-                    <hr style={{ border: '0', borderTop: '1px solid #f0f0f0', margin: '5px 0' }} />
-                    <button onClick={() => signOut({ callbackUrl: '/' })} style={dropdownLogoutBtn}>🚪 Logout</button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
             </div>
+            {showProfileMenu && (
+                <div style={{ position: 'absolute', top: '55px', right: 0, background: theme.card, padding: '15px', borderRadius: '15px', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', zIndex: 100, border: `1px solid ${theme.border}`, minWidth: '150px' }}>
+                    <Link href="/profile" style={{ color: theme.text, display:'block', marginBottom:'10px' }}>My Profile</Link>
+                    <button onClick={() => signOut()} style={{ color: '#ef4444', background: 'none', border: 'none', fontWeight: 'bold', cursor: 'pointer' }}>Logout</button>
+                </div>
+            )}
           </div>
         </div>
       </header>
 
-      <main style={contentArea}>
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={batchBanner}>
-          <div style={bannerDots} />
-          <div style={{ position: 'relative', zIndex: 1 }}>
-            <small style={{ opacity: 0.8, fontWeight: '700' }}>YOUR BATCH</small>
-            <h2 style={{ fontSize: '42px', fontWeight: '900', margin: '15px 0' }}>{batchId.toUpperCase()} MISSION</h2>
-          </div>
+      <main style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 20px' }}>
+        <button onClick={() => router.push('/')} className="back-link">
+          <motion.span animate={{ x: [-2, 2, -2] }} transition={{ repeat: Infinity, duration: 1.5 }}>←</motion.span> Back to Home
+        </button>
+
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} 
+          style={{ background: isDarkMode ? '#1e293b' : '#1c252e', color: '#fff', padding: '80px 60px', borderRadius: '30px 30px 100px 30px', marginBottom: '50px', position: 'relative', overflow: 'hidden' }}>
+          <h2 style={{ fontSize: '42px', fontWeight: '900', margin: 0 }}>{batchId.toUpperCase()} MISSION</h2>
+          <p style={{ opacity: 0.7, marginTop: '10px', fontSize: '18px' }}>Crack NEET with StudyHub's premium batch curriculum.</p>
         </motion.div>
 
-        {/* OFFERINGS */}
-        <section style={{ marginBottom: '40px' }}>
-          <h3 style={sectionTitle}>Batch Offerings</h3>
-          <div style={offeringGrid}>
-            {['All Classes', 'All Tests', 'My Doubts', 'Community'].map((item, idx) => (
-              <Link key={item} href={item === 'All Classes' ? `/neet/${batchId}/all-classes` : '#'} style={{ textDecoration: 'none' }}>
-                <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.1 }}
-                   whileHover={{ y: -8, scale: 1.02, boxShadow: '0 15px 30px rgba(91, 108, 253, 0.1)' }} style={offeringItem}>
-                  <span style={{ fontWeight: '800', color: '#000', fontSize: '16px' }}>{item}</span>
-                  <div style={arrowCircle}>❯</div>
-                </motion.div>
+        <section style={{ marginBottom: '60px' }}>
+          <h3 style={{ color: theme.text, fontSize: '24px', fontWeight: '900', marginBottom: '30px' }}>Batch Offerings</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '25px' }}>
+            {['All Classes', 'All Tests', 'My Doubts', 'Community'].map((item) => (
+              <Link key={item} href={item === 'All Classes' ? `/neet/${batchId}/all-classes` : '#'} className="offering-card">
+                <span style={{ fontWeight: '800' }}>{item}</span>
+                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: isDarkMode ? '#334155' : '#f5f7ff', color: '#5b6cfd', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>❯</div>
               </Link>
             ))}
           </div>
         </section>
 
-        {/* EVENTS SECTION */}
-        <div style={dashboardGrid}>
-          <div style={{ flex: 1 }}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: '15px' }}>
-              <h3 style={sectionTitle}>Upcoming Events</h3>
-              {isOwner && <motion.button whileHover={{ scale: 1.05 }} onClick={() => {setEditingEvent(null); setEventTitle(""); setEventDate(""); setShowEventModal(true)}} style={addBtn}>+ Create Event</motion.button>}
+        <div style={{ display: 'flex', gap: '40px', flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: '350px' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: '25px' }}>
+              <h3 style={{ color: theme.text, fontSize:'24px', fontWeight:'900' }}>Upcoming Events</h3>
+              {isOwner && <button onClick={() => {setEditingEvent(null); setShowEventModal(true)}} style={{ background: '#5b6cfd', color: '#fff', border: 'none', padding: '12px 20px', borderRadius: '15px', fontWeight: 'bold', cursor: 'pointer' }}>+ Create Event</button>}
             </div>
-            <AnimatePresence>
-                {events.length === 0 ? <div style={emptyBox}>🕒 No upcoming events scheduled.</div> : events.map(ev => (
-                <motion.div layout initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, scale: 0.9 }} key={ev.id} style={dataRow}>
-                    <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: '800', color: '#1c252e', fontSize: '16px' }}>{ev.title}</div>
-                        <div style={{ fontSize: '12px', color: '#888', marginTop: '6px' }}>📅 {new Date(ev.event_time).toLocaleString()}</div>
-                    </div>
-                    {isOwner && (
+            {events.length === 0 ? <div style={{ padding: '40px', textAlign: 'center', color: theme.subtext, background: theme.card, borderRadius: '30px', border: `1px solid ${theme.border}` }}>🕒 No upcoming events scheduled.</div> : events.map(ev => (
+              <div key={ev.id} style={{ background: theme.card, padding: '25px', borderRadius: '30px', marginBottom: '15px', border: `1px solid ${theme.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontWeight: '800', color: theme.text, fontSize: '18px' }}>{ev.title}</div>
+                  <div style={{ fontSize: '13px', color: theme.subtext, marginTop: '5px' }}>📅 {new Date(ev.event_time).toLocaleString()}</div>
+                </div>
+                {isOwner && (
                     <div style={{display:'flex', gap:'10px'}}>
-                        <button onClick={() => handleEditEvent(ev)} style={{...textActionBtn, background: '#f8faff', padding: '8px 15px', borderRadius: '10px'}}>Edit</button>
-                        <motion.button whileTap={{scale:0.9}} onClick={() => handleDoneDismiss(ev)} style={{...textActionBtn, color:'#22c55e', background: '#f0fdf4', padding: '8px 15px', borderRadius: '10px'}}>✓ Done</motion.button>
-                        <button onClick={() => handleDeleteEvent(ev)} style={{...textActionBtnRed, background: '#fef2f2', padding: '8px 15px', borderRadius: '10px'}}>Delete</button>
+                        <button onClick={() => handleEditEvent(ev)} style={{ color: '#5b6cfd', border: 'none', background: 'none', fontWeight: 'bold', cursor: 'pointer' }}>Edit</button>
+                        <button onClick={() => handleDoneDismiss(ev)} style={{ color: '#22c55e', border: 'none', background: 'none', fontWeight: 'bold', cursor: 'pointer' }}>Done</button>
+                        <button onClick={() => handleDeleteEvent(ev)} style={{ color: '#ef4444', border: 'none', background: 'none', fontWeight: 'bold', cursor: 'pointer' }}>Delete</button>
                     </div>
-                    )}
-                </motion.div>
-                ))}
-            </AnimatePresence>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       </main>
 
-      {/* NOTIFICATION DRAWER */}
+      {/* MODALS */}
       <AnimatePresence>
         {showNotifs && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={modalOverlay} onClick={() => setShowNotifs(false)}>
-            <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} style={drawerUI} onClick={e => e.stopPropagation()}>
-              <div style={drawerHeaderUI}>
-                 <div style={{fontSize:'22px', fontWeight:'900'}}>Notifications</div>
-                 <button onClick={() => setShowNotifs(false)} style={{...markReadBtnUI, background:'#eee', color:'#333'}}>Close</button>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', zIndex:2000, display:'flex', justifyContent:'flex-end', backdropFilter:'blur(4px)' }} onClick={() => setShowNotifs(false)}>
+            <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} style={{ width:'450px', background: theme.card, height:'100%', display:'flex', flexDirection:'column', boxShadow: '-10px 0 30px rgba(0,0,0,0.1)' }} onClick={e => e.stopPropagation()}>
+              <div style={{ padding:'30px', borderBottom: `1px solid ${theme.border}`, display:'flex', justifyContent:'space-between' }}>
+                <h2 style={{ color: theme.text, fontWeight: '900' }}>Notifications</h2>
+                <button onClick={() => setShowNotifs(false)} style={{ background:'#eee', border:'none', padding:'5px 15px', borderRadius:'10px', cursor:'pointer' }}>Close</button>
               </div>
-              <div style={{padding: '0 20px', flex: 1, overflowY: 'auto'}}>
+              <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
                 {notices.map(n => (
-                    <motion.div key={n.id} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} style={notifCardUI}>
-                       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                          <div style={{fontWeight:'800', color:'#5b6cfd'}}>{n.title}</div>
-                          <div style={{fontSize:'10px', color:'#aaa'}}>{new Date(n.created_at).toLocaleString()}</div>
-                       </div>
-                       <div style={{fontSize:'14px', marginTop:'4px'}}>{n.content}</div>
-                       {isOwner && (
-                         <div style={{display:'flex', gap:'10px', marginTop:'10px'}}>
-                            <button onClick={() => {setEditingNotif(n); setNoticeSubject(n.title); setNewNotice(n.content)}} style={textActionBtn}>Edit</button>
-                            <button onClick={() => {if(confirm("Delete notice?")) supabase.from('notices').delete().eq('id', n.id).then(()=>fetchData())}} style={textActionBtnRed}>Delete</button>
-                         </div>
-                       )}
-                    </motion.div>
+                  <div key={n.id} style={{ padding: '20px', borderBottom: `1px solid ${theme.border}`, position:'relative' }}>
+                    <div style={{ fontWeight: '800', color: '#5b6cfd' }}>{n.title}</div>
+                    <div style={{ color: theme.text, fontSize: '14px', marginTop: '5px' }}>{n.content}</div>
+                    <div style={{ fontSize: '10px', color: theme.subtext, marginTop: '10px' }}>{new Date(n.created_at).toLocaleString()}</div>
+                    {isOwner && <button onClick={() => supabase.from('notices').delete().eq('id', n.id).then(()=>fetchData())} style={{ color: '#ef4444', position: 'absolute', top: 20, right: 0, background: 'none', border: 'none', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer' }}>Delete</button>}
+                  </div>
                 ))}
               </div>
               {isOwner && (
-                <div style={adminPanelNotifUI}>
-                   <input value={noticeSubject} onChange={(e)=>setNoticeSubject(e.target.value)} placeholder="Subject..." style={subjectInputUI} />
-                   <textarea value={newNotice} onChange={e => setNewNotice(e.target.value)} placeholder="Write message..." style={notifInputUI} />
-                   <button onClick={handlePostNotice} style={notifSendBtn}>{editingNotif ? 'Update Notice' : 'Post Notice'}</button>
+                <div style={{ padding: '20px', background: isDarkMode ? '#0f172a' : '#fcfdfe', borderTop: `1px solid ${theme.border}` }}>
+                    <input value={noticeSubject} onChange={e=>setNoticeSubject(e.target.value)} placeholder="Notice Title..." style={{ width: '100%', padding: '12px', borderRadius: '12px', border: `1px solid ${theme.border}`, marginBottom: '10px', background: theme.card, color: theme.text }} />
+                    <textarea value={newNotice} onChange={e=>setNewNotice(e.target.value)} placeholder="Notice Content..." style={{ width: '100%', padding: '12px', borderRadius: '12px', border: `1px solid ${theme.border}`, background: theme.card, color: theme.text, height: '80px' }} />
+                    <button onClick={handlePostNotice} style={{ width:'100%', padding:'12px', background:'#111', color:'#fff', borderRadius:'12px', border:'none', marginTop:'10px', fontWeight:'bold', cursor:'pointer' }}>Post Notice</button>
                 </div>
               )}
             </motion.div>
@@ -297,23 +305,14 @@ export default function BatchDashboard({ params }: PageProps) {
       {/* EVENT MODAL */}
       <AnimatePresence>
         {showEventModal && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={modalOverlay} onClick={() => setShowEventModal(false)}>
-            <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} style={modal} onClick={e => e.stopPropagation()}>
-               <h2 style={{margin: '0 0 10px', fontWeight: '900'}}>{editingEvent ? 'Update Event' : 'Schedule Event'}</h2>
-               <div style={{marginBottom: '20px'}}>
-                  <label style={inputLabel}>Event Title</label>
-                  <input placeholder="Ex: Physics Mock Test" value={eventTitle} onChange={e => setEventTitle(e.target.value)} style={modalInput} />
-               </div>
-               <div style={{marginBottom: '30px'}}>
-                  <label style={inputLabel}>Date & Time</label>
-                  <div style={customDateWrapper} onClick={() => dateInputRef.current?.showPicker()}>
-                    <input ref={dateInputRef} type="datetime-local" value={eventDate} onChange={e => setEventDate(e.target.value)} style={hiddenDateInput} />
-                    <div style={dateDisplayFake}>{eventDate ? new Date(eventDate).toLocaleString() : 'Select Date and Time'}<span>📅</span></div>
-                  </div>
-               </div>
-               <div style={{display: 'flex', gap: '12px'}}>
-                  <motion.button whileTap={{scale: 0.95}} onClick={handleSaveEvent} style={notifSendBtn}>{editingEvent ? 'Update' : 'Create'} Event</motion.button>
-                  <motion.button whileTap={{scale: 0.95}} onClick={() => setShowEventModal(false)} style={{...notifSendBtn, background: '#f5f5f5', color: '#333'}}>Cancel</motion.button>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', zIndex:3000, display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(4px)' }} onClick={() => setShowEventModal(false)}>
+            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} style={{ background: theme.card, padding: '40px', borderRadius: '40px', width: '450px' }} onClick={e => e.stopPropagation()}>
+               <h2 style={{ color: theme.text, fontWeight: '900', marginBottom: '20px' }}>{editingEvent ? 'Update' : 'Schedule'} Event</h2>
+               <input placeholder="Event Title" value={eventTitle} onChange={e=>setEventTitle(e.target.value)} style={{ width: '100%', padding: '15px', borderRadius: '15px', border: `1px solid ${theme.border}`, marginBottom: '15px', background: theme.bg, color: theme.text }} />
+               <input type="datetime-local" value={eventDate} onChange={e=>setEventDate(e.target.value)} style={{ width: '100%', padding: '15px', borderRadius: '15px', border: `1px solid ${theme.border}`, marginBottom: '25px', background: theme.bg, color: theme.text }} />
+               <div style={{ display:'flex', gap:'15px' }}>
+                 <button onClick={handleSaveEvent} style={{ flex:1, padding:'15px', background:'#5b6cfd', color:'#fff', border:'none', borderRadius:'15px', fontWeight:'900', cursor:'pointer' }}>Save</button>
+                 <button onClick={() => setShowEventModal(false)} style={{ flex:1, padding:'15px', background:'#f5f5f5', color:'#333', border:'none', borderRadius:'15px', fontWeight:'900', cursor:'pointer' }}>Cancel</button>
                </div>
             </motion.div>
           </motion.div>
@@ -323,25 +322,20 @@ export default function BatchDashboard({ params }: PageProps) {
       {/* STREAK MODAL */}
       <AnimatePresence>
         {showStreakModal && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={modalOverlay} onClick={() => setShowStreakModal(false)}>
-            <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }} style={streakCardPremium} onClick={e => e.stopPropagation()}>
-              <button style={closeX} onClick={() => setShowStreakModal(false)}>✕</button>
-              <div ref={badgeRef} style={{background:'#fff', borderRadius:'35px', overflow:'hidden'}}>
-                <motion.div animate={{ background: ['linear-gradient(135deg, #5b6cfd, #9c42f5)', 'linear-gradient(135deg, #9c42f5, #ff5b84)', 'linear-gradient(135deg, #5b6cfd, #9c42f5)'] }}
-                    transition={{ duration: 6, repeat: Infinity }} style={streakCircleHeader}
-                >
-                    <div style={streakMainVal}>{streak} <small style={{fontSize:'12px', display:'block', color:'#888'}}>DAYS</small></div>
-                </motion.div>
-                <div style={streakInfoBody}>
-                    <h2 style={{margin:0, fontWeight:'900'}}>Daily Streak!</h2>
-                    <div style={{display:'flex', justifyContent:'space-between', fontSize:'11px', color:'#888', marginTop:'15px'}}>
-                        <span>{Math.floor(studySeconds/60)}m done</span>
-                        <span style={{color:'#5b6cfd', fontWeight:'700'}}>{studySeconds < 600 ? `${10 - Math.floor(studySeconds/60)}m left` : 'Goal Hit!'}</span>
-                    </div>
-                    <div style={progressBarBg}><motion.div animate={{width: `${(Math.min(studySeconds, 600)/600)*100}%`}} style={progressBarFill} /></div>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.7)', zIndex:3000, display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(8px)' }} onClick={() => setShowStreakModal(false)}>
+            <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }} style={{ background: '#fff', padding: '0', borderRadius: '40px', width: '380px', overflow:'hidden', textAlign:'center', boxShadow:'0 30px 60px rgba(0,0,0,0.3)' }} onClick={e => e.stopPropagation()}>
+                <div ref={badgeRef} style={{background:'#fff', padding:'40px 20px'}}>
+                   <div style={{fontSize:'70px', marginBottom:'10px'}}>🔥</div>
+                   <h2 style={{ fontSize: '38px', fontWeight: '950', color: '#1c252e', margin: 0 }}>{streak} Days</h2>
+                   <p style={{ color: '#888', fontWeight: '700', marginTop: '5px' }}>STUDY STREAK</p>
+                   <div style={{ width:'100%', height:'8px', background:'#f0f0f0', borderRadius:'10px', marginTop:'25px', overflow:'hidden' }}>
+                      <motion.div initial={{width:0}} animate={{width: `${(Math.min(studySeconds, 600)/600)*100}%`}} style={{ height:'100%', background:'#5b6cfd' }} />
+                   </div>
+                   <p style={{ fontSize: '11px', color: '#aaa', marginTop: '10px' }}>{Math.floor(studySeconds/60)} / 10 Minutes daily goal</p>
                 </div>
-              </div>
-              <div style={shareSectionUI}><button onClick={handleDownloadBadge} style={downloadBtnUI}>Download Badge</button></div>
+                <div style={{ padding:'20px', background:'#fcfdfe', borderTop:'1px solid #eee' }}>
+                   <button onClick={handleDownloadBadge} style={{ width:'100%', padding:'16px', background:'#111', color:'#fff', border:'none', borderRadius:'18px', fontWeight:'900', cursor:'pointer' }}>Download Badge</button>
+                </div>
             </motion.div>
           </motion.div>
         )}
@@ -349,58 +343,3 @@ export default function BatchDashboard({ params }: PageProps) {
     </div>
   )
 }
-
-// --- STYLE DEFINITIONS ---
-const headerWrapper: any = { position:'fixed', top:0, left:0, width:'100%', background:'#fff', borderBottom:'1px solid #f0f0f0', zIndex: 1000, height: '80px', boxShadow:'0 2px 15px rgba(0,0,0,0.03)' };
-const headerInner: any = { maxWidth:'1300px', margin:'0 auto', display:'flex', justifyContent:'space-between', alignItems:'center', height:'100%', padding:'0 25px' };
-const contentArea: any = { paddingTop:'180px', maxWidth:'1200px', margin:'0 auto', paddingBottom:'60px', paddingLeft:'20px', paddingRight:'20px' };
-const statPillGroup: any = { display: 'flex', gap: '12px', alignItems: 'center' };
-const streakPill: any = { background: '#fff5f5', border: '1px solid #ffdcdc', padding: '10px 18px', borderRadius: '14px', fontWeight: 'bold', fontSize: '15px', cursor: 'pointer' };
-const bellContainer: any = { position: 'relative', background: '#f8f9ff', padding: '10px', borderRadius: '14px', cursor: 'pointer', border: '1px solid #eee' };
-const bellBadge: any = { position: 'absolute', top: '-4px', right: '-4px', background: '#ef4444', color: '#fff', fontSize: '10px', fontWeight: '900', padding: '2px 6px', borderRadius: '10px' };
-const profileTrigger: any = { display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' };
-const navAvatar: any = { width: '45px', height: '45px', borderRadius: '50%', border: '2.5px solid #5b6cfd', objectFit: 'cover' };
-const nameWrapper: any = { display: 'flex', flexDirection: 'column' };
-const navNameText: any = { fontSize: '15px', fontWeight: '800', color: '#5b6cfd' };
-const navRoleText: any = { fontSize: '10px', fontWeight: '700', color: '#888' };
-const backBtnCircle: any = { color:'#333', background:'#f5f5f5', width:'35px', height:'35px', borderRadius:'10px', display:'flex', alignItems:'center', justifyContent:'center', cursor: 'pointer' };
-const batchBanner: any = { background:'#1c252e', color:'#fff', padding:'80px 60px', borderRadius:'30px 30px 100px 30px', marginBottom:'50px', position: 'relative', overflow: 'hidden', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' };
-const bannerDots: any = { position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.05) 1px, transparent 0)', backgroundSize: '24px 24px' };
-const studyGoalText: any = { marginTop:'20px', background:'rgba(255,255,255,0.1)', padding:'8px 16px', borderRadius:'10px', display:'inline-block', fontSize:'13px' };
-const offeringGrid: any = { display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(260px, 1fr))', gap:'20px' };
-const offeringItem: any = { padding:'30px', background:'#fff', borderRadius:'30px', border:'1px solid #f0f0f0', display:'flex', justifyContent:'space-between', alignItems:'center', cursor: 'pointer', boxShadow: '0 8px 20px rgba(0,0,0,0.03)' };
-const arrowCircle: any = { width: '32px', height: '32px', borderRadius: '50%', background: '#f5f7ff', color: '#5b6cfd', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' };
-const sectionTitle: any = { fontSize:'22px', fontWeight:'900', margin:'0 0 25px' };
-const dashboardGrid: any = { display:'flex', gap:'40px' };
-const dataRow: any = { background:'#fff', padding:'25px', borderRadius:'30px', marginBottom:'12px', border:'1px solid #f0f0f0', display:'flex', justifyContent:'space-between', alignItems:'center', boxShadow: '0 4px 10px rgba(0,0,0,0.02)' };
-const textActionBtn: any = { background:'none', border:'none', color:'#5b6cfd', fontSize:'12px', fontWeight:'bold', cursor:'pointer' };
-const textActionBtnRed: any = { background:'none', border:'none', color:'#ff4d4d', fontSize:'12px', fontWeight:'bold', cursor:'pointer' };
-const addBtn: any = { background:'#6157ff', color:'#fff', border:'none', padding:'12px 24px', borderRadius:'15px', fontWeight:'bold', cursor:'pointer', boxShadow: '0 4px 15px rgba(97, 87, 255, 0.2)' };
-const modalOverlay: any = { position:'fixed', top:0, left:0, width:'100%', height:'100%', background:'rgba(0,0,0,0.6)', zIndex:3000, display:'flex', alignItems:'center', justifyContent:'center', backdropFilter: 'blur(4px)' };
-const drawerUI: any = { width:'460px', height:'100%', background:'#fff', display:'flex', flexDirection:'column', boxShadow: '-10px 0 30px rgba(0,0,0,0.05)', position: 'absolute', right: 0 };
-const drawerHeaderUI: any = { padding:'30px 25px 20px', display:'flex', justifyContent:'space-between', alignItems: 'center' };
-const markReadBtnUI: any = { background: '#f0f3ff', border: '1px solid #e0e7ff', padding: '10px 18px', borderRadius: '12px', fontSize: '13px', fontWeight: '700', color: '#5b6cfd', cursor: 'pointer' };
-const notifCardUI: any = { padding: '20px', borderBottom: '1px solid #f0f0f0' };
-const adminPanelNotifUI: any = { padding: '20px', borderTop: '1px solid #eee', background: '#fcfdfe' };
-const subjectInputUI: any = { width:'100%', padding:'12px', borderRadius:'12px', border:'1px solid #eee', marginBottom:'10px', fontSize:'14px' };
-const notifInputUI: any = { width: '100%', padding: '15px', borderRadius: '15px', border: '1px solid #eee', fontSize: '14px', minHeight: '80px' };
-const notifSendBtn: any = { flex: 1, padding: '15px', background: '#111', color: '#fff', border: 'none', borderRadius: '16px', fontWeight: '900', cursor:'pointer' };
-const modal: any = { background:'#fff', padding:'40px', borderRadius:'40px', width:'450px', boxShadow: '0 25px 50px rgba(0,0,0,0.1)' };
-const inputLabel: any = { display: 'block', fontSize: '13px', fontWeight: '800', color: '#888', marginBottom: '8px', marginLeft: '5px' };
-const modalInput: any = { width:'100%', padding:'16px', borderRadius:'18px', border:'1.5px solid #eee', fontSize: '15px', outline: 'none' };
-const customDateWrapper: any = { position: 'relative', width: '100%', cursor: 'pointer' };
-const hiddenDateInput: any = { position: 'absolute', top: 0, left: 0, width: '1px', height: '1px', opacity: 0, pointerEvents: 'none' };
-const dateDisplayFake: any = { padding: '16px', borderRadius: '18px', border: '1.5px solid #eee', background: '#f9f9fb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#333', fontSize: '15px' };
-const emptyBox: any = { padding: '40px', textAlign: 'center', color: '#aaa', fontSize: '14px' };
-const dropdownMenu: any = { position: 'absolute', top: '75px', right: '0', background: '#fff', boxShadow: '0 15px 35px rgba(0,0,0,0.12)', borderRadius: '20px', padding: '10px', zIndex: 100, minWidth: '180px', border: '1px solid #f0f0f0' };
-const dropdownItem: any = { display:'block', padding:'12px 15px', textDecoration:'none', color:'#333', fontWeight: '700', fontSize: '14px' };
-const dropdownLogoutBtn: any = { width:'100%', textAlign:'left', padding:'12px 15px', background:'none', border:'none', color:'#ef4444', fontWeight: '800', borderRadius: '12px', cursor: 'pointer' };
-const streakCardPremium: any = { width:'400px', background:'#fff', borderRadius:'40px', overflow:'hidden', position:'relative', textAlign:'center', boxShadow:'0 30px 60px rgba(0,0,0,0.3)' };
-const streakCircleHeader: any = { height: '180px', display: 'flex', alignItems: 'center', justifyContent: 'center', position:'relative' };
-const streakMainVal: any = { width: '120px', height: '120px', background: '#fff', borderRadius: '50%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontSize: '40px', fontWeight: '900', color: '#5b6cfd', boxShadow: '0 10px 20px rgba(0,0,0,0.05)' };
-const streakInfoBody: any = { padding: '30px 25px 35px', background: '#fff' };
-const progressBarBg: any = { width:'100%', height:'8px', background:'#f0f0f0', borderRadius:'10px', marginTop:'15px', overflow:'hidden' };
-const progressBarFill: any = { height:'100%', background:'#5b6cfd' };
-const shareSectionUI: any = { padding: '20px 20px 30px', background: '#fcfdfe', borderTop: '1px solid #eee' };
-const downloadBtnUI: any = { width: '100%', padding: '14px', background: '#111', color: '#fff', border: 'none', borderRadius: '16px', fontWeight: 'bold', cursor: 'pointer' };
-const closeX: any = { position:'absolute', top:'20px', right:'20px', border:'none', background:'none', fontSize:'22px', cursor:'pointer', color:'#fff', zIndex: 10 };
