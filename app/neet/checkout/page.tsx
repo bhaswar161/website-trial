@@ -39,12 +39,16 @@ export default function CheckoutPage() {
   };
 
   const handleUpload = async () => {
-    if (!file || !session?.user?.email) return alert("❌ Please upload the payment screenshot first!");
+    // Check if session and user exist before proceeding
+    if (!file || !session?.user) return alert("❌ Please upload the payment screenshot first!");
+    
     setUploading(true);
 
     try {
       const fileExt = file.name.split('.').pop();
-      const fileName = `${session.user.id}-${Date.now()}.${fileExt}`;
+      // FIX: Use (session.user as any).id to bypass the TypeScript error
+      const userId = (session.user as any).id;
+      const fileName = `${userId}-${Date.now()}.${fileExt}`;
       
       // 1. Upload to 'screenshots' bucket
       const { data: storageData, error: storageError } = await supabase.storage
@@ -57,7 +61,7 @@ export default function CheckoutPage() {
 
       // 2. Insert Request
       const { error: dbError } = await supabase.from('payment_requests').insert([{
-        user_id: (session.user as any).id,
+        user_id: userId,
         student_email: session.user.email,
         student_name: localStorage.getItem("userFirstName") || session.user.name,
         batch_id: batchId,
@@ -87,7 +91,6 @@ export default function CheckoutPage() {
     input: isDarkMode ? '#0f172a' : '#f1f5f9'
   };
 
-  // UPI Intent URL for QR Generation
   const upiString = `upi://pay?pa=6291644161@fam&pn=StudyHub&am=${amount}&cu=INR`;
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(upiString)}`;
 
@@ -96,36 +99,34 @@ export default function CheckoutPage() {
   return (
     <div style={{ background: theme.bg, minHeight: '100vh', transition: '0.4s', color: theme.text, fontFamily: 'sans-serif' }}>
       <header style={{ height: '80px', display: 'flex', alignItems: 'center', padding: '0 5%', borderBottom: `1px solid ${theme.border}` }}>
-        <Link href="/neet" style={{ textDecoration: 'none', fontWeight: 900, color: '#5b6cfd', fontSize: '22px' }}>← Back to Batches</Link>
+        <Link href="/neet" style={{ textDecoration: 'none', fontWeight: 800, color: '#5b6cfd', fontSize: '18px' }}>← Back to Batches</Link>
       </header>
 
       <main style={{ maxWidth: '1000px', margin: '40px auto', padding: '0 20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '40px' }}>
         
-        {/* LEFT SECTION: QR CODE */}
         <motion.div initial={{ x: -30, opacity: 0 }} animate={{ x: 0, opacity: 1 }} style={{ background: theme.card, padding: '40px', borderRadius: '32px', border: `1px solid ${theme.border}`, textAlign: 'center' }}>
           <h2 style={{ fontWeight: 900, fontSize: '28px', marginBottom: '10px' }}>Scan & Pay</h2>
-          <p style={{ color: theme.subtext, marginBottom: '30px' }}>Use any UPI app (GPay, PhonePe, Paytm) to pay the batch fee.</p>
+          <p style={{ color: theme.subtext, marginBottom: '30px' }}>Scan this QR and pay <b>₹{amount}</b></p>
           
           <div style={{ background: '#fff', padding: '20px', borderRadius: '24px', display: 'inline-block', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}>
             <img src={qrUrl} alt="UPI QR" style={{ width: '220px', height: '220px' }} />
           </div>
 
           <div style={{ marginTop: '30px', padding: '20px', borderRadius: '16px', background: isDarkMode ? 'rgba(255,255,255,0.05)' : '#f1f5f9' }}>
-            <div style={{ fontSize: '12px', fontWeight: 900, color: '#5b6cfd', marginBottom: '5px' }}>PAYMENT AMOUNT</div>
+            <div style={{ fontSize: '12px', fontWeight: 900, color: '#5b6cfd', marginBottom: '5px' }}>AMOUNT TO PAY</div>
             <div style={{ fontSize: '32px', fontWeight: 950 }}>₹{amount}</div>
           </div>
         </motion.div>
 
-        {/* RIGHT SECTION: UPLOAD PROOF */}
         <motion.div initial={{ x: 30, opacity: 0 }} animate={{ x: 0, opacity: 1 }} style={{ background: theme.card, padding: '40px', borderRadius: '32px', border: `1px solid ${theme.border}` }}>
           <h2 style={{ fontWeight: 900, fontSize: '28px', marginBottom: '10px' }}>Upload Proof</h2>
-          <p style={{ color: theme.subtext, marginBottom: '30px' }}>Upload the screenshot of your successful transaction to unlock the batch.</p>
+          <p style={{ color: theme.subtext, marginBottom: '30px' }}>Upload your payment screenshot.</p>
 
           <label style={{ display: 'block', width: '100%', height: '200px', border: `2px dashed ${theme.border}`, borderRadius: '20px', cursor: 'pointer', position: 'relative', overflow: 'hidden', background: theme.input }}>
             {!preview ? (
               <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: theme.subtext }}>
                 <span style={{ fontSize: '40px' }}>📷</span>
-                <span style={{ fontWeight: 700, marginTop: '10px' }}>Click to upload screenshot</span>
+                <span style={{ fontWeight: 700, marginTop: '10px' }}>Click to upload</span>
               </div>
             ) : (
               <img src={preview} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="preview" />
@@ -133,29 +134,15 @@ export default function CheckoutPage() {
             <input type="file" accept="image/*" onChange={handleFileChange} style={{ display: 'none' }} />
           </label>
 
-          <div style={{ marginTop: '30px' }}>
-             <h4 style={{ fontWeight: 800, marginBottom: '10px' }}>Why this step?</h4>
-             <ul style={{ color: theme.subtext, fontSize: '14px', lineHeight: '1.6', paddingLeft: '20px' }}>
-                <li>Admin verifies payments manually every 2-4 hours.</li>
-                <li>Ensure the transaction ID is clearly visible.</li>
-                <li>Fake screenshots will lead to permanent account ban.</li>
-             </ul>
-          </div>
-
           <button 
             onClick={handleUpload}
             disabled={uploading || !file}
-            style={{ width: '100%', padding: '20px', borderRadius: '18px', background: '#5b6cfd', color: '#fff', border: 'none', fontWeight: '900', fontSize: '16px', cursor: file ? 'pointer' : 'not-allowed', marginTop: '30px', transition: '0.3s', opacity: file ? 1 : 0.5, boxShadow: file ? '0 10px 20px rgba(91,108,253,0.3)' : 'none' }}
+            style={{ width: '100%', padding: '20px', borderRadius: '18px', background: '#5b6cfd', color: '#fff', border: 'none', fontWeight: '900', fontSize: '16px', cursor: file ? 'pointer' : 'not-allowed', marginTop: '30px', transition: '0.3s', opacity: file ? 1 : 0.5 }}
           >
-            {uploading ? "SUBMITTING PROOF..." : "CONFIRM & SUBMIT"}
+            {uploading ? "SUBMITTING..." : "CONFIRM & SUBMIT"}
           </button>
         </motion.div>
-
       </main>
-
-      <footer style={{ textAlign: 'center', padding: '40px', color: theme.subtext, fontSize: '12px' }}>
-        Secure Payment Portal • StudyHub NEET 2026
-      </footer>
     </div>
   );
 }
