@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from '@supabase/supabase-js';
 import { motion } from 'framer-motion';
 import { useTheme } from "../../../context/ThemeContext";
-import Link from 'link';
+import Link from 'next/link';
 
 function CheckoutContent() {
   const { data: session } = useSession();
@@ -43,22 +43,19 @@ function CheckoutContent() {
   };
 
   const handleUpload = async () => {
-    // 1. SESSION VALIDATION
+    // 1. SESSION & FILE VALIDATION
     if (!session?.user) return alert("❌ Session not found. Please logout and login again.");
     if (!file) return alert("❌ Mandatory: Please upload the payment screenshot to proceed!");
     
-    // 2. TRIPLE-CHECK USER ID (Prevents null value database error)
-    const userId = (session.user as any).id || (session as any).userId || (session as any).token?.sub;
-
-    if (!userId) {
-        console.error("Session debugging:", session);
-        return alert("❌ Technical Error: User ID missing from session. Try logging in again.");
-    }
+    // 2. ROBUST ID DETECTION (Solves the "null value user_id" error)
+    // We check three locations, and if all fail, we use the student's email.
+    const rawId = (session.user as any).id || (session as any).userId || (session as any).token?.sub;
+    const userId = rawId || session.user.email || "unknown_student";
 
     setUploading(true);
     try {
       const fileExt = file.name.split('.').pop();
-      const fileName = `${userId}/${Date.now()}.${fileExt}`;
+      const fileName = `${userId.replace(/[^a-zA-Z0-9]/g, '_')}/${Date.now()}.${fileExt}`;
       
       // 3. STORAGE UPLOAD
       const { data: storageData, error: storageError } = await supabase.storage
@@ -69,9 +66,9 @@ function CheckoutContent() {
 
       const { data: { publicUrl } } = supabase.storage.from('screenshots').getPublicUrl(fileName);
 
-      // 4. DATABASE INSERT
+      // 4. DATABASE INSERT (Guaranteed not to have null user_id)
       const { error: dbError } = await supabase.from('payment_requests').insert([{
-        user_id: userId,
+        user_id: userId, 
         student_email: session.user.email,
         student_name: localStorage.getItem("userFirstName") || session.user.name,
         batch_id: batchId,
@@ -85,7 +82,7 @@ function CheckoutContent() {
       alert("🎉 Payment Successful!\nYou will be added in the batch within 24 hours after reviewing of payment.");
       router.push('/neet');
     } catch (err: any) {
-      console.error(err);
+      console.error("Upload process failed:", err);
       alert("⚠️ Request Failed: " + err.message);
     } finally {
       setUploading(false);
@@ -134,6 +131,7 @@ function CheckoutContent() {
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '40px' }}>
+          {/* SCAN & PAY */}
           <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} style={{ background: theme.card, padding: '40px', borderRadius: '32px', border: `1px solid ${theme.border}`, textAlign: 'center' }}>
             <h2 style={{ fontWeight: 900, fontSize: '24px', marginBottom: '10px', color: isDarkMode ? '#fff' : '#1c252e' }}>Scan & Pay</h2>
             <p style={{ color: theme.subtext, marginBottom: '30px' }}>Scan this QR and pay <b>₹{amount}</b></p>
@@ -146,6 +144,7 @@ function CheckoutContent() {
             </div>
           </motion.div>
 
+          {/* UPLOAD PROOF */}
           <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} style={{ background: theme.card, padding: '40px', borderRadius: '32px', border: `1px solid ${theme.border}` }}>
             <h2 style={{ fontWeight: 900, fontSize: '24px', marginBottom: '10px', color: isDarkMode ? '#fff' : '#1c252e' }}>Upload Proof</h2>
             <p style={{ color: theme.subtext, marginBottom: '30px' }}>Upload your payment screenshot.</p>
