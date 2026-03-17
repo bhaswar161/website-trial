@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from '@supabase/supabase-js';
 import { motion } from 'framer-motion';
 import { useTheme } from "../../../context/ThemeContext";
-import Link from 'next/link';
+import Link from 'link';
 
 function CheckoutContent() {
   const { data: session } = useSession();
@@ -43,28 +43,33 @@ function CheckoutContent() {
   };
 
   const handleUpload = async () => {
-    if (!file || !session?.user) return alert("❌ Mandatory: Please upload the payment screenshot to proceed!");
+    // 1. SESSION VALIDATION
+    if (!session?.user) return alert("❌ Session not found. Please logout and login again.");
+    if (!file) return alert("❌ Mandatory: Please upload the payment screenshot to proceed!");
     
+    // 2. TRIPLE-CHECK USER ID (Prevents null value database error)
+    const userId = (session.user as any).id || (session as any).userId || (session as any).token?.sub;
+
+    if (!userId) {
+        console.error("Session debugging:", session);
+        return alert("❌ Technical Error: User ID missing from session. Try logging in again.");
+    }
+
     setUploading(true);
     try {
-      const userId = (session.user as any).id;
       const fileExt = file.name.split('.').pop();
-      // Added userId as folder for better organization and policy bypass
       const fileName = `${userId}/${Date.now()}.${fileExt}`;
       
-      // 1. UPLOAD TO STORAGE (Using upsert to avoid duplicate errors)
+      // 3. STORAGE UPLOAD
       const { data: storageData, error: storageError } = await supabase.storage
         .from('screenshots')
         .upload(fileName, file, { upsert: true });
 
-      if (storageError) {
-        console.error("Storage Error Detail:", storageError);
-        throw new Error(`Storage Error: ${storageError.message}`);
-      }
+      if (storageError) throw new Error(`Storage: ${storageError.message}`);
 
       const { data: { publicUrl } } = supabase.storage.from('screenshots').getPublicUrl(fileName);
 
-      // 2. INSERT INTO DATABASE
+      // 4. DATABASE INSERT
       const { error: dbError } = await supabase.from('payment_requests').insert([{
         user_id: userId,
         student_email: session.user.email,
@@ -75,10 +80,7 @@ function CheckoutContent() {
         status: 'pending'
       }]);
 
-      if (dbError) {
-        console.error("Database Error Detail:", dbError);
-        throw new Error(`Database Error: ${dbError.message}`);
-      }
+      if (dbError) throw new Error(`Database: ${dbError.message}`);
 
       alert("🎉 Payment Successful!\nYou will be added in the batch within 24 hours after reviewing of payment.");
       router.push('/neet');
@@ -125,7 +127,7 @@ function CheckoutContent() {
 
       <main style={{ maxWidth: '1100px', margin: '40px auto', padding: '0 20px' }}>
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '40px' }}>
-          <button onClick={() => router.push('/neet')} style={{ position: 'absolute', left: 0, background: 'none', border: 'none', color: '#5b6cfd', fontWeight: 800, fontSize: '18px', cursor: 'pointer' }}>
+          <button onClick={() => router.push('/neet')} style={{ position: 'absolute', left: 0, background: 'none', border: 'none', color: '#5b6cfd', fontWeight: 800, fontSize: '18px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
             ← Back
           </button>
           <h1 style={{ fontSize: '32px', fontWeight: 900, color: isDarkMode ? '#fff' : '#1c252e', margin: 0 }}>PAYMENT PAGE</h1>
@@ -160,7 +162,7 @@ function CheckoutContent() {
               <input type="file" accept="image/*" onChange={handleFileChange} style={{ display: 'none' }} />
             </label>
 
-            <button onClick={handleUpload} disabled={uploading} style={{ width: '100%', padding: '20px', borderRadius: '18px', background: '#5b6cfd', color: '#fff', border: 'none', fontWeight: '900', fontSize: '16px', cursor: 'pointer', marginTop: '30px', transition: '0.3s' }}>
+            <button onClick={handleUpload} disabled={uploading} style={{ width: '100%', padding: '20px', borderRadius: '18px', background: '#5b6cfd', color: '#fff', border: 'none', fontWeight: '900', fontSize: '16px', cursor: 'pointer', marginTop: '30px', transition: '0.3s', boxShadow: '0 10px 20px rgba(91,108,253,0.3)' }}>
               {uploading ? "SUBMITTING..." : "CONFIRM & SUBMIT"}
             </button>
           </motion.div>
