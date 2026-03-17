@@ -226,7 +226,7 @@ export default function BatchDashboard({ params }: PageProps) {
       </header>
 
       <main style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 20px' }}>
-        <button onClick={() => router.push('/neet')} className="back-link-large">← Back to NEET Preparation</button>
+        <button onClick={() => router.push('/neet')} className="back-link-large">← Back </button>
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} 
           style={{ background: isDarkMode ? '#1e293b' : '#1c252e', color: '#fff', padding: '80px 60px', borderRadius: '30px 30px 100px 30px', marginBottom: '50px', position: 'relative', overflow: 'hidden' }}>
