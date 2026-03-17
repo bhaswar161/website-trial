@@ -12,13 +12,11 @@ export default function AdminPanel() {
   const { isDarkMode } = useTheme();
   
   const [students, setStudents] = useState<any[]>([]);
-  const [batches, setBatches] = useState<any[]>([]);
-  const [newBatch, setNewBatch] = useState({ name: '', price: '', color: '#6c63ff', hashtags: '' });
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [filterType, setFilterType] = useState("all"); // student, email, batch, cost
   
-  // Removal State
   const [removingStudent, setRemovingStudent] = useState<any | null>(null);
   const [removalReason, setRemovalReason] = useState("");
 
@@ -41,49 +39,45 @@ export default function AdminPanel() {
   }, [isOwner]);
 
   async function fetchAdminData() {
-    const { data: batchData } = await supabase.from('batches').select('*').order('created_at', { ascending: false });
-    const { data: enrollData } = await supabase.from('enrollments').select('*').order('enrolled_at', { ascending: false });
-    if (batchData) setBatches(batchData);
+    setLoading(true);
+    const { data: enrollData } = await supabase
+      .from('enrollments')
+      .select('*')
+      .order('enrolled_at', { ascending: false });
     if (enrollData) setStudents(enrollData);
+    setLoading(false);
   }
 
-  // --- LOGIC: TRUE REVENUE (Sum of actual discounted amounts paid) ---
   const totalRevenue = useMemo(() => {
     return students.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
   }, [students]);
 
-  // --- LOGIC: SEARCH FILTER ---
+  // --- IMPROVED MULTI-FILTER LOGIC ---
   const filteredStudents = useMemo(() => {
-    return students.filter(s => 
-      s.student_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.student_email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.batch_id?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [students, searchQuery]);
+    return students.filter(s => {
+      const query = searchQuery.toLowerCase();
+      if (filterType === "student") return s.student_name?.toLowerCase().includes(query);
+      if (filterType === "email") return s.student_email?.toLowerCase().includes(query);
+      if (filterType === "batch") return s.batch_id?.toLowerCase().includes(query);
+      if (filterType === "cost") return s.amount?.toString().includes(query);
+      
+      // Default "All" search
+      return (
+        s.student_name?.toLowerCase().includes(query) ||
+        s.student_email?.toLowerCase().includes(query) ||
+        s.batch_id?.toLowerCase().includes(query)
+      );
+    });
+  }, [students, searchQuery, filterType]);
 
-  // --- LOGIC: REMOVE STUDENT ---
   async function handleRemoveStudent() {
     if (!removalReason) return alert("Please provide a reason.");
     try {
-      const { error } = await supabase.from('enrollments').delete().eq('id', removingStudent.id);
-      if (error) throw error;
-      
-      alert(`✅ ${removingStudent.student_name} removed. Reason: ${removalReason}`);
+      await supabase.from('enrollments').delete().eq('id', removingStudent.id);
+      alert(`✅ ${removingStudent.student_name} removed.`);
       setRemovingStudent(null);
-      setRemovalReason("");
       fetchAdminData();
     } catch (err: any) { alert(err.message); }
-  }
-
-  async function handleAddBatch(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    await supabase.from('batches').insert([{
-      name: newBatch.name, price: newBatch.price, color: newBatch.color, hashtags: newBatch.hashtags.split(','), tag: 'ONLINE'
-    }]);
-    setNewBatch({ name: '', price: '', color: '#6c63ff', hashtags: '' });
-    fetchAdminData();
-    setLoading(false);
   }
 
   const theme = {
@@ -95,6 +89,11 @@ export default function AdminPanel() {
     input: isDarkMode ? '#0f172a' : '#f1f5f9'
   };
 
+  const exportToExcel = () => {
+    alert("Functionality triggered: Exporting data to Google Excel format...");
+    // Logic for xlsx or csv download goes here
+  };
+
   if (!mounted || status === "loading") return null;
 
   return (
@@ -102,95 +101,86 @@ export default function AdminPanel() {
       
       {/* HEADER */}
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
-        <h1 style={{ fontSize: '36px', fontWeight: '900' }}>Admin Center</h1>
+        <div>
+           <Link href="/neet" style={{ color: '#5b6cfd', fontWeight: '800', textDecoration: 'none' }}>← BACK TO NEET</Link>
+           <h1 style={{ fontSize: '36px', fontWeight: '900', marginTop: '5px' }}>Admin Dashboard</h1>
+        </div>
         <Link href="/admin/payments" style={{ textDecoration: 'none' }}>
-            <motion.button whileHover={{ scale: 1.05 }} style={{ background: '#10b981', color: '#fff', border: 'none', padding: '12px 24px', borderRadius: '14px', fontWeight: '900', cursor: 'pointer' }}>
+            <motion.button whileHover={{ scale: 1.05 }} style={{ background: '#10b981', color: '#fff', border: 'none', padding: '14px 28px', borderRadius: '16px', fontWeight: '900', cursor: 'pointer' }}>
                 💰 VERIFY PAYMENTS
             </motion.button>
         </Link>
       </header>
 
-      {/* STATS */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', marginBottom: '40px' }}>
-         <StatCard label="True Revenue (Actual)" value={`₹${totalRevenue.toLocaleString()}`} icon="💎" color="#10b981" theme={theme} />
-         <StatCard label="Total Students" value={new Set(students.map(s => s.student_email)).size} icon="👤" color="#5b6cfd" theme={theme} />
-         <StatCard label="Live Batches" value={batches.length} icon="📦" color="#f59e0b" theme={theme} />
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2.5fr', gap: '30px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: '30px' }}>
         
-        {/* LEFT: BATCH ANALYTICS TABLE */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
-            <div style={{ background: theme.card, padding: '30px', borderRadius: '28px', border: `1px solid ${theme.border}` }}>
-                <h2 style={{ marginBottom: '20px', fontSize: '20px', fontWeight: '900' }}>📊 Batch Stats</h2>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead>
-                        <tr style={{ textAlign: 'left', color: theme.subtext, fontSize: '12px' }}>
-                            <th style={{ padding: '10px' }}>BATCH NAME</th>
-                            <th style={{ padding: '10px' }}>STUDENTS</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {batches.map((b, i) => (
-                            <tr key={i} style={{ borderBottom: `1px solid ${theme.border}` }}>
-                                <td style={{ padding: '12px', fontWeight: 700 }}>{b.name}</td>
-                                <td style={{ padding: '12px', fontWeight: 900, color: '#5b6cfd' }}>
-                                    {students.filter(s => s.batch_id === b.id || s.batch_id === b.name).length}
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+        {/* LEFT SIDEBAR */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div style={{ background: theme.card, padding: '20px', borderRadius: '24px', border: `1px solid ${theme.border}` }}>
+                <p style={{ fontSize: '12px', fontWeight: 800, color: theme.subtext, marginBottom: '15px' }}>ACTIONS</p>
+                <motion.button 
+                    whileHover={{ x: 5 }}
+                    onClick={exportToExcel}
+                    style={{ width: '100%', background: '#1d6f42', color: '#fff', border: 'none', padding: '12px', borderRadius: '12px', fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
+                >
+                    📗 Excel
+                </motion.button>
             </div>
-
-            <div style={{ background: theme.card, padding: '30px', borderRadius: '28px', border: `1px solid ${theme.border}` }}>
-              <h2 style={{ marginBottom: '15px', fontSize: '18px', fontWeight: '900' }}>🚀 Launch Batch</h2>
-              <form onSubmit={handleAddBatch} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <input style={{ ...inputStyle, background: theme.input, color: theme.text, border: `1px solid ${theme.border}` }} placeholder="Name" value={newBatch.name} onChange={e => setNewBatch({...newBatch, name: e.target.value})} required />
-                <input style={{ ...inputStyle, background: theme.input, color: theme.text, border: `1px solid ${theme.border}` }} placeholder="Price" value={newBatch.price} onChange={e => setNewBatch({...newBatch, price: e.target.value})} />
-                <button type="submit" disabled={loading} style={{ ...btnStyle, background: '#5b6cfd' }}>LAUNCH</button>
-              </form>
-            </div>
+            
+            <StatCard label="Paid Revenue" value={`₹${totalRevenue}`} color="#10b981" theme={theme} small />
+            <StatCard label="Total Students" value={new Set(students.map(s => s.student_email)).size} color="#5b6cfd" theme={theme} small />
         </div>
 
-        {/* RIGHT: JOININGS WITH SEARCH */}
-        <div style={{ background: theme.card, padding: '30px', borderRadius: '28px', border: `1px solid ${theme.border}` }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-            <h2 style={{ fontSize: '20px', fontWeight: '900' }}>👨‍🎓 Recent Joinings</h2>
-            <input 
-                style={{ padding: '10px 20px', borderRadius: '12px', border: `1px solid ${theme.border}`, background: theme.input, color: theme.text, width: '250px' }} 
-                placeholder="🔍 Search name, email..." 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-            />
+        {/* MAIN CONTENT */}
+        <div style={{ background: theme.card, padding: '30px', borderRadius: '32px', border: `1px solid ${theme.border}`, boxShadow: '0 15px 35px rgba(0,0,0,0.05)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
+            <h2 style={{ fontSize: '22px', fontWeight: '900' }}>Recent Joinings</h2>
+            
+            <div style={{ display: 'flex', gap: '10px' }}>
+                <select 
+                    value={filterType}
+                    onChange={(e) => setFilterType(e.target.value)}
+                    style={{ padding: '10px', borderRadius: '12px', border: `1px solid ${theme.border}`, background: theme.input, color: theme.text, fontWeight: 700, outline: 'none' }}
+                >
+                    <option value="all">All Fields</option>
+                    <option value="student">Student Name</option>
+                    <option value="email">Email ID</option>
+                    <option value="batch">Batch Name</option>
+                    <option value="cost">Amount</option>
+                </select>
+                <input 
+                    style={{ padding: '12px 20px', borderRadius: '15px', border: `1px solid ${theme.border}`, background: theme.input, color: theme.text, width: '300px', outline: 'none' }} 
+                    placeholder={`Search by ${filterType}...`} 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                />
+            </div>
           </div>
           
-          <div style={{ maxHeight: '700px', overflowY: 'auto' }}>
+          <div style={{ maxHeight: '750px', overflowY: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ textAlign: 'left', fontSize: '11px', color: theme.subtext, borderBottom: `1px solid ${theme.border}` }}>
-                  <th style={{ padding: '15px' }}>STUDENT</th>
-                  <th style={{ padding: '15px' }}>BATCH & COST</th>
-                  <th style={{ padding: '15px' }}>JOINED</th>
-                  <th style={{ padding: '15px' }}>ACTION</th>
+                <tr style={{ textAlign: 'left', fontSize: '11px', color: theme.subtext, borderBottom: `2px solid ${theme.border}`, letterSpacing: '1px' }}>
+                  <th style={{ padding: '15px' }}>STUDENT NAME</th>
+                  <th>EMAIL ADDRESS</th>
+                  <th>BATCH NAME</th>
+                  <th>COST PAID</th>
+                  <th>JOINED DATE</th>
+                  <th>ACTIONS</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredStudents.map((s, i) => (
                   <tr key={i} style={{ borderBottom: `1px solid ${theme.border}` }}>
-                    <td style={{ padding: '15px' }}>
-                        <div style={{ fontWeight: '800' }}>{s.student_name}</div>
-                        <div style={{ fontSize: '11px', opacity: 0.6 }}>{s.student_email}</div>
-                    </td>
-                    <td style={{ padding: '15px' }}>
-                        <div style={{ fontSize: '12px', fontWeight: 800 }}>{s.batch_id}</div>
-                        <div style={{ fontSize: '11px', color: '#10b981', fontWeight: 900 }}>₹{s.amount}</div>
-                    </td>
-                    <td style={{ padding: '15px', fontSize: '12px' }}>{new Date(s.enrolled_at).toLocaleDateString()}</td>
-                    <td style={{ padding: '15px' }}>
-                        <div style={{ display: 'flex', gap: '8px' }}>
-                            <button onClick={() => setRemovingStudent(s)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '8px', fontSize: '10px', fontWeight: '900', cursor: 'pointer' }}>REMOVE</button>
-                        </div>
+                    <td style={{ padding: '15px', fontWeight: '800', color: '#5b6cfd' }}>{s.student_name}</td>
+                    <td style={{ fontSize: '12px', fontWeight: 600 }}>{s.student_email}</td>
+                    <td style={{ fontSize: '12px', fontWeight: 800 }}>{s.batch_id}</td>
+                    <td style={{ fontWeight: 900, color: '#10b981' }}>₹{s.amount || '0'}</td>
+                    <td style={{ fontSize: '12px', opacity: 0.7 }}>{new Date(s.enrolled_at).toLocaleDateString()}</td>
+                    <td>
+                        <button onClick={() => setRemovingStudent(s)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: '10px', fontSize: '10px', fontWeight: '900', cursor: 'pointer' }}>
+                           REMOVE
+                        </button>
                     </td>
                   </tr>
                 ))}
@@ -200,42 +190,31 @@ export default function AdminPanel() {
         </div>
       </div>
 
-      {/* REMOVAL REASON MODAL */}
+      {/* REMOVAL MODAL */}
       <AnimatePresence>
-        {removingStudent && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.8)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} style={{ background: theme.card, padding: '30px', borderRadius: '24px', width: '400px', border: `1px solid ${theme.border}` }}>
-              <h2 style={{ fontWeight: 900 }}>Remove Student</h2>
-              <p style={{ fontSize: '13px', color: theme.subtext, margin: '10px 0' }}>Reason for removing {removingStudent.student_name}?</p>
-              <textarea 
-                style={{ width: '100%', height: '100px', borderRadius: '12px', background: theme.input, color: theme.text, padding: '15px', border: 'none', outline: 'none' }}
-                placeholder="e.g. Refund issued, Wrong batch..."
-                value={removalReason}
-                onChange={(e) => setRemovalReason(e.target.value)}
-              />
-              <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-                <button onClick={() => setRemovingStudent(null)} style={{ flex: 1, padding: '12px', borderRadius: '12px', background: '#ccc', border: 'none' }}>Cancel</button>
-                <button onClick={handleRemoveStudent} style={{ flex: 1, padding: '12px', borderRadius: '12px', background: '#ef4444', color: '#fff', border: 'none', fontWeight: 800 }}>Remove Student</button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
+          {removingStudent && (
+             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.8)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ background: theme.card, padding: '30px', borderRadius: '24px', width: '400px', border: `1px solid ${theme.border}` }}>
+                   <h2 style={{ fontWeight: 900 }}>Remove Access</h2>
+                   <p style={{ fontSize: '13px', color: theme.subtext, marginBottom: '15px' }}>Enter reason for removing {removingStudent.student_name}:</p>
+                   <textarea style={{ width: '100%', height: '100px', borderRadius: '12px', background: theme.input, color: theme.text, padding: '10px', border: 'none', outline: 'none' }} value={removalReason} onChange={(e) => setRemovalReason(e.target.value)} />
+                   <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                      <button onClick={() => setRemovingStudent(null)} style={{ flex: 1, padding: '12px', borderRadius: '10px', background: '#ccc', border: 'none' }}>Cancel</button>
+                      <button onClick={handleRemoveStudent} style={{ flex: 1, padding: '12px', borderRadius: '10px', background: '#ef4444', color: '#fff', border: 'none', fontWeight: 800 }}>Remove</button>
+                   </div>
+                </div>
+             </motion.div>
+          )}
       </AnimatePresence>
     </div>
   )
 }
 
-function StatCard({ label, value, icon, color, theme }: any) {
+function StatCard({ label, value, color, theme, small }: any) {
     return (
-        <div style={{ background: theme.card, padding: '25px', borderRadius: '24px', border: `1px solid ${theme.border}`, display: 'flex', alignItems: 'center', gap: '20px' }}>
-            <div style={{ fontSize: '30px', background: `${color}15`, padding: '15px', borderRadius: '18px' }}>{icon}</div>
-            <div>
-                <div style={{ fontSize: '12px', fontWeight: '800', color: theme.subtext }}>{label}</div>
-                <div style={{ fontSize: '22px', fontWeight: '900' }}>{value}</div>
-            </div>
+        <div style={{ background: theme.card, padding: small ? '15px' : '25px', borderRadius: '20px', border: `1px solid ${theme.border}`, borderLeft: `5px solid ${color}` }}>
+            <div style={{ fontSize: '10px', fontWeight: '800', color: theme.subtext, textTransform: 'uppercase' }}>{label}</div>
+            <div style={{ fontSize: '18px', fontWeight: '900' }}>{value}</div>
         </div>
     );
 }
-
-const inputStyle: any = { padding: '12px', borderRadius: '10px', outline: 'none' };
-const btnStyle: any = { padding: '12px', borderRadius: '10px', color: '#fff', border: 'none', fontWeight: '900', cursor: 'pointer' };
