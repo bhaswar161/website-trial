@@ -7,13 +7,18 @@ import Cropper from 'react-easy-crop'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTheme } from "../../context/ThemeContext"
 
-// Country Data for the logic
+// Expanded Country List
 const countries = [
   { name: "India", code: "+91", flag: "🇮🇳" },
   { name: "USA", code: "+1", flag: "🇺🇸" },
   { name: "UK", code: "+44", flag: "🇬🇧" },
   { name: "Canada", code: "+1", flag: "🇨🇦" },
   { name: "Australia", code: "+61", flag: "🇦🇺" },
+  { name: "United Arab Emirates", code: "+971", flag: "🇦🇪" },
+  { name: "Saudi Arabia", code: "+966", flag: "🇸🇦" },
+  { name: "Singapore", code: "+65", flag: "🇸🇬" },
+  { name: "Germany", code: "+49", flag: "🇩🇪" },
+  { name: "France", code: "+33", flag: "🇫🇷" },
 ];
 
 export default function ProfilePage() {
@@ -22,13 +27,17 @@ export default function ProfilePage() {
   const router = useRouter()
   const [mounted, setMounted] = useState(false)
   
+  const isOwner = session?.user?.email === "bhaswarray@gmail.com";
+
   const [selectedCountry, setSelectedCountry] = useState(countries[0]);
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
     phone: "",
     currentClass: "Class 11",
-    profilePic: "" 
+    profilePic: "",
+    guardianName: "",
+    guardianPhone: ""
   })
 
   const [imageToCrop, setImageToCrop] = useState<string | null>(null)
@@ -39,7 +48,6 @@ export default function ProfilePage() {
   useEffect(() => {
     setMounted(true)
     const savedPhone = localStorage.getItem("userPhone") || "";
-    // Attempt to match saved phone code to a country
     const matchedCountry = countries.find(c => savedPhone.startsWith(c.code)) || countries[0];
     
     setSelectedCountry(matchedCountry);
@@ -48,7 +56,9 @@ export default function ProfilePage() {
       lastName: localStorage.getItem("userLastName") || "",
       phone: savedPhone.replace(matchedCountry.code, "").trim(),
       currentClass: localStorage.getItem("userClass") || "Class 11",
-      profilePic: localStorage.getItem("userProfilePic") || "" 
+      profilePic: localStorage.getItem("userProfilePic") || "",
+      guardianName: localStorage.getItem("guardianName") || "",
+      guardianPhone: localStorage.getItem("guardianPhone") || ""
     });
   }, []);
 
@@ -84,13 +94,15 @@ export default function ProfilePage() {
     localStorage.setItem("userLastName", formData.lastName);
     localStorage.setItem("userPhone", `${selectedCountry.code} ${formData.phone}`);
     localStorage.setItem("userClass", formData.currentClass);
-    localStorage.setItem("userProfilePic", formData.profilePic); 
-    alert("🚀 Profile Updated Successfully!");
+    localStorage.setItem("userProfilePic", formData.profilePic);
+    localStorage.setItem("guardianName", formData.guardianName);
+    localStorage.setItem("guardianPhone", formData.guardianPhone);
+    alert("🚀 Profile & Guardian Details Updated!");
     router.push("/neet"); 
   }
 
   const theme = {
-    bg: isDarkMode ? '#0f172a' : '#f8fafc',
+    bg: isDarkMode ? '#0f172a' : '#fcfdfe',
     card: isDarkMode ? '#1e293b' : '#fff',
     text: isDarkMode ? '#f8fafc' : '#1c252e',
     subtext: isDarkMode ? '#94a3b8' : '#64748b',
@@ -106,16 +118,18 @@ export default function ProfilePage() {
     <div style={{ background: theme.bg, minHeight: '100vh', transition: '0.4s', color: theme.text, fontFamily: 'sans-serif' }}>
       <style dangerouslySetInnerHTML={{ __html: `
         header { display: flex; justify-content: space-between; align-items: center; padding: 0 5%; background: ${theme.headerBg}; backdrop-filter: blur(15px); border-bottom: 1px solid ${theme.border}; position: sticky; top: 0; z-index: 1000; height: 80px; }
+        .logo { font-weight: 900; fontSize: 24px; color: #5b6cfd; text-decoration: none !important; }
         .btn-logout { background: #ff4757; color: white; border: none; padding: 10px 22px; border-radius: 12px; font-weight: 800; cursor: pointer; transition: 0.3s; }
-        .btn-logout:hover { background: #e04040; transform: scale(1.05); }
         .back-link { color: #5b6cfd; text-decoration: none; font-weight: 800; font-size: 18px; display: flex; align-items: center; gap: 8px; margin-bottom: 25px; cursor: pointer; border: none; background: none; }
-        .profile-container { max-width: 600px; margin: 40px auto; padding: 0 20px; }
+        .profile-container { max-width: 650px; margin: 40px auto; padding: 0 20px; padding-bottom: 80px; }
         .glass-card { background: ${theme.card}; border-radius: 35px; padding: 45px; border: 1px solid ${theme.border}; box-shadow: 0 20px 50px rgba(0,0,0,0.05); }
         .input-box { width: 100%; padding: 15px; border-radius: 14px; border: 1px solid ${theme.border}; background: ${theme.inputBg}; color: ${theme.text}; font-size: 16px; outline: none; box-sizing: border-box; }
         .phone-wrapper { display: flex; gap: 10px; align-items: center; }
-        .country-code { padding: 15px; background: ${theme.border}; border-radius: 14px; font-weight: 800; min-width: 70px; text-align: center; color: #5b6cfd; }
+        .country-code { padding: 15px; background: ${theme.inputBg}; border: 1px solid ${theme.border}; border-radius: 14px; font-weight: 800; min-width: 75px; text-align: center; color: #5b6cfd; }
         .label-text { display: block; margin-bottom: 8px; font-weight: 700; font-size: 12px; color: ${theme.subtext}; text-transform: uppercase; letter-spacing: 1px; }
-        .primary-btn { width: 100%; padding: 18px; border-radius: 16px; background: #5b6cfd; color: #fff; border: none; font-weight: 900; font-size: 16px; cursor: pointer; transition: 0.3s; margin-top: 15px; }
+        .section-divider { margin: 30px 0 20px; border: 0; border-top: 1px solid ${theme.border}; position: relative; }
+        .section-label { position: absolute; top: -10px; left: 20px; background: ${theme.card}; padding: 0 10px; font-size: 11px; font-weight: 900; color: #5b6cfd; }
+        .primary-btn { width: 100%; padding: 18px; border-radius: 16px; background: #5b6cfd; color: #fff; border: none; font-weight: 900; font-size: 16px; cursor: pointer; transition: 0.3s; margin-top: 20px; }
       `}} />
 
       <AnimatePresence>
@@ -135,36 +149,39 @@ export default function ProfilePage() {
       </AnimatePresence>
 
       <header>
-        <Link href="/" style={{ fontWeight: 900, fontSize: '24px', color: '#5b6cfd' }}>StudyHub</Link>
+        <Link href="/" className="logo">StudyHub</Link>
         <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)', padding: '6px 16px', borderRadius: '50px' }}>
-             <img src={formData.profilePic || session?.user?.image || ""} style={{ width: 32, height: 32, borderRadius: '50%' }} />
-             <span style={{ fontWeight: 800, fontSize: 13 }}>Hi, {formData.firstName || "User"}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)', padding: '6px 16px', border: `1px solid ${theme.border}`, borderRadius: '50px' }}>
+             <img src={formData.profilePic || session?.user?.image || ""} style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover' }} />
+             <div style={{ lineHeight: 1.1 }}>
+                <div style={{ fontWeight: 800, fontSize: 13 }}>Hi, {formData.firstName || "User"}</div>
+                <div style={{ fontSize: 9, fontWeight: 900, color: '#5b6cfd' }}>{isOwner ? 'FACULTY' : 'STUDENT'}</div>
+             </div>
           </div>
           <button onClick={() => signOut({ callbackUrl: '/' })} className="btn-logout">Logout</button>
         </div>
       </header>
 
       <main className="profile-container">
-        {/* BACK BUTTON IN PAGE SECTION */}
         <button onClick={() => router.back()} className="back-link">
-          <motion.span animate={{ x: [-2, 2, -2] }} transition={{ repeat: Infinity, duration: 1.5 }}>←</motion.span> Back to Previous Page
+          <motion.span animate={{ x: [-2, 2, -2] }} transition={{ repeat: Infinity, duration: 1.5 }}>←</motion.span> Back
         </button>
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-card">
           <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-            <div style={{ position: 'relative', width: '130px', height: '130px', margin: '0 auto 20px' }}>
+            <div style={{ position: 'relative', width: '120px', height: '120px', margin: '0 auto 15px' }}>
               <div style={{ width: '100%', height: '100%', borderRadius: '50%', overflow: 'hidden', border: '4px solid #5b6cfd' }}>
                 <img src={formData.profilePic || session?.user?.image || ""} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </div>
-              <label style={{ position: 'absolute', bottom: '0', right: '0', background: '#5b6cfd', width: '38px', height: '38px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: `4px solid ${theme.card}`, color: '#fff' }}>
+              <label style={{ position: 'absolute', bottom: '0', right: '0', background: '#5b6cfd', width: '34px', height: '34px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: `3px solid ${theme.card}`, color: '#fff', fontSize: '14px' }}>
                 📷 <input type="file" accept="image/*" onChange={onFileChange} style={{ display: 'none' }} />
               </label>
             </div>
-            <h2 style={{ margin: 0, fontWeight: 950, fontSize: '28px' }}>Edit Profile</h2>
+            <h2 style={{ margin: 0, fontWeight: 950, fontSize: '26px' }}>Student Profile</h2>
+            <p style={{ color: theme.subtext, fontSize: '13px', marginTop: '5px' }}>{session?.user?.email}</p>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
               <div>
                 <label className="label-text">First Name</label>
@@ -176,27 +193,27 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* COUNTRY SELECTION & PHONE LOGIC */}
-            <div>
-              <label className="label-text">Country</label>
-              <select className="input-box" value={selectedCountry.name} onChange={(e) => {
-                const country = countries.find(c => c.name === e.target.value) || countries[0];
-                setSelectedCountry(country);
-              }}>
-                {countries.map(c => <option key={c.name} value={c.name}>{c.flag} {c.name}</option>)}
-              </select>
-            </div>
-
-            <div>
-              <label className="label-text">Phone Number</label>
-              <div className="phone-wrapper">
-                <div className="country-code">{selectedCountry.code}</div>
-                <input className="input-box" type="tel" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} placeholder="XXXXXXXXXX" />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+              <div>
+                <label className="label-text">Country</label>
+                <select className="input-box" value={selectedCountry.name} onChange={(e) => {
+                  const country = countries.find(c => c.name === e.target.value) || countries[0];
+                  setSelectedCountry(country);
+                }}>
+                  {countries.map(c => <option key={c.name} value={c.name}>{c.flag} {c.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="label-text">Student Phone</label>
+                <div className="phone-wrapper">
+                  <div className="country-code">{selectedCountry.code}</div>
+                  <input className="input-box" type="tel" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} placeholder="XXXXXXXXXX" />
+                </div>
               </div>
             </div>
 
             <div>
-              <label className="label-text">Current Class</label>
+              <label className="label-text">Current Grade</label>
               <select className="input-box" value={formData.currentClass} onChange={(e) => setFormData({...formData, currentClass: e.target.value})}>
                 <option>Class 11</option>
                 <option>Class 12</option>
@@ -204,7 +221,23 @@ export default function ProfilePage() {
               </select>
             </div>
 
-            <button onClick={handleSave} className="primary-btn">UPDATE PROFILE</button>
+            {/* GUARDIAN SECTION */}
+            <div className="section-divider">
+               <span className="section-label">GUARDIAN INFORMATION</span>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '15px' }}>
+              <div>
+                <label className="label-text">Guardian Name</label>
+                <input className="input-box" placeholder="Father/Mother Name" value={formData.guardianName} onChange={(e) => setFormData({...formData, guardianName: e.target.value})} />
+              </div>
+              <div>
+                <label className="label-text">Guardian Phone</label>
+                <input className="input-box" type="tel" placeholder="Phone Number" value={formData.guardianPhone} onChange={(e) => setFormData({...formData, guardianPhone: e.target.value})} />
+              </div>
+            </div>
+
+            <button onClick={handleSave} className="primary-btn">SAVE CHANGES</button>
           </div>
         </motion.div>
       </main>
