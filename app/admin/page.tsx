@@ -15,9 +15,12 @@ export default function AdminPanel() {
   const [batches, setBatches] = useState<any[]>([]);
   const [newBatch, setNewBatch] = useState({ name: '', price: '', color: '#6c63ff', hashtags: '' });
   const [loading, setLoading] = useState(false);
-  const [mailingId, setMailingId] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
-  const [viewingProfile, setViewingProfile] = useState<any | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  
+  // Removal State
+  const [removingStudent, setRemovingStudent] = useState<any | null>(null);
+  const [removalReason, setRemovalReason] = useState("");
 
   const supabase = useMemo(() => createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -44,53 +47,42 @@ export default function AdminPanel() {
     if (enrollData) setStudents(enrollData);
   }
 
-  // --- CALCULATED STATS ---
+  // --- LOGIC: TRUE REVENUE (Sum of actual discounted amounts paid) ---
   const totalRevenue = useMemo(() => {
-    return students.reduce((acc, curr) => acc + (Number(curr.amount) || 4500), 0);
+    return students.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
   }, [students]);
 
-  const uniqueStudentCount = useMemo(() => {
-    const emails = students.map(s => s.student_email);
-    return new Set(emails).size;
-  }, [students]);
+  // --- LOGIC: SEARCH FILTER ---
+  const filteredStudents = useMemo(() => {
+    return students.filter(s => 
+      s.student_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.student_email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.batch_id?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [students, searchQuery]);
 
-  const batchStats = useMemo(() => {
-    return batches.map(batch => {
-      const count = students.filter(s => s.batch_id === batch.id || s.batch_id === batch.name).length;
-      return { ...batch, studentCount: count };
-    });
-  }, [batches, students]);
-
-  async function handleSendMail(student: any) {
-    setMailingId(student.id);
+  // --- LOGIC: REMOVE STUDENT ---
+  async function handleRemoveStudent() {
+    if (!removalReason) return alert("Please provide a reason.");
     try {
-      const res = await fetch('/api/send-confirmation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: student.student_email,
-          name: student.student_name,
-          batch: student.batch_id
-        }),
-      });
-      if (res.ok) alert(`✅ Mail sent to ${student.student_email}`);
-      else throw new Error();
-    } catch (err) {
-      alert("❌ Mail API Error.");
-    } finally { setMailingId(null); }
+      const { error } = await supabase.from('enrollments').delete().eq('id', removingStudent.id);
+      if (error) throw error;
+      
+      alert(`✅ ${removingStudent.student_name} removed. Reason: ${removalReason}`);
+      setRemovingStudent(null);
+      setRemovalReason("");
+      fetchAdminData();
+    } catch (err: any) { alert(err.message); }
   }
 
   async function handleAddBatch(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.from('batches').insert([{
+    await supabase.from('batches').insert([{
       name: newBatch.name, price: newBatch.price, color: newBatch.color, hashtags: newBatch.hashtags.split(','), tag: 'ONLINE'
     }]);
-    if (!error) {
-      setNewBatch({ name: '', price: '', color: '#6c63ff', hashtags: '' });
-      fetchAdminData();
-      alert("🚀 Batch launched!");
-    }
+    setNewBatch({ name: '', price: '', color: '#6c63ff', hashtags: '' });
+    fetchAdminData();
     setLoading(false);
   }
 
@@ -103,17 +95,14 @@ export default function AdminPanel() {
     input: isDarkMode ? '#0f172a' : '#f1f5f9'
   };
 
-  if (!mounted || status === "loading") return <div style={{background: '#0f172a', height: '100vh', color: '#fff', padding: '50px'}}>Loading Admin...</div>;
+  if (!mounted || status === "loading") return null;
 
   return (
     <div style={{ padding: '40px 5%', background: theme.bg, minHeight: '100vh', color: theme.text, transition: '0.4s', fontFamily: 'sans-serif' }}>
       
       {/* HEADER */}
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
-        <div>
-          <Link href="/neet" style={{ color: '#5b6cfd', fontWeight: '800', textDecoration: 'none', fontSize: '14px' }}>← BACK</Link>
-          <h1 style={{ fontSize: '36px', fontWeight: '900', marginTop: '10px' }}>Control Center</h1>
-        </div>
+        <h1 style={{ fontSize: '36px', fontWeight: '900' }}>Admin Center</h1>
         <Link href="/admin/payments" style={{ textDecoration: 'none' }}>
             <motion.button whileHover={{ scale: 1.05 }} style={{ background: '#10b981', color: '#fff', border: 'none', padding: '12px 24px', borderRadius: '14px', fontWeight: '900', cursor: 'pointer' }}>
                 💰 VERIFY PAYMENTS
@@ -122,77 +111,86 @@ export default function AdminPanel() {
       </header>
 
       {/* STATS */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', marginBottom: '40px' }}>
-         <StatCard label="Total Revenue" value={`₹${totalRevenue.toLocaleString()}`} icon="💎" color="#10b981" theme={theme} />
-         <StatCard label="Unique Students" value={uniqueStudentCount} icon="👤" color="#5b6cfd" theme={theme} />
-         <StatCard label="Total Enrollments" value={students.length} icon="👨‍🎓" color="#6366f1" theme={theme} />
-         <StatCard label="Active Batches" value={batches.length} icon="📦" color="#f59e0b" theme={theme} />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', marginBottom: '40px' }}>
+         <StatCard label="True Revenue (Actual)" value={`₹${totalRevenue.toLocaleString()}`} icon="💎" color="#10b981" theme={theme} />
+         <StatCard label="Total Students" value={new Set(students.map(s => s.student_email)).size} icon="👤" color="#5b6cfd" theme={theme} />
+         <StatCard label="Live Batches" value={batches.length} icon="📦" color="#f59e0b" theme={theme} />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 2.5fr', gap: '30px' }}>
         
-        {/* LEFT COLUMN: CREATE & BATCH LIST */}
+        {/* LEFT: BATCH ANALYTICS TABLE */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
             <div style={{ background: theme.card, padding: '30px', borderRadius: '28px', border: `1px solid ${theme.border}` }}>
-              <h2 style={{ marginBottom: '20px', fontSize: '20px', fontWeight: '900' }}>🚀 New Batch</h2>
-              <form onSubmit={handleAddBatch} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                <input style={{ ...inputStyle, background: theme.input, color: theme.text, border: `1px solid ${theme.border}` }} placeholder="Batch Name" value={newBatch.name} onChange={e => setNewBatch({...newBatch, name: e.target.value})} required />
-                <input style={{ ...inputStyle, background: theme.input, color: theme.text, border: `1px solid ${theme.border}` }} placeholder="Price (Numeric)" value={newBatch.price} onChange={e => setNewBatch({...newBatch, price: e.target.value})} />
-                <input style={{ ...inputStyle, background: theme.input, color: theme.text, border: `1px solid ${theme.border}` }} placeholder="Tags (Physics, Bio)" value={newBatch.hashtags} onChange={e => setNewBatch({...newBatch, hashtags: e.target.value})} />
+                <h2 style={{ marginBottom: '20px', fontSize: '20px', fontWeight: '900' }}>📊 Batch Stats</h2>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                        <tr style={{ textAlign: 'left', color: theme.subtext, fontSize: '12px' }}>
+                            <th style={{ padding: '10px' }}>BATCH NAME</th>
+                            <th style={{ padding: '10px' }}>STUDENTS</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {batches.map((b, i) => (
+                            <tr key={i} style={{ borderBottom: `1px solid ${theme.border}` }}>
+                                <td style={{ padding: '12px', fontWeight: 700 }}>{b.name}</td>
+                                <td style={{ padding: '12px', fontWeight: 900, color: '#5b6cfd' }}>
+                                    {students.filter(s => s.batch_id === b.id || s.batch_id === b.name).length}
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+
+            <div style={{ background: theme.card, padding: '30px', borderRadius: '28px', border: `1px solid ${theme.border}` }}>
+              <h2 style={{ marginBottom: '15px', fontSize: '18px', fontWeight: '900' }}>🚀 Launch Batch</h2>
+              <form onSubmit={handleAddBatch} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <input style={{ ...inputStyle, background: theme.input, color: theme.text, border: `1px solid ${theme.border}` }} placeholder="Name" value={newBatch.name} onChange={e => setNewBatch({...newBatch, name: e.target.value})} required />
+                <input style={{ ...inputStyle, background: theme.input, color: theme.text, border: `1px solid ${theme.border}` }} placeholder="Price" value={newBatch.price} onChange={e => setNewBatch({...newBatch, price: e.target.value})} />
                 <button type="submit" disabled={loading} style={{ ...btnStyle, background: '#5b6cfd' }}>LAUNCH</button>
               </form>
             </div>
-
-            {/* BATCH WISE DISTRIBUTION */}
-            <div style={{ background: theme.card, padding: '30px', borderRadius: '28px', border: `1px solid ${theme.border}` }}>
-                <h2 style={{ marginBottom: '20px', fontSize: '20px', fontWeight: '900' }}>📦 Batch Wise Analytics</h2>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {batchStats.map((b, i) => (
-                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', borderRadius: '14px', background: theme.input }}>
-                            <span style={{ fontWeight: 700 }}>{b.name}</span>
-                            <span style={{ fontWeight: 900, color: '#5b6cfd' }}>{b.studentCount} Students</span>
-                        </div>
-                    ))}
-                </div>
-            </div>
         </div>
 
-        {/* RIGHT COLUMN: ENROLLMENTS */}
+        {/* RIGHT: JOININGS WITH SEARCH */}
         <div style={{ background: theme.card, padding: '30px', borderRadius: '28px', border: `1px solid ${theme.border}` }}>
-          <h2 style={{ marginBottom: '20px', fontSize: '20px', fontWeight: '900' }}>👨‍🎓 Recent Joinings</h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <h2 style={{ fontSize: '20px', fontWeight: '900' }}>👨‍🎓 Recent Joinings</h2>
+            <input 
+                style={{ padding: '10px 20px', borderRadius: '12px', border: `1px solid ${theme.border}`, background: theme.input, color: theme.text, width: '250px' }} 
+                placeholder="🔍 Search name, email..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          
           <div style={{ maxHeight: '700px', overflowY: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ textAlign: 'left', fontSize: '11px', color: theme.subtext, borderBottom: `1px solid ${theme.border}` }}>
                   <th style={{ padding: '15px' }}>STUDENT</th>
-                  <th style={{ padding: '15px' }}>BATCH</th>
-                  <th style={{ padding: '15px' }}>JOINED ON</th>
+                  <th style={{ padding: '15px' }}>BATCH & COST</th>
+                  <th style={{ padding: '15px' }}>JOINED</th>
                   <th style={{ padding: '15px' }}>ACTION</th>
                 </tr>
               </thead>
               <tbody>
-                {students.map((s, i) => (
+                {filteredStudents.map((s, i) => (
                   <tr key={i} style={{ borderBottom: `1px solid ${theme.border}` }}>
                     <td style={{ padding: '15px' }}>
-                        <div onClick={() => setViewingProfile(s)} style={{ fontWeight: '800', cursor: 'pointer', color: '#5b6cfd' }}>{s.student_name} 👤</div>
+                        <div style={{ fontWeight: '800' }}>{s.student_name}</div>
                         <div style={{ fontSize: '11px', opacity: 0.6 }}>{s.student_email}</div>
                     </td>
                     <td style={{ padding: '15px' }}>
-                        <span style={{ background: isDarkMode ? '#334155' : '#eef2ff', color: '#5b6cfd', padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '900' }}>
-                            {s.batch_id}
-                        </span>
+                        <div style={{ fontSize: '12px', fontWeight: 800 }}>{s.batch_id}</div>
+                        <div style={{ fontSize: '11px', color: '#10b981', fontWeight: 900 }}>₹{s.amount}</div>
                     </td>
-                    <td style={{ padding: '15px', fontSize: '12px', fontWeight: 600 }}>
-                        {new Date(s.enrolled_at || s.created_at).toLocaleDateString()}
-                    </td>
+                    <td style={{ padding: '15px', fontSize: '12px' }}>{new Date(s.enrolled_at).toLocaleDateString()}</td>
                     <td style={{ padding: '15px' }}>
-                        <button 
-                          onClick={() => handleSendMail(s)}
-                          disabled={mailingId === s.id}
-                          style={{ background: '#5b6cfd', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: '8px', fontSize: '10px', fontWeight: '900', cursor: 'pointer' }}
-                        >
-                          {mailingId === s.id ? "..." : "📩 MAIL"}
-                        </button>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                            <button onClick={() => setRemovingStudent(s)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '8px', fontSize: '10px', fontWeight: '900', cursor: 'pointer' }}>REMOVE</button>
+                        </div>
                     </td>
                   </tr>
                 ))}
@@ -202,20 +200,24 @@ export default function AdminPanel() {
         </div>
       </div>
 
-      {/* PROFILE MODAL */}
+      {/* REMOVAL REASON MODAL */}
       <AnimatePresence>
-        {viewingProfile && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setViewingProfile(null)} style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.8)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-             <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} style={{ background: theme.card, padding: '40px', borderRadius: '30px', width: '450px', border: `1px solid ${theme.border}` }}>
-                <h2 style={{ fontWeight: 900, marginBottom: '20px' }}>Student Profile</h2>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                   <p><b>Name:</b> {viewingProfile.student_name}</p>
-                   <p><b>Email:</b> {viewingProfile.student_email}</p>
-                   <p><b>Batch:</b> {viewingProfile.batch_id}</p>
-                   <p><b>Joined:</b> {new Date(viewingProfile.enrolled_at).toLocaleString()}</p>
-                </div>
-                <button onClick={() => setViewingProfile(null)} style={{ width: '100%', padding: '15px', borderRadius: '15px', background: '#5b6cfd', color: '#fff', border: 'none', fontWeight: 800, marginTop: '20px', cursor: 'pointer' }}>Close</button>
-             </motion.div>
+        {removingStudent && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.8)', zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} style={{ background: theme.card, padding: '30px', borderRadius: '24px', width: '400px', border: `1px solid ${theme.border}` }}>
+              <h2 style={{ fontWeight: 900 }}>Remove Student</h2>
+              <p style={{ fontSize: '13px', color: theme.subtext, margin: '10px 0' }}>Reason for removing {removingStudent.student_name}?</p>
+              <textarea 
+                style={{ width: '100%', height: '100px', borderRadius: '12px', background: theme.input, color: theme.text, padding: '15px', border: 'none', outline: 'none' }}
+                placeholder="e.g. Refund issued, Wrong batch..."
+                value={removalReason}
+                onChange={(e) => setRemovalReason(e.target.value)}
+              />
+              <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                <button onClick={() => setRemovingStudent(null)} style={{ flex: 1, padding: '12px', borderRadius: '12px', background: '#ccc', border: 'none' }}>Cancel</button>
+                <button onClick={handleRemoveStudent} style={{ flex: 1, padding: '12px', borderRadius: '12px', background: '#ef4444', color: '#fff', border: 'none', fontWeight: 800 }}>Remove Student</button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -229,11 +231,11 @@ function StatCard({ label, value, icon, color, theme }: any) {
             <div style={{ fontSize: '30px', background: `${color}15`, padding: '15px', borderRadius: '18px' }}>{icon}</div>
             <div>
                 <div style={{ fontSize: '12px', fontWeight: '800', color: theme.subtext }}>{label}</div>
-                <div style={{ fontSize: '24px', fontWeight: '900' }}>{value}</div>
+                <div style={{ fontSize: '22px', fontWeight: '900' }}>{value}</div>
             </div>
         </div>
     );
 }
 
-const inputStyle: any = { padding: '15px', borderRadius: '12px', outline: 'none' };
-const btnStyle: any = { padding: '15px', borderRadius: '12px', color: '#fff', border: 'none', fontWeight: '900', cursor: 'pointer' };
+const inputStyle: any = { padding: '12px', borderRadius: '10px', outline: 'none' };
+const btnStyle: any = { padding: '12px', borderRadius: '10px', color: '#fff', border: 'none', fontWeight: '900', cursor: 'pointer' };
