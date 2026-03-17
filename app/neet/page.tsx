@@ -86,7 +86,6 @@ export default function NeetPage() {
       student_name: displayName, 
       batch_id: batchId,
       batch_name: batchName,
-      // Fixed the TS error for the user_id reference
       user_id: (session.user as any).id
     }]);
     
@@ -109,10 +108,11 @@ export default function NeetPage() {
     border: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'
   };
 
+  // Updated batch data as per specific price/tag requirements
   const batches = [
-    { id: "ultimate-2026", name: "Yakeen NEET 2026", color: "#6c63ff", tag: "PAID", price: "200", originalPrice: "6,000", isPaid: true, hashtags: ["#class 12", "#dropper", "#all"], banner: "https://images.unsplash.com/photo-1576091160550-2173dba999ef?q=80&w=800&auto=format&fit=crop" },
-    { id: "crash-course", name: "NEET Crash Course 2026", color: "#ff4ecd", tag: "FREE", price: "0", originalPrice: "0", isPaid: false, hashtags: ["#class 11", "#all"], banner: "https://images.unsplash.com/photo-1631815587646-b85a1bb027e1?q=80&w=800&auto=format&fit=crop" },
-    { id: "arjuna-neet-2026", name: "Arjuna NEET 2026", color: "#3b82f6", tag: "PAID", price: "200", originalPrice: "5,500", isPaid: true, hashtags: ["#class 11", "#all"], banner: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?q=80&w=800&auto=format&fit=crop" }
+    { id: "ultimate-2026", name: "Yakeen NEET 2026", color: "#6c63ff", tag: "FREE", price: "0", originalPrice: "3,500", isPaid: false, hashtags: ["#class 12", "#dropper", "#all"], banner: "https://images.unsplash.com/photo-1576091160550-2173dba999ef?q=80&w=800&auto=format&fit=crop" },
+    { id: "crash-course", name: "NEET Crash Course 2026", color: "#ff4ecd", tag: "FREE", price: "0", originalPrice: "2,000", isPaid: false, hashtags: ["#class 11", "#all"], banner: "https://images.unsplash.com/photo-1631815587646-b85a1bb027e1?q=80&w=800&auto=format&fit=crop" },
+    { id: "arjuna-neet-2026", name: "Arjuna NEET 2026", color: "#3b82f6", tag: "PAID", price: "200", originalPrice: "4,000", isPaid: true, hashtags: ["#class 11", "#all"], banner: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?q=80&w=800&auto=format&fit=crop" }
   ];
 
   const filteredBatches = batches.filter(batch => batch.hashtags.includes(activeFilter.toLowerCase()));
@@ -125,7 +125,8 @@ export default function NeetPage() {
       <style dangerouslySetInnerHTML={{ __html: `
         body { margin: 0; padding: 0; }
         header { display: flex; justify-content: space-between; align-items: center; padding: 0 5%; background: ${theme.headerBg}; backdrop-filter: blur(15px); border-bottom: 1px solid ${theme.border}; position: sticky; top: 0; z-index: 1000; height: 80px; }
-        .home-btn { border: 2px solid #5b6cfd; color: #5b6cfd; padding: 8px 25px; border-radius: 12px; font-weight: 800; text-decoration: none; font-size: 16px; background: rgba(91, 108, 253, 0.05); transition: 0.2s; }
+        .back-home-btn { color: #5b6cfd; text-decoration: none; font-weight: 800; font-size: 16px; display: flex; align-items: center; gap: 8px; margin-bottom: 20px; border: none; background: none; cursor: pointer; }
+        .home-btn-nav { border: 2px solid #5b6cfd; color: #5b6cfd; padding: 8px 25px; border-radius: 12px; font-weight: 800; text-decoration: none; font-size: 16px; background: rgba(91, 108, 253, 0.05); transition: 0.2s; }
         .filter-btn { background: ${theme.card}; border: 1px solid ${theme.border}; padding: 10px 20px; cursor: pointer; font-weight: 600; color: ${theme.subtext}; border-radius: 10px; text-transform: uppercase; font-size: 12px; }
         .filter-btn.active { color: #fff; background: #5b6cfd; border-color: #5b6cfd; }
         .batch-card { background: ${theme.card}; border-radius: 24px; overflow: hidden; border: 1px solid ${theme.border}; box-shadow: 0 10px 30px rgba(0,0,0,0.08); transition: 0.4s; position: relative; }
@@ -136,7 +137,7 @@ export default function NeetPage() {
       <header>
         <Link href="/" style={{ textDecoration: 'none', fontWeight: 900, fontSize: '24px', color: '#5b6cfd' }}>StudyHub</Link>
         <nav style={{ display: 'flex', gap: '25px', alignItems: 'center' }}>
-          <Link href="/" className="home-btn">Home</Link>
+          <Link href="/" className="home-btn-nav">Home</Link>
           {session && isOwner && <Link href="/admin" style={{background:'#ffebeb', color:'#ff4757', padding:'8px 18px', borderRadius:'12px', fontWeight:800, textDecoration:'none'}}>Admin Panel</Link>}
           <Link href="#" style={{color: theme.text, textDecoration:'none', fontWeight: 600}}>Books</Link>
           <Link href="#" style={{color: theme.text, textDecoration:'none', fontWeight: 600}}>Results</Link>
@@ -154,6 +155,11 @@ export default function NeetPage() {
       </header>
 
       <main style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 20px' }}>
+        {/* BACK TO HOMEPAGE BUTTON */}
+        <Link href="/" className="back-home-btn">
+           <motion.span animate={{ x: [-2, 2, -2] }} transition={{ repeat: Infinity, duration: 1.5 }}>←</motion.span> Back to Homepage
+        </Link>
+
         <h1 style={{ fontSize: '42px', fontWeight: '900', color: theme.text, marginBottom: '10px' }}>NEET Online Preparation</h1>
         <p style={{ color: theme.subtext, marginBottom: '40px', fontSize: '18px' }}>Join our premium batches and start your journey to medical excellence.</p>
 
@@ -193,7 +199,7 @@ export default function NeetPage() {
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: '25px' }}>
                       <span style={{ fontSize: '28px', fontWeight: '900', color: '#5b6cfd' }}>₹{batch.price}</span>
-                      {batch.isPaid && <span style={{ fontSize: '16px', color: '#94a3b8', textDecoration: 'line-through' }}>₹{batch.originalPrice}</span>}
+                      <span style={{ fontSize: '16px', color: '#94a3b8', textDecoration: 'line-through' }}>₹{batch.originalPrice}</span>
                     </div>
 
                     {isDataLoading ? (
