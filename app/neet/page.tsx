@@ -132,6 +132,7 @@ export default function NeetPage() {
         .batch-card:hover { transform: translateY(-12px); border-color: #5b6cfd; }
         .feature-item { flex: 1; min-width: 240px; padding: 25px; border-radius: 20px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; border: 1px solid ${theme.border}; background: ${theme.card}; color: ${theme.text}; transition: 0.3s; }
         .feature-item:hover { transform: translateY(-5px); border-color: #5b6cfd; }
+        .separator { width: 100%; height: 1px; background: ${theme.border}; margin: 40px 0; }
       `}} />
 
       <header>
@@ -155,7 +156,6 @@ export default function NeetPage() {
       </header>
 
       <main style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 20px' }}>
-        {/* RENAMED BACK BUTTON */}
         <button onClick={() => router.push('/')} className="back-btn-text">
            <motion.span animate={{ x: [-2, 2, -2] }} transition={{ repeat: Infinity, duration: 1.5 }}>←</motion.span> Back
         </button>
@@ -163,8 +163,7 @@ export default function NeetPage() {
         <h1 style={{ fontSize: '42px', fontWeight: '900', color: theme.text, marginBottom: '10px' }}>NEET Online Preparation</h1>
         <p style={{ color: theme.subtext, marginBottom: '40px', fontSize: '18px' }}>Join our premium batches and start your journey to medical excellence.</p>
 
-        {/* RESTORED FEATURES SECTION (What was missing) */}
-        <div style={{ display: 'flex', gap: '20px', marginBottom: '60px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '20px', marginBottom: '20px', flexWrap: 'wrap' }}>
           {[
             { name: 'Blogs', sub: 'Latest updates', color: '#5b6cfd' },
             { name: 'PDF Bank', sub: 'Study material', color: '#ff4ecd' },
@@ -177,6 +176,9 @@ export default function NeetPage() {
             </motion.div>
           ))}
         </div>
+
+        {/* ADDED SEPARATION LINE HERE */}
+        <div className="separator" />
 
         <div style={{ display: 'flex', gap: '12px', marginBottom: '40px' }}>
           {["#all", "#class 11", "#class 12", "#dropper"].map(tag => (
