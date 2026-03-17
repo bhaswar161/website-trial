@@ -2,7 +2,7 @@
 import { useSession, signOut } from "next-auth/react"
 import { useState, useEffect, useMemo, useRef, use } from 'react' 
 import { createClient } from '@supabase/supabase-js'
-import { motion, AnimatePresence } from "framer-motion"
+import { motion, AnimatePresence, Variants } from "framer-motion"
 import Link from "next/link"
 import html2canvas from 'html2canvas'
 import { saveAs } from 'file-saver'
@@ -20,7 +20,6 @@ export default function BatchDashboard({ params }: PageProps) {
   
   const [mounted, setMounted] = useState(false)
   const badgeRef = useRef<HTMLDivElement>(null);
-  const dateInputRef = useRef<HTMLInputElement>(null);
   
   // Logic & Profile Sync States
   const [localName, setLocalName] = useState("");
@@ -71,7 +70,6 @@ export default function BatchDashboard({ params }: PageProps) {
           setStudySeconds(savedSeconds);
           if (savedSeconds >= 600) setIsStreakAchieved(true);
       }
-
       const saved = localStorage.getItem(`last_read_${batchId}`);
       if (saved) setLastReadTime(parseInt(saved));
     };
@@ -105,17 +103,12 @@ export default function BatchDashboard({ params }: PageProps) {
     setEvents(eData?.filter((ev: any) => !ev.is_done) || []);
   };
 
-  // --- ADMIN ACTIONS ---
+  // --- ACTIONS ---
   const handleSaveEvent = async () => {
     if (!eventTitle || !eventDate) return;
     const evPayload = { batch_id: batchId, title: eventTitle, event_time: eventDate, is_done: false };
-    if (editingEvent) {
-      await supabase.from('events').update(evPayload).eq('id', editingEvent.id);
-      await supabase.from('notices').insert([{ batch_id: batchId, title: "🔄 Event Updated", content: `"${eventTitle}" reschedule details: ${new Date(eventDate).toLocaleString()}` }]);
-    } else {
-      await supabase.from('events').insert([evPayload]);
-      await supabase.from('notices').insert([{ batch_id: batchId, title: "📅 New Event Added", content: `${eventTitle} is scheduled for ${new Date(eventDate).toLocaleString()}` }]);
-    }
+    if (editingEvent) await supabase.from('events').update(evPayload).eq('id', editingEvent.id);
+    else await supabase.from('events').insert([evPayload]);
     setShowEventModal(false); setEventTitle(""); setEventDate(""); setEditingEvent(null); fetchData();
   };
 
@@ -128,7 +121,6 @@ export default function BatchDashboard({ params }: PageProps) {
 
   const handleDoneDismiss = async (ev: any) => {
     await supabase.from('events').update({ is_done: true }).eq('id', ev.id);
-    await supabase.from('notices').insert([{ batch_id: batchId, title: "✅ Mission Accomplished", content: `Excellent! The task "${ev.title}" is finished.` }]);
     fetchData();
   };
 
@@ -142,8 +134,8 @@ export default function BatchDashboard({ params }: PageProps) {
   const handlePostNotice = async () => {
     if (!newNotice.trim() || !noticeSubject.trim()) return;
     const nData = { batch_id: batchId, title: noticeSubject, content: newNotice.trim() };
-    if (editingNotif) { await supabase.from('notices').update(nData).eq('id', editingNotif.id); } 
-    else { await supabase.from('notices').insert([nData]); }
+    if (editingNotif) await supabase.from('notices').update(nData).eq('id', editingNotif.id);
+    else await supabase.from('notices').insert([nData]);
     setNewNotice(""); setNoticeSubject(""); setEditingNotif(null); fetchData();
   };
 
@@ -155,7 +147,7 @@ export default function BatchDashboard({ params }: PageProps) {
   };
 
   const theme = {
-    bg: isDarkMode ? '#0f172a' : '#fcfdfe',
+    bg: isDarkMode ? '#0f172a' : '#f8fafc',
     header: isDarkMode ? 'rgba(30, 41, 59, 0.85)' : 'rgba(255, 255, 255, 0.85)',
     text: isDarkMode ? '#f8fafc' : '#1c252e',
     card: isDarkMode ? '#1e293b' : '#fff',
@@ -163,6 +155,9 @@ export default function BatchDashboard({ params }: PageProps) {
     pill: isDarkMode ? '#334155' : '#f8f9ff',
     streakBg: isDarkMode ? 'rgba(255, 78, 80, 0.15)' : 'rgba(255, 78, 80, 0.05)'
   };
+
+  const staggerContainer: Variants = { visible: { transition: { staggerChildren: 0.1 } } };
+  const fadeInUp: Variants = { hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1 } };
 
   const finalDisplayName = localName || session?.user?.name?.split(' ')[0] || "User";
   const finalDisplayPic = localPic || userProfile?.avatar_url || session?.user?.image || `https://ui-avatars.com/api/?name=${finalDisplayName}`;
@@ -172,28 +167,26 @@ export default function BatchDashboard({ params }: PageProps) {
 
   return (
     <div style={{ background: theme.bg, minHeight: '100vh', fontFamily: 'sans-serif', transition: '0.4s' }}>
-      
       <style dangerouslySetInnerHTML={{ __html: `
-        * { box-sizing: border-box; }
+        * { box-sizing: border-box; list-style: none; text-decoration: none; }
         header { display: flex; justify-content: space-between; align-items: center; padding: 0 5%; background: ${theme.header}; backdrop-filter: blur(15px); border-bottom: 1px solid ${theme.border}; position: sticky; top: 0; z-index: 1000; height: 80px; }
-        .nav-center ul { display: flex; gap: 20px; list-style: none; align-items: center; margin: 0; padding: 0; }
-        .home-btn { border: 2px solid #5b6cfd; color: #5b6cfd; padding: 8px 25px; border-radius: 12px; font-weight: 800; text-decoration: none; font-size: 16px; transition: 0.2s; background: rgba(91, 108, 253, 0.05); }
+        .nav-center ul { display: flex; gap: 20px; align-items: center; }
+        .home-btn { border: 2px solid #5b6cfd; color: #5b6cfd; padding: 8px 25px; border-radius: 12px; font-weight: 800; font-size: 16px; transition: 0.2s; background: rgba(91, 108, 253, 0.05); }
         .admin-btn { background: #ffebeb; color: #ff4757; border: 2px solid #ff4757; padding: 8px 18px; border-radius: 12px; font-weight: 800; text-decoration: none; }
         .nav-item { color: ${theme.text}; font-weight: 600; font-size: 15px; opacity: 0.8; text-decoration: none; }
-        
         .streak-pill { background: ${theme.streakBg}; border: 1px solid rgba(255, 78, 80, 0.2); padding: 8px 18px; border-radius: 12px; display: flex; align-items: center; gap: 8px; cursor: pointer; color: #ff4e50; font-weight: 900; }
         .notif-bell { background: ${theme.pill}; padding: 10px; border-radius: 12px; border: 1px solid ${theme.border}; cursor: pointer; position: relative; color: ${theme.text}; }
         .bell-badge { position: absolute; top: -5px; right: -5px; background: #ef4444; color: #fff; font-size: 10px; font-weight: 900; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
-        
-        .profile-pill { display: flex; align-items: center; gap: 12px; background: ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)'}; padding: 6px 14px; border-radius: 50px; color: inherit; text-decoration: none; border: 1px solid ${theme.border}; }
-        .btn-logout { background: #ff4757; color: white; border: none; padding: 10px 20px; border-radius: 12px; font-weight: 800; cursor: pointer; transition: 0.3s; }
-        
-        .back-link-large { color: #5b6cfd; text-decoration: none; font-weight: 800; font-size: 18px; display: inline-flex; align-items: center; gap: 8px; margin-bottom: 25px; cursor: pointer; border: none; background: none; }
+        .profile-pill { display: flex; align-items: center; gap: 12px; background: ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)'}; padding: 6px 14px; border-radius: 50px; color: inherit; border: 1px solid ${theme.border}; }
+        .btn-logout { background: #ff4757; color: white; border: none; padding: 10px 20px; border-radius: 12px; font-weight: 800; cursor: pointer; transition: 0.2s; }
+        .btn-logout:hover { background: #e04040; transform: scale(1.02); }
+        .back-link-large { color: #5b6cfd; text-decoration: none; font-weight: 800; font-size: 18px; display: inline-flex; align-items: center; gap: 8px; margin-bottom: 25px; cursor: pointer; border: none; background: none; transition: 0.2s; }
+        .back-link-large:hover { transform: translateX(-5px); }
         .offering-card { padding: 30px; background: ${theme.card}; border-radius: 25px; border: 1px solid ${theme.border}; color: ${theme.text}; display: flex; justify-content: space-between; align-items: center; transition: 0.3s; }
       `}} />
 
       <header>
-        <Link href="/" style={{ textDecoration: 'none', fontWeight: 900, fontSize: '24px', color: '#5b6cfd' }}>StudyHub</Link>
+        <Link href="/" style={{ fontWeight: 900, fontSize: '24px', color: '#5b6cfd' }}>StudyHub</Link>
         <nav className="nav-center">
           <ul>
             <li><Link href="/" className="home-btn">Home</Link></li>
@@ -204,22 +197,12 @@ export default function BatchDashboard({ params }: PageProps) {
         </nav>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {/* STREAK PILL */}
-          <motion.div 
-            whileHover={{ scale: 1.05 }} 
-            whileTap={{ scale: 0.95 }} 
-            className="streak-pill" 
-            onClick={() => setShowStreakModal(true)}
-          >
-            <motion.span animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 2 }}>🔥</motion.span> {streak}
+          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="streak-pill" onClick={() => setShowStreakModal(true)}>
+            <motion.span animate={{ scale: [1, 1.3, 1] }} transition={{ repeat: Infinity, duration: 1.5 }}>🔥</motion.span> {streak}
           </motion.div>
-
-          {/* NOTIFS */}
           <div className="notif-bell" onClick={() => { setShowNotifs(true); setLastReadTime(Date.now()); localStorage.setItem(`last_read_${batchId}`, Date.now().toString()); }}>
-            <span>🔔</span>
-            {unreadCount > 0 && <div className="bell-badge">{unreadCount}</div>}
+            <span>🔔</span> {unreadCount > 0 && <div className="bell-badge">{unreadCount}</div>}
           </div>
-
           <Link href="/profile" className="profile-pill">
             <img src={finalDisplayPic} style={{ width: '34px', height: '34px', borderRadius: '50%', border: '2px solid #5b6cfd', objectFit: 'cover' }} />
             <div style={{ textAlign: 'left', lineHeight: 1.1 }}>
@@ -227,15 +210,12 @@ export default function BatchDashboard({ params }: PageProps) {
                 <div style={{ fontSize: '9px', color: '#5b6cfd', fontWeight: '900' }}>{isOwner ? 'FACULTY' : 'STUDENT'}</div>
             </div>
           </Link>
-
           <button onClick={() => signOut({ callbackUrl: '/' })} className="btn-logout">Logout</button>
         </div>
       </header>
 
       <main style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 20px' }}>
-        <button onClick={() => router.push('/neet')} className="back-link-large">
-          <motion.span animate={{ x: [-2, 2, -2] }} transition={{ repeat: Infinity, duration: 1.5 }}>←</motion.span> Back to NEET Preparation
-        </button>
+        <button onClick={() => router.push('/neet')} className="back-link-large">← Back to NEET Preparation</button>
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} 
           style={{ background: isDarkMode ? '#1e293b' : '#1c252e', color: '#fff', padding: '80px 60px', borderRadius: '30px 30px 100px 30px', marginBottom: '50px', position: 'relative', overflow: 'hidden' }}>
@@ -245,16 +225,16 @@ export default function BatchDashboard({ params }: PageProps) {
 
         <section style={{ marginBottom: '60px' }}>
           <h3 style={{ color: theme.text, fontSize: '24px', fontWeight: '900', marginBottom: '30px' }}>Batch Offerings</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '25px' }}>
+          <motion.div variants={staggerContainer} initial="hidden" animate="visible" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '25px' }}>
             {['All Classes', 'All Tests', 'My Doubts', 'Community'].map((item) => (
               <Link key={item} href={item === 'All Classes' ? `/neet/${batchId}/all-classes` : '#'} style={{ textDecoration:'none' }}>
-                <div className="offering-card">
+                <motion.div variants={fadeInUp} whileHover={{ y: -5 }} className="offering-card">
                   <span style={{ fontWeight: '800' }}>{item}</span>
                   <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: isDarkMode ? '#334155' : '#f5f7ff', color: '#5b6cfd', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>❯</div>
-                </div>
+                </motion.div>
               </Link>
             ))}
-          </div>
+          </motion.div>
         </section>
 
         <div style={{ display: 'flex', gap: '40px', flexWrap: 'wrap' }}>
@@ -264,7 +244,7 @@ export default function BatchDashboard({ params }: PageProps) {
               {isOwner && <button onClick={() => {setEditingEvent(null); setShowEventModal(true)}} style={{ background: '#5b6cfd', color: '#fff', border: 'none', padding: '12px 20px', borderRadius: '15px', fontWeight: 'bold', cursor: 'pointer' }}>+ Create Event</button>}
             </div>
             {events.length === 0 ? <div style={{ padding: '40px', textAlign: 'center', color: '#888', background: theme.card, borderRadius: '30px', border: `1px solid ${theme.border}` }}>🕒 No events scheduled.</div> : events.map(ev => (
-              <div key={ev.id} style={{ background: theme.card, padding: '25px', borderRadius: '30px', marginBottom: '15px', border: `1px solid ${theme.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <motion.div initial={{ x: -10, opacity: 0 }} animate={{ x: 0, opacity: 1 }} key={ev.id} style={{ background: theme.card, padding: '25px', borderRadius: '30px', marginBottom: '15px', border: `1px solid ${theme.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <div style={{ fontWeight: '800', color: theme.text, fontSize: '18px' }}>{ev.title}</div>
                   <div style={{ fontSize: '13px', color: '#888', marginTop: '5px' }}>📅 {new Date(ev.event_time).toLocaleString()}</div>
@@ -276,35 +256,34 @@ export default function BatchDashboard({ params }: PageProps) {
                         <button onClick={() => handleDeleteEvent(ev)} style={{ color: '#ef4444', border: 'none', background: 'none', fontWeight: 'bold', cursor: 'pointer' }}>Delete</button>
                     </div>
                 )}
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
       </main>
 
-      {/* STREAK MODAL */}
+      {/* STREAK MODAL - ANIMATED */}
       <AnimatePresence>
         {showStreakModal && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.7)', zIndex:3000, display:'flex', alignItems:'center', justifyContent:'center', backdropFilter:'blur(8px)' }} onClick={() => setShowStreakModal(false)}>
-            <motion.div initial={{ scale: 0.8, rotate: -5 }} animate={{ scale: 1, rotate: 0 }} style={{ background: theme.card, padding: '0', borderRadius: '40px', width: '380px', overflow:'hidden', textAlign:'center', boxShadow:'0 30px 60px rgba(0,0,0,0.4)' }} onClick={e => e.stopPropagation()}>
+            <motion.div initial={{ scale: 0.7, y: 50 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.7, opacity: 0 }} style={{ background: theme.card, padding: '0', borderRadius: '40px', width: '380px', overflow:'hidden', textAlign:'center', boxShadow:'0 30px 60px rgba(0,0,0,0.4)' }} onClick={e => e.stopPropagation()}>
                 <div ref={badgeRef} style={{ padding:'40px 20px', background: isDarkMode ? theme.card : '#fff' }}>
-                   <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 2 }} style={{fontSize:'80px'}}>🔥</motion.div>
-                   <h2 style={{ fontSize: '42px', fontWeight: '950', color: theme.text, margin: '10px 0' }}>{streak} Days</h2>
-                   <p style={{ color: '#5b6cfd', fontWeight: '800', fontSize: '14px', letterSpacing: '1px' }}>MISSION STREAK</p>
+                   <motion.div animate={{ rotate: [0, 10, -10, 0], scale: [1, 1.1, 1] }} transition={{ repeat: Infinity, duration: 2.5 }} style={{fontSize:'85px'}}>🔥</motion.div>
+                   <h2 style={{ fontSize: '46px', fontWeight: '950', color: theme.text, margin: '15px 0' }}>{streak} Days</h2>
                    <div style={{ width:'100%', height:'12px', background: isDarkMode ? '#334155' : '#f0f0f0', borderRadius:'20px', marginTop:'25px', overflow:'hidden' }}>
                       <motion.div initial={{width:0}} animate={{width: `${(Math.min(studySeconds, 600)/600)*100}%`}} style={{ height:'100%', background:'linear-gradient(90deg, #ff4e50, #ff8c00)' }} />
                    </div>
-                   <p style={{ fontSize: '12px', color: '#888', marginTop: '12px' }}>{Math.floor(studySeconds/60)}m / 10m daily goal</p>
+                   <p style={{ fontSize: '12px', color: '#888', marginTop: '15px' }}>{Math.floor(studySeconds/60)}m / 10m study goal completed today</p>
                 </div>
                 <div style={{ padding:'25px', background: isDarkMode ? 'rgba(0,0,0,0.2)' : '#fcfdfe', borderTop:`1px solid ${theme.border}` }}>
-                   <button onClick={handleDownloadBadge} style={{ width:'100%', padding:'18px', background:'#5b6cfd', color:'#fff', border:'none', borderRadius:'20px', fontWeight:'900', cursor:'pointer', fontSize: '16px' }}>Download Badge</button>
+                   <button onClick={handleDownloadBadge} style={{ width:'100%', padding:'18px', background:'#5b6cfd', color:'#fff', border:'none', borderRadius:'20px', fontWeight:'900', cursor:'pointer', fontSize: '16px' }}>Download Achievement Badge</button>
                 </div>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* NOTIF MODAL WITH ADMIN LOGIC */}
+      {/* NOTIF MODAL */}
       <AnimatePresence>
         {showNotifs && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', zIndex:2000, display:'flex', justifyContent:'flex-end', backdropFilter:'blur(4px)' }} onClick={() => setShowNotifs(false)}>
