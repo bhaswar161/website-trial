@@ -7,7 +7,6 @@ import Cropper from 'react-easy-crop'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useTheme } from "../../context/ThemeContext"
 
-// Expanded Country List
 const countries = [
   { name: "India", code: "+91", flag: "🇮🇳" },
   { name: "USA", code: "+1", flag: "🇺🇸" },
@@ -77,8 +76,7 @@ export default function ProfilePage() {
   const generateCroppedImage = async () => {
     if (!imageToCrop || !croppedAreaPixels) return;
     const canvas = document.createElement('canvas');
-    const img = new Image();
-    img.src = imageToCrop;
+    const img = new Image(); img.src = imageToCrop;
     await new Promise((res) => (img.onload = res));
     canvas.width = 300; canvas.height = 300;
     const ctx = canvas.getContext('2d');
@@ -90,14 +88,28 @@ export default function ProfilePage() {
   };
 
   const handleSave = () => {
+    // Mandatory Validation Logic
+    if (!formData.firstName || !formData.lastName || !formData.phone) {
+        alert("❌ Please fill in your name and phone number.");
+        return;
+    }
+    if (!isOwner && (!formData.guardianName || !formData.guardianPhone)) {
+        alert("❌ Guardian details are mandatory for students.");
+        return;
+    }
+
     localStorage.setItem("userFirstName", formData.firstName);
     localStorage.setItem("userLastName", formData.lastName);
     localStorage.setItem("userPhone", `${selectedCountry.code} ${formData.phone}`);
     localStorage.setItem("userClass", formData.currentClass);
     localStorage.setItem("userProfilePic", formData.profilePic);
-    localStorage.setItem("guardianName", formData.guardianName);
-    localStorage.setItem("guardianPhone", formData.guardianPhone);
-    alert("🚀 Profile & Guardian Details Updated!");
+    
+    if(!isOwner) {
+        localStorage.setItem("guardianName", formData.guardianName);
+        localStorage.setItem("guardianPhone", formData.guardianPhone);
+    }
+
+    alert("🚀 Profile Updated Successfully!");
     router.push("/neet"); 
   }
 
@@ -118,7 +130,7 @@ export default function ProfilePage() {
     <div style={{ background: theme.bg, minHeight: '100vh', transition: '0.4s', color: theme.text, fontFamily: 'sans-serif' }}>
       <style dangerouslySetInnerHTML={{ __html: `
         header { display: flex; justify-content: space-between; align-items: center; padding: 0 5%; background: ${theme.headerBg}; backdrop-filter: blur(15px); border-bottom: 1px solid ${theme.border}; position: sticky; top: 0; z-index: 1000; height: 80px; }
-        .logo { font-weight: 900; fontSize: 24px; color: #5b6cfd; text-decoration: none !important; }
+        .logo { font-weight: 900; font-size: 24px; color: #5b6cfd; text-decoration: none !important; }
         .btn-logout { background: #ff4757; color: white; border: none; padding: 10px 22px; border-radius: 12px; font-weight: 800; cursor: pointer; transition: 0.3s; }
         .back-link { color: #5b6cfd; text-decoration: none; font-weight: 800; font-size: 18px; display: flex; align-items: center; gap: 8px; margin-bottom: 25px; cursor: pointer; border: none; background: none; }
         .profile-container { max-width: 650px; margin: 40px auto; padding: 0 20px; padding-bottom: 80px; }
@@ -131,22 +143,6 @@ export default function ProfilePage() {
         .section-label { position: absolute; top: -10px; left: 20px; background: ${theme.card}; padding: 0 10px; font-size: 11px; font-weight: 900; color: #5b6cfd; }
         .primary-btn { width: 100%; padding: 18px; border-radius: 16px; background: #5b6cfd; color: #fff; border: none; font-weight: 900; font-size: 16px; cursor: pointer; transition: 0.3s; margin-top: 20px; }
       `}} />
-
-      <AnimatePresence>
-        {imageToCrop && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-            <div style={{ background: theme.card, padding: '25px', borderRadius: '24px', width: '100%', maxWidth: '450px' }}>
-              <div style={{ position: 'relative', width: '100%', height: '350px', borderRadius: '16px', overflow: 'hidden' }}>
-                <Cropper image={imageToCrop} crop={crop} zoom={zoom} aspect={1} onCropChange={setCrop} onZoomChange={setZoom} onCropComplete={onCropComplete} />
-              </div>
-              <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
-                <button onClick={() => setImageToCrop(null)} style={{ flex: 1, padding: '15px', borderRadius: '12px', background: theme.border, color: theme.text, border: 'none', cursor:'pointer' }}>Cancel</button>
-                <button onClick={generateCroppedImage} style={{ flex: 1, padding: '15px', borderRadius: '12px', background: '#5b6cfd', color: '#fff', border: 'none', cursor:'pointer' }}>Save Photo</button>
-              </div>
-            </div>
-          </div>
-        )}
-      </AnimatePresence>
 
       <header>
         <Link href="/" className="logo">StudyHub</Link>
@@ -169,33 +165,27 @@ export default function ProfilePage() {
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-card">
           <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-            <div style={{ position: 'relative', width: '120px', height: '120px', margin: '0 auto 15px' }}>
-              <div style={{ width: '100%', height: '100%', borderRadius: '50%', overflow: 'hidden', border: '4px solid #5b6cfd' }}>
-                <img src={formData.profilePic || session?.user?.image || ""} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              </div>
-              <label style={{ position: 'absolute', bottom: '0', right: '0', background: '#5b6cfd', width: '34px', height: '34px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: `3px solid ${theme.card}`, color: '#fff', fontSize: '14px' }}>
-                📷 <input type="file" accept="image/*" onChange={onFileChange} style={{ display: 'none' }} />
-              </label>
-            </div>
-            <h2 style={{ margin: 0, fontWeight: 950, fontSize: '26px' }}>Student Profile</h2>
+            <h2 style={{ margin: 0, fontWeight: 950, fontSize: '32px' }}>
+                {isOwner ? "Teacher's Profile" : "Student Profile"}
+            </h2>
             <p style={{ color: theme.subtext, fontSize: '13px', marginTop: '5px' }}>{session?.user?.email}</p>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
               <div>
-                <label className="label-text">First Name</label>
-                <input className="input-box" value={formData.firstName} onChange={(e) => setFormData({...formData, firstName: e.target.value})} />
+                <label className="label-text">First Name *</label>
+                <input required className="input-box" value={formData.firstName} onChange={(e) => setFormData({...formData, firstName: e.target.value})} />
               </div>
               <div>
-                <label className="label-text">Last Name</label>
-                <input className="input-box" value={formData.lastName} onChange={(e) => setFormData({...formData, lastName: e.target.value})} />
+                <label className="label-text">Last Name *</label>
+                <input required className="input-box" value={formData.lastName} onChange={(e) => setFormData({...formData, lastName: e.target.value})} />
               </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
               <div>
-                <label className="label-text">Country</label>
+                <label className="label-text">Country *</label>
                 <select className="input-box" value={selectedCountry.name} onChange={(e) => {
                   const country = countries.find(c => c.name === e.target.value) || countries[0];
                   setSelectedCountry(country);
@@ -204,40 +194,46 @@ export default function ProfilePage() {
                 </select>
               </div>
               <div>
-                <label className="label-text">Student Phone</label>
+                <label className="label-text">Phone *</label>
                 <div className="phone-wrapper">
                   <div className="country-code">{selectedCountry.code}</div>
-                  <input className="input-box" type="tel" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} placeholder="XXXXXXXXXX" />
+                  <input required className="input-box" type="tel" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} placeholder="XXXXXXXXXX" />
                 </div>
               </div>
             </div>
 
-            <div>
-              <label className="label-text">Current Grade</label>
-              <select className="input-box" value={formData.currentClass} onChange={(e) => setFormData({...formData, currentClass: e.target.value})}>
-                <option>Class 11</option>
-                <option>Class 12</option>
-                <option>Dropper</option>
-              </select>
-            </div>
+            {!isOwner && (
+                <div>
+                  <label className="label-text">Current Grade *</label>
+                  <select className="input-box" value={formData.currentClass} onChange={(e) => setFormData({...formData, currentClass: e.target.value})}>
+                    <option>Class 11</option>
+                    <option>Class 12</option>
+                    <option>Dropper</option>
+                  </select>
+                </div>
+            )}
 
-            {/* GUARDIAN SECTION */}
-            <div className="section-divider">
-               <span className="section-label">GUARDIAN INFORMATION</span>
-            </div>
+            {/* GUARDIAN SECTION - HIDDEN FOR TEACHER */}
+            {!isOwner && (
+                <>
+                    <div className="section-divider">
+                       <span className="section-label">GUARDIAN INFORMATION</span>
+                    </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '15px' }}>
-              <div>
-                <label className="label-text">Guardian Name</label>
-                <input className="input-box" placeholder="Father/Mother Name" value={formData.guardianName} onChange={(e) => setFormData({...formData, guardianName: e.target.value})} />
-              </div>
-              <div>
-                <label className="label-text">Guardian Phone</label>
-                <input className="input-box" type="tel" placeholder="Phone Number" value={formData.guardianPhone} onChange={(e) => setFormData({...formData, guardianPhone: e.target.value})} />
-              </div>
-            </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                      <div>
+                        <label className="label-text">Guardian Name *</label>
+                        <input required className="input-box" placeholder="Parent Name" value={formData.guardianName} onChange={(e) => setFormData({...formData, guardianName: e.target.value})} />
+                      </div>
+                      <div>
+                        <label className="label-text">Guardian Phone *</label>
+                        <input required className="input-box" type="tel" placeholder="Parent Phone" value={formData.guardianPhone} onChange={(e) => setFormData({...formData, guardianPhone: e.target.value})} />
+                      </div>
+                    </div>
+                </>
+            )}
 
-            <button onClick={handleSave} className="primary-btn">SAVE CHANGES</button>
+            <button onClick={handleSave} className="primary-btn">SAVE PROFILE</button>
           </div>
         </motion.div>
       </main>
