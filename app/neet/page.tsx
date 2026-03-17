@@ -85,7 +85,9 @@ export default function NeetPage() {
       student_email: email, 
       student_name: displayName, 
       batch_id: batchId,
-      batch_name: batchName 
+      batch_name: batchName,
+      // Fixed the TS error for the user_id reference
+      user_id: (session.user as any).id
     }]);
     
     if (!error || (error as any).code === '23505') {
@@ -109,8 +111,8 @@ export default function NeetPage() {
 
   const batches = [
     { id: "ultimate-2026", name: "Yakeen NEET 2026", color: "#6c63ff", tag: "PAID", price: "200", originalPrice: "6,000", isPaid: true, hashtags: ["#class 12", "#dropper", "#all"], banner: "https://images.unsplash.com/photo-1576091160550-2173dba999ef?q=80&w=800&auto=format&fit=crop" },
-    { id: "arjuna-2026", name: "Arjuna NEET 2026", color: "#3b82f6", tag: "PAID", price: "200", originalPrice: "5,000", isPaid: true, hashtags: ["#class 11", "#all"], banner: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?q=80&w=800&auto=format&fit=crop" },
-    { id: "crash-course", name: "NEET Crash Course 2026", color: "#ff4ecd", tag: "FREE", price: "0", originalPrice: "0", isPaid: false, hashtags: ["#class 11", "#all"], banner: "https://images.unsplash.com/photo-1631815587646-b85a1bb027e1?q=80&w=800&auto=format&fit=crop" }
+    { id: "crash-course", name: "NEET Crash Course 2026", color: "#ff4ecd", tag: "FREE", price: "0", originalPrice: "0", isPaid: false, hashtags: ["#class 11", "#all"], banner: "https://images.unsplash.com/photo-1631815587646-b85a1bb027e1?q=80&w=800&auto=format&fit=crop" },
+    { id: "arjuna-neet-2026", name: "Arjuna NEET 2026", color: "#3b82f6", tag: "PAID", price: "200", originalPrice: "5,500", isPaid: true, hashtags: ["#class 11", "#all"], banner: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?q=80&w=800&auto=format&fit=crop" }
   ];
 
   const filteredBatches = batches.filter(batch => batch.hashtags.includes(activeFilter.toLowerCase()));
