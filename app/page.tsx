@@ -155,7 +155,7 @@ export default function HomePage() {
               </AnimatePresence>
             </li>
             {session && isOwner && <li><Link href="/admin" className="admin-btn">Admin Panel</Link></li>}
-            {session && !isOwner && <li><Link href="/neet" style={{fontWeight: 800, color: '#5b6cfd'}}>Dashboard</Link></li>}
+            {/* Dashboard removed for students as requested */}
             <li>Books</li>
             <li>Results</li>
           </ul>
