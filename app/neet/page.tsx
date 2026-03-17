@@ -71,9 +71,7 @@ export default function NeetPage() {
         return;
     }
 
-    // If it's a paid batch, redirect to checkout
     if (isPaid) {
-        // Logic for redirection to payment page
         router.push(`/neet/checkout?batchId=${batchId}&amount=${price.replace(',', '')}`);
         return;
     }
@@ -91,7 +89,7 @@ export default function NeetPage() {
     }]);
     
     if (!error || (error as any).code === '23505') {
-        alert(`🎉 Welcome to ${batchName}!`);
+        alert(`🎉 Welcome to ${batchName}! You can now explore the course.`);
     }
   };
 
@@ -110,8 +108,9 @@ export default function NeetPage() {
   };
 
   const batches = [
-    { id: "ultimate-2026", name: "Yakeen NEET 2026", color: "#6c63ff", tag: "PAID", price: "200", isPaid: true, hashtags: ["#class 12", "#dropper", "#all"], banner: "https://images.unsplash.com/photo-1576091160550-2173dba999ef?q=80&w=800&auto=format&fit=crop" },
-    { id: "crash-course", name: "NEET Crash Course 2026", color: "#ff4ecd", tag: "FREE", price: "0", isPaid: false, hashtags: ["#class 11", "#all"], banner: "https://images.unsplash.com/photo-1631815587646-b85a1bb027e1?q=80&w=800&auto=format&fit=crop" }
+    { id: "ultimate-2026", name: "Yakeen NEET 2026", color: "#6c63ff", tag: "PAID", price: "200", originalPrice: "6,000", isPaid: true, hashtags: ["#class 12", "#dropper", "#all"], banner: "https://images.unsplash.com/photo-1576091160550-2173dba999ef?q=80&w=800&auto=format&fit=crop" },
+    { id: "arjuna-2026", name: "Arjuna NEET 2026", color: "#3b82f6", tag: "PAID", price: "200", originalPrice: "5,000", isPaid: true, hashtags: ["#class 11", "#all"], banner: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?q=80&w=800&auto=format&fit=crop" },
+    { id: "crash-course", name: "NEET Crash Course 2026", color: "#ff4ecd", tag: "FREE", price: "0", originalPrice: "0", isPaid: false, hashtags: ["#class 11", "#all"], banner: "https://images.unsplash.com/photo-1631815587646-b85a1bb027e1?q=80&w=800&auto=format&fit=crop" }
   ];
 
   const filteredBatches = batches.filter(batch => batch.hashtags.includes(activeFilter.toLowerCase()));
@@ -125,10 +124,9 @@ export default function NeetPage() {
         body { margin: 0; padding: 0; }
         header { display: flex; justify-content: space-between; align-items: center; padding: 0 5%; background: ${theme.headerBg}; backdrop-filter: blur(15px); border-bottom: 1px solid ${theme.border}; position: sticky; top: 0; z-index: 1000; height: 80px; }
         .home-btn { border: 2px solid #5b6cfd; color: #5b6cfd; padding: 8px 25px; border-radius: 12px; font-weight: 800; text-decoration: none; font-size: 16px; background: rgba(91, 108, 253, 0.05); transition: 0.2s; }
-        .nav-item { color: ${theme.text}; font-weight: 600; font-size: 15px; opacity: 0.8; text-decoration: none; }
         .filter-btn { background: ${theme.card}; border: 1px solid ${theme.border}; padding: 10px 20px; cursor: pointer; font-weight: 600; color: ${theme.subtext}; border-radius: 10px; text-transform: uppercase; font-size: 12px; }
         .filter-btn.active { color: #fff; background: #5b6cfd; border-color: #5b6cfd; }
-        .batch-card { background: ${theme.card}; border-radius: 24px; overflow: hidden; border: 1px solid ${theme.border}; box-shadow: 0 10px 30px rgba(0,0,0,0.08); transition: 0.4s; }
+        .batch-card { background: ${theme.card}; border-radius: 24px; overflow: hidden; border: 1px solid ${theme.border}; box-shadow: 0 10px 30px rgba(0,0,0,0.08); transition: 0.4s; position: relative; }
         .batch-card:hover { transform: translateY(-12px); border-color: #5b6cfd; }
         .profile-pill { display: flex; align-items: center; gap: 12px; background: ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.04)'}; padding: 6px 16px 6px 6px; border-radius: 50px; color: inherit; text-decoration: none; }
       `}} />
@@ -137,9 +135,9 @@ export default function NeetPage() {
         <Link href="/" style={{ textDecoration: 'none', fontWeight: 900, fontSize: '24px', color: '#5b6cfd' }}>StudyHub</Link>
         <nav style={{ display: 'flex', gap: '25px', alignItems: 'center' }}>
           <Link href="/" className="home-btn">Home</Link>
-          {session && isOwner && <Link href="/admin" style={{background:'#ffebeb', color:'#ff4757', padding:'8px 18px', borderRadius:'12px', fontWeight:800}}>Admin Panel</Link>}
-          <Link href="#" className="nav-item">Books</Link>
-          <Link href="#" className="nav-item">Results</Link>
+          {session && isOwner && <Link href="/admin" style={{background:'#ffebeb', color:'#ff4757', padding:'8px 18px', borderRadius:'12px', fontWeight:800, textDecoration:'none'}}>Admin Panel</Link>}
+          <Link href="#" style={{color: theme.text, textDecoration:'none', fontWeight: 600}}>Books</Link>
+          <Link href="#" style={{color: theme.text, textDecoration:'none', fontWeight: 600}}>Results</Link>
         </nav>
         <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
           <Link href="/profile" className="profile-pill">
@@ -154,8 +152,8 @@ export default function NeetPage() {
       </header>
 
       <main style={{ maxWidth: '1200px', margin: '40px auto', padding: '0 20px' }}>
-        <h1 style={{ fontSize: '42px', fontWeight: '900', color: theme.text }}>NEET Online Preparation</h1>
-        <p style={{ color: theme.subtext, marginBottom: '40px', fontSize: '18px' }}>Access StudyHub's premium courses.</p>
+        <h1 style={{ fontSize: '42px', fontWeight: '900', color: theme.text, marginBottom: '10px' }}>NEET Online Preparation</h1>
+        <p style={{ color: theme.subtext, marginBottom: '40px', fontSize: '18px' }}>Join our premium batches and start your journey to medical excellence.</p>
 
         <div style={{ display: 'flex', gap: '12px', marginBottom: '40px' }}>
           {["#all", "#class 11", "#class 12", "#dropper"].map(tag => (
@@ -168,22 +166,32 @@ export default function NeetPage() {
             {filteredBatches.map((batch) => {
               const isEnrolled = enrolledBatches.includes(batch.id);
               const canExplore = isOwner || isEnrolled;
+
               return (
                 <motion.div layout key={batch.id} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="batch-card">
                   <div style={{ height: '210px', position: 'relative' }}>
                     <img src={batch.banner} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="banner" />
-                    <div style={{ position: 'absolute', top: '15px', left: '15px', background: batch.color, color: '#fff', padding: '6px 14px', borderRadius: '8px', fontSize: '11px', fontWeight: '900' }}>{batch.tag}</div>
+                    <div style={{ position: 'absolute', top: '15px', left: '15px', background: batch.isPaid ? '#6c63ff' : '#ff4ecd', color: '#fff', padding: '6px 14px', borderRadius: '8px', fontSize: '11px', fontWeight: '900' }}>{batch.tag}</div>
                   </div>
                   <div style={{ padding: '25px' }}>
-                    <h3 style={{ fontSize: '24px', fontWeight: '900', color: theme.text, marginBottom: '10px' }}>{batch.name}</h3>
-                    <div style={{ display: 'flex', gap: 6, marginBottom: 20 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+                      <h3 style={{ fontSize: '24px', fontWeight: '900', color: theme.text, margin: 0 }}>{batch.name}</h3>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          <span style={{ background: isDarkMode ? '#334155' : '#f1f5f9', color: theme.subtext, fontSize: '11px', padding: '4px 8px', borderRadius: '5px', fontWeight: 'bold' }}>Hinglish</span>
+                          <img src="https://cdn-icons-png.flaticon.com/512/3670/3670051.png" style={{ width: '22px', cursor: 'pointer' }} onClick={() => handleShare(batch.name)} />
+                      </div>
+                    </div>
+                    <div style={{ color: theme.subtext, fontSize: '14px', fontWeight: '600', marginBottom: '15px' }}>📅 Starts: 13 Apr, 2026 | Ends: 30 Jun, 2027</div>
+                    
+                    <div style={{ display: 'flex', gap: '6px', marginBottom: '20px', flexWrap: 'wrap' }}>
                         {batch.hashtags.filter(h => h !== '#all').map(h => (
                             <span key={h} style={{ background: isDarkMode ? 'rgba(91,108,253,0.1)' : '#f0f2ff', color: '#5b6cfd', fontSize: '10px', padding: '4px 10px', borderRadius: '6px', fontWeight: '800' }}>{h.toUpperCase()}</span>
                         ))}
                     </div>
+
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: '25px' }}>
                       <span style={{ fontSize: '28px', fontWeight: '900', color: '#5b6cfd' }}>₹{batch.price}</span>
-                      {batch.isPaid && <span style={{ fontSize: '16px', color: '#94a3b8', textDecoration: 'line-through' }}>₹6,000</span>}
+                      {batch.isPaid && <span style={{ fontSize: '16px', color: '#94a3b8', textDecoration: 'line-through' }}>₹{batch.originalPrice}</span>}
                     </div>
 
                     {isDataLoading ? (
@@ -193,7 +201,10 @@ export default function NeetPage() {
                         <button style={{ width: '100%', padding: '15px', borderRadius: '14px', fontWeight: '900', background: batch.color, color: '#fff', border: 'none', cursor: 'pointer' }}>EXPLORE</button>
                       </Link>
                     ) : (
-                      <button onClick={() => handleEnroll(batch.id, batch.name, batch.isPaid, batch.price)} style={{ width: '100%', padding: '15px', borderRadius: '14px', fontWeight: '900', background: batch.color, color: '#fff', border: 'none', cursor: 'pointer' }}>
+                      <button 
+                        onClick={() => handleEnroll(batch.id, batch.name, batch.isPaid, batch.price)} 
+                        style={{ width: '100%', padding: '15px', borderRadius: '14px', fontWeight: '900', background: batch.color, color: '#fff', border: 'none', cursor: 'pointer' }}
+                      >
                         {batch.isPaid ? 'BUY NOW' : 'ENROLL NOW'}
                       </button>
                     )}
