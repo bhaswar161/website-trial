@@ -43,21 +43,20 @@ function CheckoutContent() {
   };
 
   const handleUpload = async () => {
-    // 1. SESSION & FILE VALIDATION
-    if (!session?.user) return alert("❌ Session not found. Please logout and login again.");
+    if (!session?.user) return alert("❌ Session not found. Please login again.");
     if (!file) return alert("❌ Mandatory: Please upload the payment screenshot to proceed!");
     
-    // 2. ROBUST ID DETECTION (Solves the "null value user_id" error)
-    // We check three locations, and if all fail, we use the student's email.
+    // 1. ROBUST ID DETECTION
     const rawId = (session.user as any).id || (session as any).userId || (session as any).token?.sub;
-    const userId = rawId || session.user.email || "unknown_student";
 
     setUploading(true);
     try {
       const fileExt = file.name.split('.').pop();
-      const fileName = `${userId.replace(/[^a-zA-Z0-9]/g, '_')}/${Date.now()}.${fileExt}`;
+      // Use timestamp-based folder if ID is just an email to avoid Storage path issues
+      const safeFolder = rawId && !rawId.includes('@') ? rawId : Date.now().toString();
+      const fileName = `${safeFolder}/${Date.now()}.${fileExt}`;
       
-      // 3. STORAGE UPLOAD
+      // 2. STORAGE UPLOAD
       const { data: storageData, error: storageError } = await supabase.storage
         .from('screenshots')
         .upload(fileName, file, { upsert: true });
@@ -66,23 +65,30 @@ function CheckoutContent() {
 
       const { data: { publicUrl } } = supabase.storage.from('screenshots').getPublicUrl(fileName);
 
-      // 4. DATABASE INSERT (Guaranteed not to have null user_id)
-      const { error: dbError } = await supabase.from('payment_requests').insert([{
-        user_id: userId, 
+      // 3. DATABASE INSERT DATA PREP
+      const insertData: any = {
         student_email: session.user.email,
         student_name: localStorage.getItem("userFirstName") || session.user.name,
         batch_id: batchId,
         amount: amount,
         screenshot_url: publicUrl,
         status: 'pending'
-      }]);
+      };
+
+      // FIX: Only add user_id if it's a valid UUID (doesn't contain @)
+      // This prevents the "invalid input syntax for type uuid" error
+      if (rawId && !rawId.includes('@')) {
+          insertData.user_id = rawId;
+      }
+
+      const { error: dbError } = await supabase.from('payment_requests').insert([insertData]);
 
       if (dbError) throw new Error(`Database: ${dbError.message}`);
 
       alert("🎉 Payment Successful!\nYou will be added in the batch within 24 hours after reviewing of payment.");
       router.push('/neet');
     } catch (err: any) {
-      console.error("Upload process failed:", err);
+      console.error(err);
       alert("⚠️ Request Failed: " + err.message);
     } finally {
       setUploading(false);
@@ -131,7 +137,6 @@ function CheckoutContent() {
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '40px' }}>
-          {/* SCAN & PAY */}
           <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} style={{ background: theme.card, padding: '40px', borderRadius: '32px', border: `1px solid ${theme.border}`, textAlign: 'center' }}>
             <h2 style={{ fontWeight: 900, fontSize: '24px', marginBottom: '10px', color: isDarkMode ? '#fff' : '#1c252e' }}>Scan & Pay</h2>
             <p style={{ color: theme.subtext, marginBottom: '30px' }}>Scan this QR and pay <b>₹{amount}</b></p>
@@ -144,7 +149,6 @@ function CheckoutContent() {
             </div>
           </motion.div>
 
-          {/* UPLOAD PROOF */}
           <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} style={{ background: theme.card, padding: '40px', borderRadius: '32px', border: `1px solid ${theme.border}` }}>
             <h2 style={{ fontWeight: 900, fontSize: '24px', marginBottom: '10px', color: isDarkMode ? '#fff' : '#1c252e' }}>Upload Proof</h2>
             <p style={{ color: theme.subtext, marginBottom: '30px' }}>Upload your payment screenshot.</p>
